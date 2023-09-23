@@ -9,7 +9,8 @@ func NewListener() *Listener {
 	l := &Listener{
 		mesgc:        make(chan proto.Message, 1000),
 		done:         make(chan struct{}),
-		activityFile: ActivityFile{},
+		coordinates:  make([]any, 0),
+		activityFile: &ActivityFile{},
 	}
 	go l.loop()
 	return l
@@ -18,8 +19,8 @@ func NewListener() *Listener {
 type Listener struct {
 	mesgc        chan proto.Message
 	done         chan struct{}
-	coordinates  [][]float64
-	activityFile ActivityFile
+	coordinates  []any
+	activityFile *ActivityFile
 }
 
 func (l *Listener) loop() {
@@ -27,24 +28,36 @@ func (l *Listener) loop() {
 		switch mesg.Num {
 		case mesgnum.FileId:
 			l.activityFile.FileId = NewFileId(mesg)
-		case mesgnum.Activity:
-			l.activityFile.Activity = NewActivity(mesg)
 		case mesgnum.Session:
 			l.activityFile.Sessions = append(l.activityFile.Sessions, NewSession(mesg))
-		case mesgnum.Lap:
-			l.activityFile.Laps = append(l.activityFile.Laps, NewLap(mesg))
+		// case mesgnum.Lap:
+		// l.activityFile.Laps = append(l.activityFile.Laps, NewLap(mesg))
 		case mesgnum.Record:
 			record := NewRecord(mesg)
 			l.activityFile.Records = append(l.activityFile.Records, record)
-
-			if record.PositionLong == nil || record.PositionLat == nil {
+			if record["positionLong"] == nil || record["positionLat"] == nil {
 				continue
 			}
-
-			l.coordinates = append(l.coordinates, []float64{
-				*record.PositionLong,
-				*record.PositionLat,
+			l.coordinates = append(l.coordinates, []any{
+				record["positionLong"],
+				record["positionLat"],
 			})
+
+			// long, ok := mesg.FieldByNum(fieldnum.RecordPositionLong)
+			// if !ok {
+			// 	continue
+			// }
+
+			// lat, ok := mesg.FieldByNum(fieldnum.RecordPositionLat)
+			// if !ok {
+			// 	continue
+			// }
+
+			// l.coordinates = append(l.coordinates, []any{
+			// 	semicircles.ToDegrees(typeconv.ToSint32[int32](long.Value)),
+			// 	semicircles.ToDegrees(typeconv.ToSint32[int32](lat.Value)),
+			// })
+
 		}
 	}
 	close(l.done)
@@ -57,8 +70,8 @@ func (l *Listener) Wait() {
 
 func (l *Listener) OnMesg(mesg proto.Message) { l.mesgc <- mesg }
 
-func (l *Listener) Feature() Feature {
-	return Feature{
+func (l *Listener) Feature() *Feature {
+	return &Feature{
 		Type: "Feature",
 		Geometry: Geometry{
 			Type:        "LineString",
@@ -67,6 +80,6 @@ func (l *Listener) Feature() Feature {
 	}
 }
 
-func (l *Listener) ActivityFile() ActivityFile {
+func (l *Listener) ActivityFile() *ActivityFile {
 	return l.activityFile
 }

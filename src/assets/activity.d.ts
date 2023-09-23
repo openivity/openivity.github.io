@@ -3,8 +3,6 @@ export class ActivityFile {
   activity: Activity
   sessions: Array<Session>
   records: Array<Record>
-
-  constructor(undefined)
 }
 
 export class Activity {

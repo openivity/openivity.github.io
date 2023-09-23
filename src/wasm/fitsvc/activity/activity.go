@@ -6,17 +6,26 @@ import (
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/kit/semicircles"
 	"github.com/muktihari/fit/kit/typeconv"
+	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/profile/untyped/fieldnum"
 	"github.com/muktihari/fit/proto"
 )
 
 type ActivityFile struct {
-	FileId   FileId    `json:"fileId"`
-	Activity Activity  `json:"activity"`
-	Sessions []Session `json:"sessions,omitempty"`
-	Laps     []Lap     `json:"laps,omitempty"`
-	Records  []Record  `json:"records,omitempty"`
+	FileId   map[string]any `json:"fileId"`
+	Sessions []any          `json:"sessions,omitempty"`
+	Laps     []any          `json:"laps,omitempty"`
+	Records  []any          `json:"records,omitempty"`
+}
+
+func (m *ActivityFile) ToMap() map[string]any {
+	return map[string]any{
+		"fileId":   m.FileId,
+		"sessions": m.Sessions,
+		"laps":     m.Laps,
+		"records":  m.Records,
+	}
 }
 
 type FileId struct {
@@ -25,87 +34,34 @@ type FileId struct {
 	TimeCreated  time.Time `json:"timeCreated"`
 }
 
-func NewFileId(mesg proto.Message) FileId {
-	fileId := FileId{}
+func (m *FileId) ToMap() map[string]any {
+	return map[string]any{
+		"manufacturer": m.Manufacturer,
+		"product":      m.Product,
+		"timeCreated":  m.TimeCreated.Format(time.RFC3339),
+	}
+}
+
+func NewFileId(mesg proto.Message) map[string]any {
+	m := map[string]any{}
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
 
 		switch field.Num {
 		case fieldnum.FileIdManufacturer:
-			fileId.Manufacturer = typeconv.ToUint16[typedef.Manufacturer](field.Value).String()
+			m["manufacturer"] = typeconv.ToUint16[typedef.Manufacturer](field.Value).String()
 		case fieldnum.FileIdProduct:
-			fileId.Product, _ = field.Value.(uint16)
+			m["product"], _ = field.Value.(uint16)
 		case fieldnum.FileIdTimeCreated:
-			fileId.TimeCreated = datetime.ToTime(field.Value)
+			m["timeCreated"] = datetime.ToTime(field.Value).Format(time.RFC3339)
 		}
 	}
 
-	return fileId
+	return m
 }
 
-type Activity struct {
-	Timestamp      time.Time `json:"timestamp"`
-	TotalTimerTime uint32    `json:"totalTimerTime"`
-	NumSessions    uint16    `json:"numSessions"`
-	Type           string    `json:"type"`
-	Event          string    `json:"event"`
-	EventType      string    `json:"eventType"`
-}
-
-func NewActivity(mesg proto.Message) Activity {
-	activity := Activity{}
-	for i := range mesg.Fields {
-		field := &mesg.Fields[i]
-
-		switch field.Num {
-		case fieldnum.ActivityTimestamp:
-			activity.Timestamp = datetime.ToTime(field.Value)
-		case fieldnum.ActivityTotalTimerTime:
-			activity.TotalTimerTime, _ = field.Value.(uint32)
-		case fieldnum.ActivityNumSessions:
-			activity.NumSessions, _ = field.Value.(uint16)
-		case fieldnum.ActivityType:
-			activityType := typeconv.ToEnum[typedef.ActivityType](field.Value)
-			activity.Type = activityType.String()
-		case fieldnum.ActivityEvent:
-			activityEvent := typeconv.ToEnum[typedef.Event](field.Value)
-			activity.Event = activityEvent.String()
-		case fieldnum.ActivityEventType:
-			activityEventType := typeconv.ToEnum[typedef.EventType](field.Value)
-			activity.EventType = activityEventType.String()
-		}
-	}
-
-	return activity
-}
-
-type Session struct {
-	Sport            *string  `json:"sport,omitempty"`
-	SubSport         *string  `json:"subSport,omitempty"`
-	TotalMovingTime  *float64 `json:"totalMovingTime,omitempty"`  // units: s;
-	TotalElapsedTime *float64 `json:"totalElapsedTime,omitempty"` // Units: s;
-	TotalTimerTime   *float64 `json:"totalTimerTime,omitempty"`   // Units: s;
-	TotalDistance    *float64 `json:"totalDistance,omitempty"`    // Units: m;
-	TotalAscent      *uint16  `json:"totalAscent,omitempty"`      // Units: m;
-	TotalDescent     *uint16  `json:"totalDescent,omitempty"`     // Units: m;
-	TotalCycles      *uint32  `json:"totalCycles"`                // Units: cycles;
-	TotalCalories    *uint16  `json:"totalCalories"`              // Units: kcal;
-	AvgSpeed         *float64 `json:"avgSpeed"`                   // Scale: 1000; Units: m/s; total_distance / total_timer_time
-	MaxSpeed         *float64 `json:"maxSpeed"`                   // Scale: 1000; Units: m/s;
-	AvgHeartRate     *uint8   `json:"avgHeartRate"`               // Units: bpm; average heart rate (excludes pause time)
-	MaxHeartRate     *uint8   `json:"maxHeartRate"`               // Units: bpm;
-	AvgCadence       *uint8   `json:"avgCadence"`                 // Units: rpm; total_cycles / total_timer_time if non_zero_avg_cadence otherwise total_cycles / total_elapsed_time
-	MaxCadence       *uint8   `json:"maxCadence"`                 // Units: rpm;
-	AvgPower         *uint16  `json:"avgPower"`                   // Units: watts; total_power / total_timer_time if non_zero_avg_power otherwise total_power / total_elapsed_time
-	MaxPower         *uint16  `json:"maxPower"`                   // Units: watts;
-	AvgTemperature   *int8    `json:"avgTemperature"`             // Units: C;
-	MaxTemperature   *int8    `json:"maxTemperature"`             // Units: C;
-	AvgAltitude      *float64 `json:"avgAltitude"`                // Scale: 5; Offset: 500; Units: m;
-	MaxAltitude      *float64 `json:"maxAltitude"`                // Scale: 5; Offset: 500; Units: m;
-}
-
-func NewSession(mesg proto.Message) Session {
-	session := Session{}
+func NewSession(mesg proto.Message) map[string]any {
+	m := map[string]any{}
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
 
@@ -115,273 +71,262 @@ func NewSession(mesg proto.Message) Session {
 			if !ok {
 				continue
 			}
-			sSport := typedef.Sport(sport).String()
-			session.Sport = &sSport
+			m["sport"] = typedef.Sport(sport).String()
 		case fieldnum.SessionSubSport:
 			subSport, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			sSubSport := typedef.SubSport(subSport).String()
-			session.SubSport = &sSubSport
+			m["subSport"] = typedef.SubSport(subSport).String()
 		case fieldnum.SessionTotalMovingTime:
 			totalMovingTime, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalMovingTime := float64(totalMovingTime) / 1000
-			session.TotalMovingTime = &fTotalMovingTime
+			m["totalMovingTime"] = float64(totalMovingTime) / 1000
 		case fieldnum.SessionTotalElapsedTime:
 			totalElapsedTime, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalElapsedTime := float64(totalElapsedTime) / 1000
-			session.TotalElapsedTime = &fTotalElapsedTime
+			m["totalElapsedTime"] = float64(totalElapsedTime) / 1000
 		case fieldnum.SessionTotalTimerTime:
 			totalTimerTime, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalTimerTime := float64(totalTimerTime) / 1000
-			session.TotalTimerTime = &fTotalTimerTime
+			m["totalTimerTime"] = float64(totalTimerTime) / 1000
 		case fieldnum.SessionTotalDistance:
 			totalDistance, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalDistance := float64(totalDistance) / 100
-			session.TotalDistance = &fTotalDistance
+			m["totalDistance"] = float64(totalDistance) / 100
 		case fieldnum.SessionTotalAscent:
 			totalAscent, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			session.TotalAscent = &totalAscent
+			m["totalAscent"] = totalAscent
 		case fieldnum.SessionTotalDescent:
 			totalDescent, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			session.TotalDescent = &totalDescent
+			m["totalDescent"] = totalDescent
 		case fieldnum.SessionTotalCycles:
 			totalCycles, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			session.TotalCycles = &totalCycles
+			if totalCycles == basetype.Uint32Invalid {
+				continue
+			}
+			m["totalCycles"] = totalCycles
 		case fieldnum.SessionTotalCalories:
 			totalCalories, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			session.TotalCalories = &totalCalories
+			m["totalCalories"] = totalCalories
 		case fieldnum.SessionAvgSpeed:
 			avgSpeed, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			fAvgSpeed := float64(avgSpeed) / 1000
-			session.AvgSpeed = &fAvgSpeed
+			m["avgSpeed"] = float64(avgSpeed) / 1000
 		case fieldnum.SessionMaxSpeed:
 			maxSpeed, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			fMaxSpeed := float64(maxSpeed) / 1000
-			session.MaxSpeed = &fMaxSpeed
+			m["maxSpeed"] = float64(maxSpeed) / 1000
 		case fieldnum.SessionAvgHeartRate:
 			avgHeartRate, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			session.AvgHeartRate = &avgHeartRate
+			m["avgHeartRate"] = avgHeartRate
 		case fieldnum.SessionMaxHeartRate:
 			maxHeartRate, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			session.MaxHeartRate = &maxHeartRate
+			m["maxHeartRate"] = maxHeartRate
 		case fieldnum.SessionAvgCadence:
 			avgCadence, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			session.AvgCadence = &avgCadence
+			if avgCadence == basetype.Uint8Invalid {
+				continue
+			}
+			m["avgCadence"] = avgCadence
 		case fieldnum.SessionMaxCadence:
 			maxCadence, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			session.MaxCadence = &maxCadence
+			if maxCadence == basetype.Uint8Invalid {
+				continue
+			}
+			m["maxCadence"] = maxCadence
 		case fieldnum.SessionAvgPower:
 			avgPower, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			session.AvgPower = &avgPower
+			if avgPower == basetype.Uint16Invalid {
+				continue
+			}
+			m["avgPower"] = avgPower
 		case fieldnum.SessionMaxPower:
 			maxPower, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			session.MaxPower = &maxPower
+			if maxPower == basetype.Uint16Invalid {
+				continue
+			}
+			m["maxPower"] = maxPower
 		case fieldnum.SessionAvgTemperature:
 			avgTemperature, ok := field.Value.(int8)
 			if !ok {
 				continue
 			}
-			session.AvgTemperature = &avgTemperature
+			m["avgTemperature"] = avgTemperature
 		case fieldnum.SessionMaxTemperature:
 			maxTemperature, ok := field.Value.(int8)
 			if !ok {
 				continue
 			}
-			session.MaxTemperature = &maxTemperature
+			m["maxTemperature"] = maxTemperature
 		case fieldnum.SessionAvgAltitude:
 			avgAltitude, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
 			fAvgAltitude := (float64(avgAltitude) / 5) - 500
-			session.AvgAltitude = &fAvgAltitude
+			if fAvgAltitude < 0 {
+				continue
+			}
+			m["avgAltitude"] = fAvgAltitude
 		case fieldnum.SessionMaxAltitude:
 			maxAltitude, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
 			fMaxAltitude := (float64(maxAltitude) / 5) - 500
-			session.MaxAltitude = &fMaxAltitude
+			if fMaxAltitude < 0 {
+				continue
+			}
+			m["maxAltitude"] = fMaxAltitude
 		}
 	}
 
-	return session
+	return m
 }
 
-type Lap struct {
-	Timestamp        time.Time `json:"timestamp,omitempty"`
-	TotalElapsedTime *float64  `json:"totalElapsedTime,omitempty"` // Units: s;
-	TotalTimerTime   *float64  `json:"totalTimerTime,omitempty"`   // Units: s;
-	TotalDistance    *float64  `json:"totalDistance,omitempty"`    // Units: m;
-	TotalAscent      *uint16   `json:"totalAscent,omitempty"`      // Units: m;
-}
-
-func NewLap(mesg proto.Message) Lap {
-	lap := Lap{}
+func NewLap(mesg proto.Message) map[string]any {
+	m := map[string]any{}
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
 
 		switch field.Num {
 		case fieldnum.LapTimestamp:
-			lap.Timestamp = datetime.ToTime(field.Value)
+			m["timestamp"] = datetime.ToTime(field.Value).Format(time.RFC3339)
 		case fieldnum.LapTotalElapsedTime:
 			totalElapsedTime, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalElapsedTime := float64(totalElapsedTime) / 1000
-			lap.TotalElapsedTime = &fTotalElapsedTime
+			m["totalElapsedTime"] = float64(totalElapsedTime) / 1000
 		case fieldnum.LapTotalTimerTime:
 			totalTimerTime, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalTimerTime := float64(totalTimerTime) / 1000
-			lap.TotalTimerTime = &fTotalTimerTime
+			m["totalTimerTime"] = float64(totalTimerTime) / 1000
 		case fieldnum.TotalsDistance:
 			totalDistance, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fTotalDistance := float64(totalDistance) / 100
-			lap.TotalDistance = &fTotalDistance
+			m["totalDistance"] = float64(totalDistance) / 100
 		case fieldnum.LapTotalAscent:
 			totalAscent, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			lap.TotalAscent = &totalAscent
+			m["totalAscent"] = totalAscent
 		}
 	}
 
-	return lap
+	return m
 }
 
-type Record struct {
-	Timestamp    time.Time `json:"timestamp,omitempty"`
-	PositionLat  *float64  `json:"positionLat,omitempty"`  // Units: degrees;
-	PositionLong *float64  `json:"positionLong,omitempty"` // Units: degrees;
-	Altitude     *float64  `json:"altitude,omitempty"`     // Units: m;
-	HeartRate    *uint8    `json:"heartRate,omitempty"`    // Units: bpm;
-	Cadence      *uint8    `json:"cadence,omitempty"`      // Units: rpm;
-	Distance     *float64  `json:"distance,omitempty"`     // Units: m;
-	Speed        *float64  `json:"speed,omitempty"`        // Units: m/s;
-	Power        *uint16   `json:"power,omitempty"`        // Units: watts;
-}
-
-func NewRecord(mesg proto.Message) Record {
-	record := Record{}
+func NewRecord(mesg proto.Message) map[string]any {
+	m := map[string]any{}
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
 
 		switch field.Num {
 		case fieldnum.RecordTimestamp:
-			record.Timestamp = datetime.ToTime(field.Value)
+			m["timestamp"] = datetime.ToTime(field.Value).Format(time.RFC3339)
 		case fieldnum.RecordPositionLat:
 			lat, ok := field.Value.(int32)
 			if !ok {
 				continue
 			}
-			latDeg := semicircles.ToDegrees(lat)
-			record.PositionLat = &latDeg
+			m["positionLat"] = semicircles.ToDegrees(lat)
 		case fieldnum.RecordPositionLong:
 			long, ok := field.Value.(int32)
 			if !ok {
 				continue
 			}
-			longDeg := semicircles.ToDegrees(long)
-			record.PositionLong = &longDeg
+			m["positionLong"] = semicircles.ToDegrees(long)
 		case fieldnum.RecordAltitude:
 			altitude, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
 			faltitude := (float64(altitude) / 5) - 500
-			record.Altitude = &faltitude
+			if faltitude < 0 {
+				continue
+			}
+			m["altitude"] = faltitude
 		case fieldnum.RecordHeartRate:
 			heartRate, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			record.HeartRate = &heartRate
+			m["heartRate"] = heartRate
 		case fieldnum.RecordCadence:
 			cadence, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			record.Cadence = &cadence
+			m["cadence"] = cadence
 		case fieldnum.RecordDistance:
 			distance, ok := field.Value.(uint32)
 			if !ok {
 				continue
 			}
-			fDistance := float64(distance) / 100
-			record.Distance = &fDistance
+			m["distance"] = float64(distance) / 100
 		case fieldnum.RecordSpeed:
 			speed, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			fSpeed := float64(speed) / 1000
-			record.Speed = &fSpeed
+			m["speed"] = float64(speed) / 1000
 		case fieldnum.RecordPower:
 			power, ok := field.Value.(uint16)
 			if !ok {
 				continue
 			}
-			record.Power = &power
+			m["power"] = power
 		}
 	}
 
-	return record
+	return m
 }

@@ -50,7 +50,7 @@ WebAssembly.instantiateStreaming(fetch('src/wasm/fitsvc.wasm'), go.importObject)
       const byteArray = new Uint8Array(fileData)
 
       // @ts-ignore
-      let res: Result = JSON.parse(decode(byteArray))
+      const res: Result = decode(byteArray)
       if (res.err) {
         alert(res.err)
         return
@@ -58,6 +58,7 @@ WebAssembly.instantiateStreaming(fetch('src/wasm/fitsvc.wasm'), go.importObject)
 
       geojson.value = res.feature
       sessions.value = res.activityFile.sessions
+      console.log(res)
     }
 
     reader.readAsArrayBuffer(selectedFile as File)
