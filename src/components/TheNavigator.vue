@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { FileId, Session } from '@/assets/activity'
+import { Session } from '@/spec/activity'
 </script>
 
 <template>
   <div class="header"><h2 class="title">Open Activity</h2></div>
-  <div class="input">
-    <input type="file" id="fileInput" accept=".fit" />
+  <div style="text-align: center">
+    <input class="input" type="file" id="fileInput" accept=".fit" />
   </div>
   <div class="analysis">
     <h3 class="section-title">Summary</h3>
@@ -78,7 +78,6 @@ import { FileId, Session } from '@/assets/activity'
         <div class="summary-item" v-if="session.maxCadence">
           <div class="summary-title">Max Cadence</div>
           <div class="summary-value">{{ session.maxCadence }} rpm</div>
-          <div class="summary-value"></div>
         </div>
         <div class="summary-item" v-if="session.avgPower">
           <div class="summary-title">Avg Power</div>
@@ -92,11 +91,9 @@ import { FileId, Session } from '@/assets/activity'
           <div class="summary-title">Avg Temperature</div>
           <div class="summary-value">{{ session.avgTemperature }} °C</div>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" v-if="session.maxTemperature">
           <div class="summary-title">Max Temperature</div>
-          <div class="summary-value" v-if="session.maxTemperature">
-            {{ session.maxTemperature }} °C
-          </div>
+          <div class="summary-value">{{ session.maxTemperature }} °C</div>
         </div>
         <div class="summary-item" v-if="session.avgAltitude">
           <div class="summary-title">Avg Altitude</div>
@@ -140,6 +137,12 @@ export default {
 .input {
   color: var(--color-title);
   margin-top: 1rem;
+  display: inline-block;
+  padding: 15px 20px;
+  background-color: var(--color-background-mute);
+  color: var(--color-text);
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .analysis {

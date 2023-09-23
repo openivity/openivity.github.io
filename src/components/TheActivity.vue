@@ -20,7 +20,7 @@ import TheNavigator from './TheNavigator.vue'
 import { ref } from 'vue'
 import { GeoJSON } from 'ol/format'
 import '@/assets/wasm_exec.js'
-import { ActivityFile, Session } from '@/assets/activity'
+import { Session } from '@/spec/activity'
 
 const geojson = ref(new GeoJSON())
 const sessions = ref(new Array<Session>())
@@ -30,13 +30,13 @@ const go = new Go()
 declare class Result {
   err: string
   feature: any
-  activityFile: ActivityFile
+  activityFile: any
 }
 
-WebAssembly.instantiateStreaming(fetch('src/wasm/fitsvc.wasm'), go.importObject).then((result) => {
+WebAssembly.instantiateStreaming(fetch('wasm/fitsvc.wasm'), go.importObject).then((result) => {
   go.run(result.instance)
 
-  document.getElementById('fileInput')!.addEventListener('change', (e) => {
+  document.getElementById('fileInput')?.addEventListener('change', (e) => {
     const fileInput = e.target as HTMLInputElement
     const selectedFile = (fileInput.files as FileList)[0]
     if (!selectedFile) {
@@ -68,11 +68,11 @@ WebAssembly.instantiateStreaming(fetch('src/wasm/fitsvc.wasm'), go.importObject)
 
 <style>
 .container {
+  max-width: 1280px;
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: 65% 35%;
-  grid-gap: 0;
+  grid-template-columns: 70% 30%;
 }
 
 .map {

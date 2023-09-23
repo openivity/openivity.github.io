@@ -1,4 +1,4 @@
 .PHONY: build
 
 build:
-	GOOS=js GOARCH=wasm go build -o ../fitsvc.wasm -ldflags="-s -w"
+	GOOS=js GOARCH=wasm go build -o ../../../public/wasm/fitsvc.wasm -ldflags="-s -w"
