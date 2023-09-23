@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-# dist
+dist
 dist-ssr
 coverage
 *.local
@@ -27,4 +27,4 @@ coverage
 # WebAssembly
 **/.vscode/*
 !src/wasm/**/.vscode/settings.json.example
-**/*.wasm
+public/wasm/*
