@@ -1,5 +1,3 @@
-<script setup lang="ts"></script>
-
 <template>
   <div class="header"><h2 class="title">Open Activity</h2></div>
   <div style="text-align: center">
@@ -18,7 +16,7 @@
           <div class="summary-value">{{ activityFile.fileId.product }}</div>
         </div>
       </div>
-      <div v-for="session in activityFile?.sessions">
+      <div v-for="(session, index) in activityFile?.sessions" v-bind:key="index">
         <div class="summary-grid">
           <div class="summary-item" v-if="session.sport">
             <div class="summary-title">Sport</div>
