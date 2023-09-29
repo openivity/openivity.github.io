@@ -7,34 +7,68 @@ import TheNavigator from './TheNavigator.vue'
 <template>
   <div class="container">
     <div class="map">
-      <TheMap :geojson="geojson" />
+      <TheMap :geojson="geojson" :slider="slider" :activityFile="activityFile" />
+      <input type="range" min="1" max="10000" v-model.number="slider" />
       <ElevationGraph />
     </div>
     <div class="navigator">
-      <TheNavigator :sessions="sessions" />
+      <TheNavigator :activityFile="activityFile" />
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { ref } from 'vue'
+const isWebAssemblySupported =
+  typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
+
+if (isWebAssemblySupported == false) {
+  alert('Sorry, it appears that your browser does not support WebAssembly :(')
+}
+
+import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import '@/assets/wasm_exec.js'
-import { Session } from '@/spec/activity'
+import { ActivityFile } from '@/spec/activity'
 
 const geojson = ref(new GeoJSON())
-const sessions = ref(new Array<Session>())
+const activityFile = ref(new ActivityFile())
+const slider = ref(0)
+const byteArray = ref(new Uint8Array())
 
 const go = new Go()
 
-declare class Result {
-  err: string
+class Result {
   feature: any
-  activityFile: any
+  activityFile: ActivityFile
+  err: string
+
+  constructor(json?: any) {
+    const casted = json as Result
+
+    this.feature = casted?.feature
+    this.activityFile = new ActivityFile(casted?.activityFile)
+    this.err = casted?.err
+  }
 }
 
-WebAssembly.instantiateStreaming(fetch('wasm/fitsvc.wasm'), go.importObject).then((result) => {
-  go.run(result.instance)
+const wasmUrl = 'wasm/fitsvc.wasm'
+
+WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) => {
+  go.run(wasm.instance)
+
+  watch(byteArray, (value: Uint8Array) => {
+    //@ts-ignore
+    const rawResult = decode(value)
+
+    const begin = new Date().getTime()
+    const result: Result = new Result(rawResult)
+    console.log('js: deserialization took: ', new Date().getTime() - begin, 'ms')
+
+    geojson.value = result.feature
+    activityFile.value = result.activityFile
+
+    // console.log(lookupRecord)
+  })
 
   document.getElementById('fileInput')?.addEventListener('change', (e) => {
     const fileInput = e.target as HTMLInputElement
@@ -47,18 +81,7 @@ WebAssembly.instantiateStreaming(fetch('wasm/fitsvc.wasm'), go.importObject).the
 
     reader.onload = (e: ProgressEvent<FileReader>) => {
       const fileData = e.target!.result as ArrayBuffer
-      const byteArray = new Uint8Array(fileData)
-
-      // @ts-ignore
-      const res: Result = decode(byteArray)
-      if (res.err) {
-        alert(res.err)
-        return
-      }
-
-      geojson.value = res.feature
-      sessions.value = res.activityFile.sessions
-      console.log(res)
+      byteArray.value = new Uint8Array(fileData)
     }
 
     reader.readAsArrayBuffer(selectedFile as File)

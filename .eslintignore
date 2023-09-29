@@ -1,1 +1,2 @@
-**/wasm_exec.js
+dist
+**/wasm_exec*

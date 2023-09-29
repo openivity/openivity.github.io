@@ -1,7 +1,9 @@
 package activity
 
 import (
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/kit/semicircles"
@@ -10,18 +12,20 @@ import (
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/profile/untyped/fieldnum"
 	"github.com/muktihari/fit/proto"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type ActivityFile struct {
-	FileId   map[string]any `json:"fileId"`
-	Sessions []any          `json:"sessions,omitempty"`
-	Laps     []any          `json:"laps,omitempty"`
-	Records  []any          `json:"records,omitempty"`
+	FileId   FileId `json:"fileId"`
+	Sessions []any  `json:"sessions,omitempty"`
+	Laps     []any  `json:"laps,omitempty"`
+	Records  []any  `json:"records,omitempty"`
 }
 
 func (m *ActivityFile) ToMap() map[string]any {
 	return map[string]any{
-		"fileId":   m.FileId,
+		"fileId":   m.FileId.ToMap(),
 		"sessions": m.Sessions,
 		"laps":     m.Laps,
 		"records":  m.Records,
@@ -29,9 +33,9 @@ func (m *ActivityFile) ToMap() map[string]any {
 }
 
 type FileId struct {
-	Manufacturer string    `json:"manufacturer"`
-	Product      uint16    `json:"product"`
-	TimeCreated  time.Time `json:"timeCreated"`
+	Manufacturer string
+	Product      uint16
+	TimeCreated  time.Time
 }
 
 func (m *FileId) ToMap() map[string]any {
@@ -42,18 +46,18 @@ func (m *FileId) ToMap() map[string]any {
 	}
 }
 
-func NewFileId(mesg proto.Message) map[string]any {
-	m := map[string]any{}
+func NewFileId(mesg proto.Message) FileId {
+	m := FileId{}
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
 
 		switch field.Num {
 		case fieldnum.FileIdManufacturer:
-			m["manufacturer"] = typeconv.ToUint16[typedef.Manufacturer](field.Value).String()
+			m.Manufacturer = title(typeconv.ToUint16[typedef.Manufacturer](field.Value).String())
 		case fieldnum.FileIdProduct:
-			m["product"], _ = field.Value.(uint16)
+			m.Product, _ = field.Value.(uint16)
 		case fieldnum.FileIdTimeCreated:
-			m["timeCreated"] = datetime.ToTime(field.Value).Format(time.RFC3339)
+			m.TimeCreated = datetime.ToTime(field.Value)
 		}
 	}
 
@@ -71,13 +75,13 @@ func NewSession(mesg proto.Message) map[string]any {
 			if !ok {
 				continue
 			}
-			m["sport"] = typedef.Sport(sport).String()
+			m["sport"] = title(typedef.Sport(sport).String())
 		case fieldnum.SessionSubSport:
 			subSport, ok := field.Value.(uint8)
 			if !ok {
 				continue
 			}
-			m["subSport"] = typedef.SubSport(subSport).String()
+			m["subSport"] = title(typedef.SubSport(subSport).String())
 		case fieldnum.SessionTotalMovingTime:
 			totalMovingTime, ok := field.Value.(uint32)
 			if !ok {
@@ -259,6 +263,12 @@ func NewLap(mesg proto.Message) map[string]any {
 				continue
 			}
 			m["totalAscent"] = totalAscent
+		case fieldnum.LapTotalDescent:
+			totalDescent, ok := field.Value.(uint16)
+			if !ok {
+				continue
+			}
+			m["totalDescent"] = totalDescent
 		}
 	}
 
@@ -329,4 +339,15 @@ func NewRecord(mesg proto.Message) map[string]any {
 	}
 
 	return m
+}
+
+func title(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return ' '
+		}
+		return r
+	}, s)
+	s = cases.Title(language.English).String(s)
+	return s
 }

@@ -5,6 +5,13 @@ import (
 	"github.com/muktihari/fit/proto"
 )
 
+type Listener struct {
+	mesgc        chan proto.Message
+	done         chan struct{}
+	coordinates  []any
+	activityFile *ActivityFile
+}
+
 func NewListener() *Listener {
 	l := &Listener{
 		mesgc:        make(chan proto.Message, 1000),
@@ -16,13 +23,6 @@ func NewListener() *Listener {
 	return l
 }
 
-type Listener struct {
-	mesgc        chan proto.Message
-	done         chan struct{}
-	coordinates  []any
-	activityFile *ActivityFile
-}
-
 func (l *Listener) loop() {
 	for mesg := range l.mesgc {
 		switch mesg.Num {
@@ -30,8 +30,8 @@ func (l *Listener) loop() {
 			l.activityFile.FileId = NewFileId(mesg)
 		case mesgnum.Session:
 			l.activityFile.Sessions = append(l.activityFile.Sessions, NewSession(mesg))
-		// case mesgnum.Lap:
-		// l.activityFile.Laps = append(l.activityFile.Laps, NewLap(mesg))
+		case mesgnum.Lap:
+			l.activityFile.Laps = append(l.activityFile.Laps, NewLap(mesg))
 		case mesgnum.Record:
 			record := NewRecord(mesg)
 			l.activityFile.Records = append(l.activityFile.Records, record)
@@ -42,22 +42,6 @@ func (l *Listener) loop() {
 				record["positionLong"],
 				record["positionLat"],
 			})
-
-			// long, ok := mesg.FieldByNum(fieldnum.RecordPositionLong)
-			// if !ok {
-			// 	continue
-			// }
-
-			// lat, ok := mesg.FieldByNum(fieldnum.RecordPositionLat)
-			// if !ok {
-			// 	continue
-			// }
-
-			// l.coordinates = append(l.coordinates, []any{
-			// 	semicircles.ToDegrees(typeconv.ToSint32[int32](long.Value)),
-			// 	semicircles.ToDegrees(typeconv.ToSint32[int32](lat.Value)),
-			// })
-
 		}
 	}
 	close(l.done)

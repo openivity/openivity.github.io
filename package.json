@@ -15,7 +15,7 @@
     "deploy": "git push origin :gh-pages && git subtree push --prefix dist origin gh-pages"
   },
   "dependencies": {
-    "@types/golang-wasm-exec": "^1.15.0",
+    "d3": "^7.8.5",
     "ol": "^8.1.0",
     "pinia": "^2.1.6",
     "vue": "^3.3.4",

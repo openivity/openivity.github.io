@@ -9,6 +9,6 @@ import (
 
 func main() {
 	fmt.Println("Fit Service WebAssembly Instantiated")
-	js.Global().Set("decode", activity.Decode())
+	js.Global().Set("decode", js.FuncOf(activity.Decode))
 	select {} // never exit
 }
