@@ -28,6 +28,8 @@ func (l *Listener) loop() {
 		switch mesg.Num {
 		case mesgnum.FileId:
 			l.activityFile.FileId = NewFileId(mesg)
+		case mesgnum.Activity:
+			l.activityFile.Activity = NewActivity(mesg)
 		case mesgnum.Session:
 			l.activityFile.Sessions = append(l.activityFile.Sessions, NewSession(mesg))
 		case mesgnum.Lap:

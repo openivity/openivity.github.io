@@ -7,16 +7,7 @@
         <span>
           {{
             popupRecord.timestamp
-              ? new Date(popupRecord.timestamp).toLocaleString('en-GB', {
-                  // TODO: convert to local time, retrieve the timezone using activity.LocalDateTime (TBD)
-                  weekday: 'short',
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit'
-                })
+              ? toTimezoneDateString(popupRecord.timestamp, timezoneOffsetHours)
               : '-'
           }}
         </span>
@@ -67,6 +58,8 @@
 
 <script lang="ts">
 import 'ol/ol.css'
+import destinationPointIcon from '@/assets/map/destination-point.svg'
+import startingPointIcon from '@/assets/map/starting-point.svg'
 
 import OlMap from 'ol/Map'
 import View from 'ol/View'
@@ -77,17 +70,23 @@ import OSM from 'ol/source/OSM'
 import VectorSource from 'ol/source/Vector'
 import { Icon, Stroke, Style } from 'ol/style'
 import { Point, Geometry, SimpleGeometry, LineString } from 'ol/geom'
-import { FullScreen, defaults as defaultControls } from 'ol/control.js'
+import { FullScreen, ScaleLine, ZoomToExtent, defaults as defaultControls } from 'ol/control.js'
 import { Feature, MapBrowserEvent, Overlay } from 'ol'
 import type { Coordinate } from 'ol/coordinate'
 import { ActivityFile, Record } from '@/spec/activity'
 import { toStringHDMS } from 'ol/coordinate.js'
+import { toTimezoneDateString } from '@/toolkit/date'
+
+const maximizeIcon = document.createElement('i')
+const minimizeIcon = document.createElement('i')
+maximizeIcon.setAttribute('class', 'fa-solid fa-expand')
+minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
 
 export default {
   props: {
     geojson: {},
-    slider: Number,
-    activityFile: ActivityFile
+    activityFile: ActivityFile,
+    timezoneOffsetHours: Number
   },
   data() {
     return {
@@ -108,7 +107,7 @@ export default {
         })
       }) as VectorImageLayer<VectorSource<Geometry>>,
       map: new OlMap({
-        controls: defaultControls().extend([new FullScreen()]),
+        controls: [],
         layers: [
           new TileLayer({
             source: new OSM()
@@ -126,15 +125,11 @@ export default {
       handler(geojson: GeoJSON) {
         this.updateMapSource(geojson)
       }
-    },
-    slider: {
-      handler(value: Number) {
-        this.updateStartingPoint(value as number)
-      }
     }
   },
   methods: {
     toStringHDMS: toStringHDMS,
+    toTimezoneDateString: toTimezoneDateString,
 
     updateStartingPoint(value: number) {
       // TODO: this only for testing the slider, delete later when not used.
@@ -154,12 +149,25 @@ export default {
       source.addFeatures(features)
       view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
+      this.map.getControls().forEach((control) => {
+        this.map.removeControl(control)
+      })
+
+      defaultControls().forEach((control) => {
+        this.map.addControl(control)
+      })
+
+      const zoomToExtentControl = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
+      this.map.addControl(zoomToExtentControl)
+      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
+      this.map.addControl(new ScaleLine())
+
       const startingPoint = new Feature(
         new Point((features[0]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
       )
       startingPoint.setStyle(
         new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: 'starting-point.svg', scale: 1 })
+          image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
         })
       )
 
@@ -171,11 +179,16 @@ export default {
       )
       destinationPoint.setStyle(
         new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: 'destination-point.svg', scale: 1 })
+          image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
         })
       )
       destinationPoint.setId('destinationPoint')
       source.addFeature(destinationPoint)
+    },
+
+    updateControl(): void {
+      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
+      this.map.addControl(new ScaleLine())
     },
 
     findNearestRecord(coordinate: Coordinate): Record {
@@ -223,6 +236,7 @@ export default {
   mounted() {
     this.popupOverlay = new Overlay({ element: document.getElementById('popup')! })
     this.map.addOverlay(this.popupOverlay as Overlay)
+
     this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
     this.map.setTarget('map')
 
@@ -245,6 +259,7 @@ export default {
   left: -50px;
   min-width: 240px;
 }
+
 .ol-popup:after,
 .ol-popup:before {
   top: 100%;
@@ -255,18 +270,21 @@ export default {
   position: absolute;
   pointer-events: none;
 }
+
 .ol-popup:after {
   border-top-color: white;
   border-width: 10px;
   left: 48px;
   margin-left: -10px;
 }
+
 .ol-popup:before {
   border-top-color: #cccccc;
   border-width: 11px;
   left: 48px;
   margin-left: -11px;
 }
+
 .popup-content {
   font-size: 10px;
 }

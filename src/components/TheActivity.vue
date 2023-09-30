@@ -7,12 +7,16 @@ import TheNavigator from './TheNavigator.vue'
 <template>
   <div class="container">
     <div class="map">
-      <TheMap :geojson="geojson" :slider="slider" :activityFile="activityFile" />
-      <input type="range" min="1" max="10000" v-model.number="slider" />
+      <TheMap
+        :geojson="geojson"
+        :activityFile="activityFile"
+        :timezoneOffsetHours="timezoneOffsetHours"
+      />
       <ElevationGraph />
     </div>
     <div class="navigator">
-      <TheNavigator :activityFile="activityFile" />
+      <div class="header"><h2 class="title">Open Activity</h2></div>
+      <TheNavigator :activityFile="activityFile" :timezoneOffsetHours="timezoneOffsetHours" />
     </div>
   </div>
 </template>
@@ -25,15 +29,26 @@ if (isWebAssemblySupported == false) {
   alert('Sorry, it appears that your browser does not support WebAssembly :(')
 }
 
+import '@/assets/wasm/wasm_exec.js'
 import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
-import '@/assets/wasm_exec.js'
 import { ActivityFile } from '@/spec/activity'
 
 const geojson = ref(new GeoJSON())
 const activityFile = ref(new ActivityFile())
-const slider = ref(0)
+const timezoneOffsetHours = ref(0)
 const byteArray = ref(new Uint8Array())
+
+watch(activityFile, (activityFile: ActivityFile) => {
+  if (!activityFile.activity?.timestamp || !activityFile.activity?.localDateTime) return
+
+  const localDateTime = new Date(activityFile.activity!.localDateTime!)
+  const timestamp = new Date(activityFile.activity!.timestamp!)
+  const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+
+  timezoneOffsetHours.value = Math.floor(tzOffsetMillis / 1000 / 3600)
+  console.log('timezone offset:', timezoneOffsetHours.value, 'hours')
+})
 
 const go = new Go()
 
@@ -66,8 +81,6 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
 
     geojson.value = result.feature
     activityFile.value = result.activityFile
-
-    // console.log(lookupRecord)
   })
 
   document.getElementById('fileInput')?.addEventListener('change', (e) => {
@@ -109,5 +122,45 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
   grid-column: 2;
   grid-row: 1;
   padding: 1rem;
+}
+
+.header {
+  text-align: center;
+}
+
+@media (pointer: coarse) {
+  /* mobile device */
+
+  .container {
+    overflow: visible;
+    height: unset;
+  }
+
+  .map {
+    height: 350px;
+    width: 100vw;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .navigator {
+    width: 100vw;
+    overflow: unset;
+    grid-column: 1;
+    grid-row: 3;
+    padding: 0;
+  }
+
+  .header {
+    margin: 10px auto;
+  }
+}
+
+@media (pointer: fine), (pointer: none) {
+  /* desktop */
+}
+
+@media (pointer: fine) and (any-pointer: coarse) {
+  /* touch desktop */
 }
 </style>

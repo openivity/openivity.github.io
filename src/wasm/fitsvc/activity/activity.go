@@ -18,14 +18,16 @@ import (
 
 type ActivityFile struct {
 	FileId   FileId `json:"fileId"`
-	Sessions []any  `json:"sessions,omitempty"`
-	Laps     []any  `json:"laps,omitempty"`
-	Records  []any  `json:"records,omitempty"`
+	Activity Activity
+	Sessions []any `json:"sessions,omitempty"`
+	Laps     []any `json:"laps,omitempty"`
+	Records  []any `json:"records,omitempty"`
 }
 
 func (m *ActivityFile) ToMap() map[string]any {
 	return map[string]any{
 		"fileId":   m.FileId.ToMap(),
+		"activity": m.Activity.ToMap(),
 		"sessions": m.Sessions,
 		"laps":     m.Laps,
 		"records":  m.Records,
@@ -44,6 +46,43 @@ func (m *FileId) ToMap() map[string]any {
 		"product":      m.Product,
 		"timeCreated":  m.TimeCreated.Format(time.RFC3339),
 	}
+}
+
+func NewActivity(mesg proto.Message) Activity {
+	m := Activity{}
+	for i := range mesg.Fields {
+		switch mesg.Fields[i].Num {
+		case fieldnum.ActivityTimestamp:
+			timestamp, ok := mesg.Fields[i].Value.(uint32)
+			if !ok {
+				continue
+			}
+			m.Timestamp = datetime.ToTime(timestamp)
+		case fieldnum.ActivityLocalTimestamp:
+			localDateTime, ok := mesg.Fields[i].Value.(uint32)
+			if !ok {
+				continue
+			}
+			m.LocalDateTime = datetime.ToTime(localDateTime)
+		}
+	}
+	return m
+}
+
+type Activity struct {
+	Timestamp     time.Time
+	LocalDateTime time.Time
+}
+
+func (m *Activity) ToMap() map[string]any {
+	res := map[string]any{}
+	if !m.Timestamp.Equal(time.Time{}) {
+		res["timestamp"] = m.Timestamp.Format(time.RFC3339)
+	}
+	if !m.LocalDateTime.Equal(time.Time{}) {
+		res["localDateTime"] = m.LocalDateTime.Format(time.RFC3339)
+	}
+	return res
 }
 
 func NewFileId(mesg proto.Message) FileId {
