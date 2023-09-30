@@ -1,4 +1,7 @@
 import './assets/main.css'
+import './assets/fontawesome/css/fontawesome.min.css'
+import './assets/fontawesome/css/brands.min.css'
+import './assets/fontawesome/css/solid.min.css'
 
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'

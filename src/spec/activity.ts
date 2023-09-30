@@ -1,11 +1,13 @@
 export class ActivityFile {
   fileId: FileId | null = null
+  activity: Activity | null = null
   sessions: Array<Session> | null = null
   records: Array<Record> | null = null
 
   constructor(json?: any) {
     const casted = json as ActivityFile
     this.fileId = casted?.fileId
+    this.activity = casted?.activity
     this.sessions = casted?.sessions
     this.records = casted?.records
   }
@@ -14,7 +16,12 @@ export class ActivityFile {
 export class FileId {
   manufacturer: string | null = null
   product: number | null = null
-  timeCreated: Date | null = null
+  timeCreated: string | null = null
+}
+
+export class Activity {
+  timestamp: string | null = null
+  localDateTime: string | null = null
 }
 
 export class Session {
@@ -43,7 +50,7 @@ export class Session {
 }
 
 export class Record {
-  timestamp: Date | null = null
+  timestamp: string | null = null
   positionLat: number | null = null
   positionLong: number | null = null
   distance: number | null = null
