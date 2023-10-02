@@ -7,7 +7,7 @@
         <span>
           {{
             popupRecord.timestamp
-              ? toTimezoneDateString(popupRecord.timestamp, timezoneOffsetHours)
+              ? toTimezoneDateString(popupRecord.timestamp, popupTimezoneOffsetHours)
               : '-'
           }}
         </span>
@@ -84,14 +84,15 @@ minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
 
 export default {
   props: {
-    geojson: {},
-    activityFile: ActivityFile,
-    timezoneOffsetHours: Number
+    geojsons: Array<GeoJSON>,
+    activityFiles: Array<ActivityFile>,
+    timezoneOffsetHoursList: Array<Number>
   },
   data() {
     return {
       popupFreeze: new Boolean(),
       popupRecord: new Record(),
+      popupTimezoneOffsetHours: new Number(0),
       popupOverlay: new Overlay({}),
       vec: new VectorImageLayer({
         source: new VectorSource({
@@ -102,7 +103,7 @@ export default {
           stroke: new Stroke({
             // color: [232, 65, 24, 1.0],
             color: [60, 99, 130, 1.0],
-            width: 4
+            width: 3
           })
         })
       }) as VectorImageLayer<VectorSource<Geometry>>,
@@ -121,9 +122,9 @@ export default {
     }
   },
   watch: {
-    geojson: {
-      handler(geojson: GeoJSON) {
-        this.updateMapSource(geojson)
+    geojsons: {
+      handler(geojsons: Array<GeoJSON>) {
+        this.updateMapSource(geojsons)
       }
     }
   },
@@ -131,71 +132,64 @@ export default {
     toStringHDMS: toStringHDMS,
     toTimezoneDateString: toTimezoneDateString,
 
-    updateStartingPoint(value: number) {
-      // TODO: this only for testing the slider, delete later when not used.
-      const features = new GeoJSON().readFeatures(this.geojson)
-      const coordinates = (features[0]?.getGeometry() as SimpleGeometry).getCoordinates()!
-      const source = this.vec.getSource()!
-      const startPointFeature = source.getFeatureById('startPoint')?.getGeometry() as SimpleGeometry
-      startPointFeature.setCoordinates(coordinates[value])
-    },
-
-    updateMapSource(geojson: GeoJSON) {
+    updateMapSource(geojsons: Array<GeoJSON>) {
       const view = this.map.getView()
       const source = this.vec.getSource()!
-      const features = new GeoJSON().readFeatures(geojson)
+      const features = new Array<Feature>()
+
+      for (let i = 0; i < geojsons.length; i++) {
+        const feature = new GeoJSON().readFeature(geojsons[i])
+        feature.setId('lineString-' + i)
+        features.push(feature)
+      }
 
       source.clear()
       source.addFeatures(features)
       view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
-      this.map.getControls().forEach((control) => {
-        this.map.removeControl(control)
-      })
-
-      defaultControls().forEach((control) => {
-        this.map.addControl(control)
-      })
-
-      const zoomToExtentControl = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
-      this.map.addControl(zoomToExtentControl)
+      this.map.getControls().forEach((control) => this.map.removeControl(control))
+      defaultControls().forEach((control) => this.map.addControl(control))
+      this.map.addControl(new ZoomToExtent({ extent: view.getViewStateAndExtent().extent }))
       this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
       this.map.addControl(new ScaleLine())
 
-      const startingPoint = new Feature(
-        new Point((features[0]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
-      )
-      startingPoint.setStyle(
-        new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
-        })
-      )
+      const startingPoints = new Array<Feature>()
+      const destinationPoints = new Array<Feature>()
+      for (let i = 0; i < features.length; i++) {
+        const startingPoint = new Feature(
+          new Point((features[i]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
+        )
+        startingPoint.setStyle(
+          new Style({
+            image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 0.8 })
+          })
+        )
+        startingPoint.setId('startingPoint-' + i)
+        startingPoints.push(startingPoint)
 
-      startingPoint.setId('startingPoint')
-      source.addFeature(startingPoint)
+        const destinationPoint = new Feature(
+          new Point((features[i]?.getGeometry() as SimpleGeometry).getLastCoordinate())
+        )
+        destinationPoint.setStyle(
+          new Style({
+            image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 0.8 })
+          })
+        )
+        destinationPoint.setId('destinationPoint-' + i)
+        destinationPoints.push(destinationPoint)
+      }
 
-      const destinationPoint = new Feature(
-        new Point((features[0]?.getGeometry() as SimpleGeometry).getLastCoordinate())
-      )
-      destinationPoint.setStyle(
-        new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
-        })
-      )
-      destinationPoint.setId('destinationPoint')
-      source.addFeature(destinationPoint)
+      source.addFeatures(startingPoints)
+      source.addFeatures(destinationPoints)
     },
 
-    updateControl(): void {
-      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
-      this.map.addControl(new ScaleLine())
-    },
-
-    findNearestRecord(coordinate: Coordinate): Record {
+    findNearestRecord(featureId: string, coordinate: Coordinate): Record {
+      const index = Number(featureId.split('-')[1])
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
-      this.activityFile?.records?.forEach((record) => {
+      this.popupTimezoneOffsetHours = this.timezoneOffsetHoursList![index] as Number
+      this.activityFiles![index].records?.forEach((record) => {
         if (!record.positionLong || !record.positionLat) return
         const euclidean = Math.abs(
           Math.sqrt(
@@ -222,7 +216,7 @@ export default {
         e.pixel,
         (feature) => {
           if (!(feature.getGeometry() instanceof LineString)) return
-          this.popupRecord = this.findNearestRecord(e.coordinate)
+          this.popupRecord = this.findNearestRecord(feature.getId() as string, e.coordinate)
           this.popupOverlay.setPosition([
             this.popupRecord.positionLong,
             this.popupRecord.positionLat
