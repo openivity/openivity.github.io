@@ -3,22 +3,21 @@ import TheMap from './TheMap.vue'
 import ElevationGraph from './ElevationGraph.vue'
 import TheNavigator from './TheNavigator.vue'
 import AltitudeGraph from './AltitudeGraph.vue'
-
 </script>
 
 <template>
   <div class="container">
     <div class="map">
       <TheMap
-        :geojson="geojson"
-        :activityFile="activityFile"
-        :timezoneOffsetHours="timezoneOffsetHours"
+        :geojsons="geojsons"
+        :activityFiles="activityFiles"
+        :timezoneOffsetHoursList="timezoneOffsetHoursList"
       />
-      <AltitudeGraph :activityFile="activityFile"/>
+      <AltitudeGraph :activityFile="activityFiles[0]" />
     </div>
     <div class="navigator">
       <div class="header"><h2 class="title">Open Activity</h2></div>
-      <TheNavigator :activityFile="activityFile" :timezoneOffsetHours="timezoneOffsetHours" />
+      <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHours="timezoneOffsetHours" />
     </div>
   </div>
 </template>
@@ -36,31 +35,50 @@ import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
 
-const geojson = ref(new GeoJSON())
-const activityFile = ref(new ActivityFile())
+const geojsons = ref(new Array<GeoJSON>())
+const activityFiles = ref(new Array<ActivityFile>())
 const timezoneOffsetHours = ref(0)
-const byteArray = ref(new Uint8Array())
+const timezoneOffsetHoursList = ref(new Array<Number>())
+const byteArrays = ref(new Array<Uint8Array>())
 
-watch(activityFile, (activityFile: ActivityFile) => {
-  if (!activityFile.activity?.timestamp || !activityFile.activity?.localDateTime) return
+watch(activityFiles, (activityFiles: Array<ActivityFile>) => {
+  const timezoneOffsetHours = new Array<Number>()
+  for (let i = 0; i < activityFiles.length; i++) {
+    if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime) return
 
-  const localDateTime = new Date(activityFile.activity!.localDateTime!)
-  const timestamp = new Date(activityFile.activity!.timestamp!)
-  const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+    const localDateTime = new Date(activityFiles[i].activity!.localDateTime!)
+    const timestamp = new Date(activityFiles[i].activity!.timestamp!)
+    const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+    const tzOffsetHours = Math.floor(tzOffsetMillis / 1000 / 3600)
 
-  timezoneOffsetHours.value = Math.floor(tzOffsetMillis / 1000 / 3600)
-  console.log('timezone offset:', timezoneOffsetHours.value, 'hours')
+    timezoneOffsetHours.push(tzOffsetHours)
+  }
+
+  timezoneOffsetHoursList.value = timezoneOffsetHours
+  console.log('timezone offsets:', timezoneOffsetHours)
 })
 
 const go = new Go()
 
 class Result {
+  err: string
+  decodeResults: Array<DecodeResult>
+
+  constructor(json?: any) {
+    const casted = json as Result
+
+    this.err = casted?.err
+    this.decodeResults = casted?.decodeResults
+  }
+}
+
+class DecodeResult {
   feature: any
   activityFile: ActivityFile
   err: string
 
   constructor(json?: any) {
-    const casted = json as Result
+    const casted = json as DecodeResult
 
     this.feature = casted?.feature
     this.activityFile = new ActivityFile(casted?.activityFile)
@@ -73,36 +91,62 @@ const wasmUrl = 'wasm/fitsvc.wasm'
 WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) => {
   go.run(wasm.instance)
 
-  watch(byteArray, (value: Uint8Array) => {
-    //@ts-ignore
-    const rawResult = decode(value)
-
+  watch(byteArrays, (values: Array<Uint8Array>) => {
     const begin = new Date().getTime()
-    const result: Result = new Result(rawResult)
-    console.log('js: deserialization took: ', new Date().getTime() - begin, 'ms')
 
-    geojson.value = result.feature
-    activityFile.value = result.activityFile
+    //@ts-ignore
+    const rawResult = decode(values)
+    const result = rawResult as Result
+    if (result.err != '') {
+      alert(`decode return with err: ${result.err}`)
+      return
+    }
 
-    console.log(result.feature)
-    console.log(result.activityFile)
+    const decodeResults = new Array<DecodeResult>()
+    for (let i = 0; i < result.decodeResults.length; i++) {
+      decodeResults[i] = new DecodeResult(result.decodeResults[i])
+    }
+
+    console.log('js: e2e decode took: ', new Date().getTime() - begin, 'ms')
+
+    const gjs = new Array<GeoJSON>()
+    for (let i = 0; i < decodeResults.length; i++) {
+      gjs.push(decodeResults[i].feature)
+    }
+
+    geojsons.value = gjs
+    const afs = new Array<ActivityFile>()
+    for (let i = 0; i < decodeResults.length; i++) {
+      afs.push(decodeResults[i].activityFile)
+    }
+    activityFiles.value = afs
   })
 
   document.getElementById('fileInput')?.addEventListener('change', (e) => {
     const fileInput = e.target as HTMLInputElement
-    const selectedFile = (fileInput.files as FileList)[0]
-    if (!selectedFile) {
-      return
+    if (!fileInput.files) return
+
+    let promisers = new Array<Promise<Uint8Array>>()
+    for (let i = 0; i < fileInput.files?.length!; i++) {
+      promisers.push(
+        new Promise<Uint8Array>((resolve, reject) => {
+          const selectedFile = (fileInput.files as FileList)[i]
+          if (!selectedFile) {
+            return
+          }
+
+          const reader = new FileReader()
+          reader.onload = (e: ProgressEvent<FileReader>) => {
+            const fileData = e.target!.result as ArrayBuffer
+            resolve(new Uint8Array(fileData))
+          }
+          reader.onerror = reject
+          reader.readAsArrayBuffer(selectedFile as File)
+        })
+      )
     }
 
-    const reader = new FileReader()
-
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      const fileData = e.target!.result as ArrayBuffer
-      byteArray.value = new Uint8Array(fileData)
-    }
-
-    reader.readAsArrayBuffer(selectedFile as File)
+    Promise.all(promisers).then((arr) => (byteArrays.value = arr))
   })
 })
 </script>
