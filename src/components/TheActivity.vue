@@ -2,6 +2,8 @@
 import TheMap from './TheMap.vue'
 import ElevationGraph from './ElevationGraph.vue'
 import TheNavigator from './TheNavigator.vue'
+import AltitudeGraph from './AltitudeGraph.vue'
+
 </script>
 
 <template>
@@ -12,7 +14,7 @@ import TheNavigator from './TheNavigator.vue'
         :activityFile="activityFile"
         :timezoneOffsetHours="timezoneOffsetHours"
       />
-      <ElevationGraph />
+      <AltitudeGraph :activityFile="activityFile"/>
     </div>
     <div class="navigator">
       <div class="header"><h2 class="title">Open Activity</h2></div>
@@ -81,6 +83,9 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
 
     geojson.value = result.feature
     activityFile.value = result.activityFile
+
+    console.log(result.feature)
+    console.log(result.activityFile)
   })
 
   document.getElementById('fileInput')?.addEventListener('change', (e) => {
