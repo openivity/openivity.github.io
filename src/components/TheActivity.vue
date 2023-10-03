@@ -10,12 +10,15 @@ import AltitudeGraph from './AltitudeGraph.vue'
     <div class="map">
       <TheMap
         :geojsons="geojsons"
-        :activityFiles="activityFiles"
+        :activity-files="activityFiles"
         :timezoneOffsetHoursList="timezoneOffsetHoursList"
       />
       <AltitudeGraph :activityFile="activityFiles[0]" />
     </div>
-    <div class="navigator">
+    <div
+      :class="activityFiles && activityFiles.length > 0 ? 'navigator-right' : 'navigator-center'"
+      class="navigator"
+    >
       <div class="header"><h2 class="title">Open Activity</h2></div>
       <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHours="timezoneOffsetHours" />
     </div>
@@ -31,7 +34,7 @@ if (isWebAssemblySupported == false) {
 }
 
 import '@/assets/wasm/wasm_exec.js'
-import { ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
 
@@ -41,7 +44,7 @@ const timezoneOffsetHours = ref(0)
 const timezoneOffsetHoursList = ref(new Array<Number>())
 const byteArrays = ref(new Array<Uint8Array>())
 
-watch(activityFiles, (activityFiles: Array<ActivityFile>) => {
+watch(activityFiles, async (activityFiles: Array<ActivityFile>) => {
   const timezoneOffsetHours = new Array<Number>()
   for (let i = 0; i < activityFiles.length; i++) {
     if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime) return
@@ -62,12 +65,14 @@ const go = new Go()
 
 class Result {
   err: string
+  took: number
   decodeResults: Array<DecodeResult>
 
   constructor(json?: any) {
     const casted = json as Result
 
     this.err = casted?.err
+    this.took = casted?.took
     this.decodeResults = casted?.decodeResults
   }
 }
@@ -91,13 +96,14 @@ const wasmUrl = 'wasm/fitsvc.wasm'
 WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) => {
   go.run(wasm.instance)
 
-  watch(byteArrays, (values: Array<Uint8Array>) => {
+  watch(byteArrays, async (values: Array<Uint8Array>) => {
     const begin = new Date().getTime()
 
     //@ts-ignore
     const rawResult = decode(values)
     const result = rawResult as Result
     if (result.err != '') {
+      console.error(`decode return with err: ${result.err}`)
       alert(`decode return with err: ${result.err}`)
       return
     }
@@ -107,19 +113,24 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
       decodeResults[i] = new DecodeResult(result.decodeResults[i])
     }
 
-    console.log('js: e2e decode took: ', new Date().getTime() - begin, 'ms')
+    const totalDuration = new Date().getTime() - begin
+    console.group('Elapsed')
+    console.log('Decode took:\t\t', result.took, 'ms')
+    console.log('Interop wasm to js:\t', totalDuration - result.took, 'ms')
+    console.log('Total elapsed:\t\t', totalDuration, 'ms')
+    console.groupEnd()
 
-    const gjs = new Array<GeoJSON>()
+    const geoJSONList = new Array<GeoJSON>()
     for (let i = 0; i < decodeResults.length; i++) {
-      gjs.push(decodeResults[i].feature)
+      geoJSONList.push(decodeResults[i].feature)
     }
 
-    geojsons.value = gjs
-    const afs = new Array<ActivityFile>()
+    geojsons.value = geoJSONList
+    const activityFileList = new Array<ActivityFile>()
     for (let i = 0; i < decodeResults.length; i++) {
-      afs.push(decodeResults[i].activityFile)
+      activityFileList.push(decodeResults[i].activityFile)
     }
-    activityFiles.value = afs
+    activityFiles.value = activityFileList
   })
 
   document.getElementById('fileInput')?.addEventListener('change', (e) => {
@@ -153,24 +164,33 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
 
 <style>
 .container {
-  max-width: 1280px;
+  position: relative;
+  /* max-width: 1280px; */
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: 70% 30%;
+  grid-template-columns: 25% 75%;
 }
 
 .map {
-  height: 80vh;
-  grid-column: 1;
+  height: 100vh;
+  grid-column: 2;
   grid-row: 1;
+}
+
+.navigator-center {
+  grid-column: 1;
+  grid-column-end: 3;
+}
+
+.navigator-right {
+  grid-column: 1;
 }
 
 .navigator {
   overflow: auto;
-  grid-column: 2;
   grid-row: 1;
-  padding: 1rem;
+  margin: auto;
 }
 
 .header {
@@ -186,7 +206,7 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
   }
 
   .map {
-    height: 350px;
+    height: 65vh;
     width: 100vw;
     grid-column: 1;
     grid-row: 2;
@@ -197,7 +217,6 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
     overflow: unset;
     grid-column: 1;
     grid-row: 3;
-    padding: 0;
   }
 
   .header {

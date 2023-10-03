@@ -1,6 +1,10 @@
 import { DateTime } from 'luxon'
 
-export function toTimezoneDateString(s: string, timezoneOffsetHours?: Number): string {
+export function toTimezoneDateString(
+  s?: string | null,
+  timezoneOffsetHours?: Number | null
+): string {
+  if (!s) return ''
   let d = DateTime.fromISO(s)
   if (timezoneOffsetHours) d = d.setZone(`UTC+${timezoneOffsetHours}`)
 

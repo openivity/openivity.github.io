@@ -2,17 +2,17 @@
   <div style="text-align: center">
     <input class="input" type="file" id="fileInput" accept=".fit" multiple />
   </div>
-  <!-- <div class="time-created" v-if="activityFiles">
+  <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
     Created on:
-    {{ toTimezoneDateString(activityFiles.fileId.timeCreated, timezoneOffsetHours) }}
+    {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHours) }}
     {{ GMTString(timezoneOffsetHours) }}
   </div>
-  <div class="manufacturer" v-if="activityFiles![0]?.fileId">
-    Device: {{ activityFiles![0].fileId.manufacturer }} ({{ activityFiles![0].fileId.product }})
-  </div> -->
+  <div class="manufacturer" v-if="activityFiles && activityFiles.length != 0">
+    Device: {{ activityFiles[0]?.fileId?.manufacturer }} ({{ activityFiles[0]?.fileId?.product }})
+  </div>
   <div class="analysis">
     <div class="summary">
-      <h4 class="section-title" v-if="activityFiles">Summary</h4>
+      <h4 class="section-title" v-if="activityFiles?.length != 0">Summary</h4>
       <div>
         <div class="summary-grid">
           <div class="summary-item" v-if="summary.sport">
@@ -249,6 +249,7 @@ export default {
 .analysis {
   color: var(--color-title);
   margin-top: 10px;
+  margin-bottom: 30px;
 }
 
 .section-title {
@@ -256,7 +257,8 @@ export default {
 }
 
 .summary {
-  padding: 0px 20px;
+  max-width: 300px;
+  margin: auto;
 }
 
 .summary-title {

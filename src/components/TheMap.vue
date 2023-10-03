@@ -1,5 +1,9 @@
 <template>
-  <div id="map" style="width: 100%; height: 100%"></div>
+  <div
+    id="map"
+    style="width: 100%; height: 100%"
+    v-show="activityFiles && activityFiles.length > 0"
+  ></div>
   <div id="popup" class="ol-popup">
     <div class="popup-content">
       <div>
@@ -76,6 +80,7 @@ import type { Coordinate } from 'ol/coordinate'
 import { ActivityFile, Record } from '@/spec/activity'
 import { toStringHDMS } from 'ol/coordinate.js'
 import { toTimezoneDateString } from '@/toolkit/date'
+import type { Extent } from 'ol/extent'
 
 const maximizeIcon = document.createElement('i')
 const minimizeIcon = document.createElement('i')
@@ -106,9 +111,9 @@ export default {
             width: 3
           })
         })
-      }) as VectorImageLayer<VectorSource<Geometry>>,
+      }),
       map: new OlMap({
-        controls: [],
+        controls: defaultControls(),
         layers: [
           new TileLayer({
             source: new OSM()
@@ -118,13 +123,20 @@ export default {
           enableRotation: false,
           projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
         })
-      })
+      }),
+      zoomToExtent: new ZoomToExtent()
     }
   },
   watch: {
     geojsons: {
       handler(geojsons: Array<GeoJSON>) {
         this.updateMapSource(geojsons)
+      }
+    },
+    zoomToExtent: {
+      handler(newValue: ZoomToExtent, oldValue: ZoomToExtent) {
+        this.map.removeControl(oldValue)
+        this.map.addControl(newValue)
       }
     }
   },
@@ -133,6 +145,8 @@ export default {
     toTimezoneDateString: toTimezoneDateString,
 
     updateMapSource(geojsons: Array<GeoJSON>) {
+      this.popupOverlay.setPosition(undefined)
+
       const view = this.map.getView()
       const source = this.vec.getSource()!
       const features = new Array<Feature>()
@@ -145,13 +159,8 @@ export default {
 
       source.clear()
       source.addFeatures(features)
-      view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
-      this.map.getControls().forEach((control) => this.map.removeControl(control))
-      defaultControls().forEach((control) => this.map.addControl(control))
-      this.map.addControl(new ZoomToExtent({ extent: view.getViewStateAndExtent().extent }))
-      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
-      this.map.addControl(new ScaleLine())
+      view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
       const startingPoints = new Array<Feature>()
       const destinationPoints = new Array<Feature>()
@@ -181,6 +190,8 @@ export default {
 
       source.addFeatures(startingPoints)
       source.addFeatures(destinationPoints)
+
+      this.zoomToExtent = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
     },
 
     findNearestRecord(featureId: string, coordinate: Coordinate): Record {
@@ -225,6 +236,12 @@ export default {
         },
         { hitTolerance: 10 }
       )
+    },
+    updateExtent() {
+      this.map.getView().fit(this.vec.getSource()!.getExtent(), { padding: [50, 50, 50, 50] })
+      this.zoomToExtent = new ZoomToExtent({
+        extent: this.map.getView().getViewStateAndExtent().extent
+      })
     }
   },
   mounted() {
@@ -234,7 +251,12 @@ export default {
     this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
     this.map.setTarget('map')
 
-    this.map.on('precompose', () => this.popupOverlay.setPosition(undefined))
+    this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
+    this.map.addControl(new ScaleLine())
+
+    this.map.once('precompose', () => this.updateExtent()) // init
+
+    this.map.on('change:size', () => this.updateExtent())
     this.map.on('pointermove', (e) => this.lineStringFeatureListener(e.type, e))
     this.map.on('singleclick', (e) => this.lineStringFeatureListener(e.type, e))
   }
@@ -251,7 +273,7 @@ export default {
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 240px;
+  min-width: 250px;
 }
 
 .ol-popup:after,
