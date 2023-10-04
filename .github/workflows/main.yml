@@ -1,0 +1,32 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - master
+permissions:
+  contents: write
+env:
+  NODE_ENV: production
+jobs:
+  build-and-deploy:
+    concurrency: ci-${{ github.ref }} # Recommended if you intend to make multiple deployments in quick succession.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Go 🔧 # Currently using wasm_exec.js go-version 1.20.8
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.8'
+
+      - name: Build Wasm & Web 🔧
+        run: |
+          npm ci
+          npm run build-wasm
+          npm run build-only
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist # The folder the action should deploy.
