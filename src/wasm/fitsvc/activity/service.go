@@ -13,12 +13,14 @@ import (
 
 type Result struct {
 	Err           string
+	Took          int64
 	DecodeResults []any
 }
 
 func (m Result) ToMap() map[string]any {
 	return map[string]any{
 		"err":           m.Err,
+		"took":          m.Took,
 		"decodeResults": m.DecodeResults,
 	}
 }
@@ -64,9 +66,7 @@ func decodeWorker(rc <-chan io.Reader, resc chan<- DecodeResult) {
 
 func Decode() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func(begin time.Time) {
-			fmt.Printf("wasm: decode fit took: %s\n", time.Since(begin))
-		}(time.Now())
+		begin := time.Now()
 
 		input := args[0] // input is an Array<Uint8Array>
 		if input.Length() == 0 {
@@ -105,6 +105,6 @@ func Decode() js.Func {
 			results = append(results, decodeResults[i].ToMap())
 		}
 
-		return Result{DecodeResults: results}.ToMap()
+		return Result{DecodeResults: results, Took: time.Since(begin).Milliseconds()}.ToMap()
 	})
 }
