@@ -7,7 +7,7 @@
         <span>
           {{
             popupRecord.timestamp
-              ? toTimezoneDateString(popupRecord.timestamp, timezoneOffsetHours)
+              ? toTimezoneDateString(popupRecord.timestamp, popupTimezoneOffsetHours)
               : '-'
           }}
         </span>
@@ -84,14 +84,15 @@ minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
 
 export default {
   props: {
-    geojson: {},
-    activityFile: ActivityFile,
-    timezoneOffsetHours: Number
+    geojsons: Array<GeoJSON>,
+    activityFiles: Array<ActivityFile>,
+    timezoneOffsetHoursList: Array<Number>
   },
   data() {
     return {
       popupFreeze: new Boolean(),
       popupRecord: new Record(),
+      popupTimezoneOffsetHours: new Number(0),
       popupOverlay: new Overlay({}),
       vec: new VectorImageLayer({
         source: new VectorSource({
@@ -102,12 +103,12 @@ export default {
           stroke: new Stroke({
             // color: [232, 65, 24, 1.0],
             color: [60, 99, 130, 1.0],
-            width: 4
+            width: 3
           })
         })
-      }) as VectorImageLayer<VectorSource<Geometry>>,
+      }),
       map: new OlMap({
-        controls: [],
+        controls: defaultControls(),
         layers: [
           new TileLayer({
             source: new OSM()
@@ -117,13 +118,20 @@ export default {
           enableRotation: false,
           projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
         })
-      })
+      }),
+      zoomToExtent: new ZoomToExtent()
     }
   },
   watch: {
-    geojson: {
-      handler(geojson: GeoJSON) {
-        this.updateMapSource(geojson)
+    geojsons: {
+      handler(geojsons: Array<GeoJSON>) {
+        this.updateMapSource(geojsons)
+      }
+    },
+    zoomToExtent: {
+      handler(newValue: ZoomToExtent, oldValue: ZoomToExtent) {
+        this.map.removeControl(oldValue)
+        this.map.addControl(newValue)
       }
     }
   },
@@ -131,71 +139,63 @@ export default {
     toStringHDMS: toStringHDMS,
     toTimezoneDateString: toTimezoneDateString,
 
-    updateStartingPoint(value: number) {
-      // TODO: this only for testing the slider, delete later when not used.
-      const features = new GeoJSON().readFeatures(this.geojson)
-      const coordinates = (features[0]?.getGeometry() as SimpleGeometry).getCoordinates()!
-      const source = this.vec.getSource()!
-      const startPointFeature = source.getFeatureById('startPoint')?.getGeometry() as SimpleGeometry
-      startPointFeature.setCoordinates(coordinates[value])
-    },
+    updateMapSource(geojsons: Array<GeoJSON>) {
+      this.popupOverlay.setPosition(undefined)
 
-    updateMapSource(geojson: GeoJSON) {
       const view = this.map.getView()
       const source = this.vec.getSource()!
-      const features = new GeoJSON().readFeatures(geojson)
+      const features = new Array<Feature>()
+
+      for (let i = 0; i < geojsons.length; i++) {
+        const feature = new GeoJSON().readFeature(geojsons[i])
+        feature.setId('lineString-' + i)
+        features.push(feature)
+      }
 
       source.clear()
       source.addFeatures(features)
+
       view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
-      this.map.getControls().forEach((control) => {
-        this.map.removeControl(control)
-      })
+      const startingPoints = new Array<Feature>()
+      const destinationPoints = new Array<Feature>()
+      for (let i = 0; i < features.length; i++) {
+        const startingPoint = new Feature(
+          new Point((features[i]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
+        )
+        startingPoint.setStyle(
+          new Style({
+            image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 0.8 })
+          })
+        )
+        startingPoint.setId('startingPoint-' + i)
+        startingPoints.push(startingPoint)
 
-      defaultControls().forEach((control) => {
-        this.map.addControl(control)
-      })
+        const destinationPoint = new Feature(
+          new Point((features[i]?.getGeometry() as SimpleGeometry).getLastCoordinate())
+        )
+        destinationPoint.setStyle(
+          new Style({
+            image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 0.8 })
+          })
+        )
+        destinationPoint.setId('destinationPoint-' + i)
+        destinationPoints.push(destinationPoint)
+      }
 
-      const zoomToExtentControl = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
-      this.map.addControl(zoomToExtentControl)
-      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
-      this.map.addControl(new ScaleLine())
+      source.addFeatures(startingPoints)
+      source.addFeatures(destinationPoints)
 
-      const startingPoint = new Feature(
-        new Point((features[0]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
-      )
-      startingPoint.setStyle(
-        new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
-        })
-      )
-
-      startingPoint.setId('startingPoint')
-      source.addFeature(startingPoint)
-
-      const destinationPoint = new Feature(
-        new Point((features[0]?.getGeometry() as SimpleGeometry).getLastCoordinate())
-      )
-      destinationPoint.setStyle(
-        new Style({
-          image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
-        })
-      )
-      destinationPoint.setId('destinationPoint')
-      source.addFeature(destinationPoint)
+      this.zoomToExtent = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
     },
 
-    updateControl(): void {
-      this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
-      this.map.addControl(new ScaleLine())
-    },
-
-    findNearestRecord(coordinate: Coordinate): Record {
+    findNearestRecord(featureId: string, coordinate: Coordinate): Record {
+      const index = Number(featureId.split('-')[1])
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
-      this.activityFile?.records?.forEach((record) => {
+      this.popupTimezoneOffsetHours = this.timezoneOffsetHoursList![index] as Number
+      this.activityFiles![index].records?.forEach((record) => {
         if (!record.positionLong || !record.positionLat) return
         const euclidean = Math.abs(
           Math.sqrt(
@@ -222,7 +222,7 @@ export default {
         e.pixel,
         (feature) => {
           if (!(feature.getGeometry() instanceof LineString)) return
-          this.popupRecord = this.findNearestRecord(e.coordinate)
+          this.popupRecord = this.findNearestRecord(feature.getId() as string, e.coordinate)
           this.popupOverlay.setPosition([
             this.popupRecord.positionLong,
             this.popupRecord.positionLat
@@ -231,6 +231,12 @@ export default {
         },
         { hitTolerance: 10 }
       )
+    },
+    updateExtent() {
+      this.map.getView().fit(this.vec.getSource()!.getExtent(), { padding: [50, 50, 50, 50] })
+      this.zoomToExtent = new ZoomToExtent({
+        extent: this.map.getView().getViewStateAndExtent().extent
+      })
     }
   },
   mounted() {
@@ -240,7 +246,12 @@ export default {
     this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
     this.map.setTarget('map')
 
-    this.map.on('precompose', () => this.popupOverlay.setPosition(undefined))
+    this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
+    this.map.addControl(new ScaleLine())
+
+    this.map.once('precompose', () => this.updateExtent()) // init
+
+    this.map.on('change:size', () => this.updateExtent())
     this.map.on('pointermove', (e) => this.lineStringFeatureListener(e.type, e))
     this.map.on('singleclick', (e) => this.lineStringFeatureListener(e.type, e))
   }
@@ -257,7 +268,7 @@ export default {
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 240px;
+  min-width: 250px;
 }
 
 .ol-popup:after,

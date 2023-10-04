@@ -1,66 +1,136 @@
 <script setup lang="ts">
 import TheMap from './TheMap.vue'
-import ElevationGraph from './ElevationGraph.vue'
-import TheNavigator from './TheNavigator.vue'
 import AltitudeGraph from './AltitudeGraph.vue'
+import TheNavigator from './TheNavigator.vue'
+import Loading from './Loading.vue'
 
+import { onMounted } from 'vue'
+
+const isWebAssemblySupported = ref(false)
+
+onMounted(() => {
+  isWebAssemblySupported.value =
+    typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
+
+  if (isWebAssemblySupported.value == false) {
+    alert('Sorry, it appears that your browser does not support WebAssembly :(')
+    return
+  }
+
+  document.getElementById('fileInput')?.addEventListener('change', (e) => {
+    const fileInput = e.target as HTMLInputElement
+    if (!fileInput.files) return
+
+    let promisers = new Array<Promise<Uint8Array>>()
+    for (let i = 0; i < fileInput.files?.length!; i++) {
+      promisers.push(
+        new Promise<Uint8Array>((resolve, reject) => {
+          const selectedFile = (fileInput.files as FileList)[i]
+          if (!selectedFile) {
+            return
+          }
+
+          const reader = new FileReader()
+          reader.onload = (e: ProgressEvent<FileReader>) => {
+            const fileData = e.target!.result as ArrayBuffer
+            resolve(new Uint8Array(fileData))
+          }
+          reader.onerror = reject
+          reader.readAsArrayBuffer(selectedFile as File)
+        })
+      )
+    }
+
+    Promise.all(promisers).then((arr) => {
+      begin.value = new Date().getTime()
+      loading.value = true
+      worker.postMessage(arr)
+    })
+  })
+})
 </script>
 
 <template>
   <div class="container">
-    <div class="map">
-      <TheMap
-        :geojson="geojson"
-        :activityFile="activityFile"
-        :timezoneOffsetHours="timezoneOffsetHours"
-      />
-      <AltitudeGraph :activityFile="activityFile"/>
-    </div>
-    <div class="navigator">
+    <Transition>
+      <Loading v-show="loading"></Loading>
+    </Transition>
+    <div
+      :class="activityFiles.length > 0 ? 'navigator-left' : 'navigator-center'"
+      class="navigator"
+    >
       <div class="header"><h2 class="title">Open Activity</h2></div>
-      <TheNavigator :activityFile="activityFile" :timezoneOffsetHours="timezoneOffsetHours" />
+      <TheNavigator
+        :activityFiles="activityFiles"
+        :timezoneOffsetHours="timezoneOffsetHours"
+        :isWebAssemblySupported="isWebAssemblySupported"
+      />
+      <AltitudeGraph :activityFile="activityFiles[0]" v-show="activityFiles.length > 0" />
+    </div>
+    <div class="map" v-show="activityFiles && activityFiles.length > 0">
+      <TheMap
+        :geojsons="geojsons"
+        :activity-files="activityFiles"
+        :timezoneOffsetHoursList="timezoneOffsetHoursList"
+      />
+      <!-- <ElevationGraph></ElevationGraph> -->
+      <!-- <AltitudeGraphPlot :activityFile="activityFiles[0]"></AltitudeGraphPlot> -->
     </div>
   </div>
 </template>
 
 <script lang="ts">
-const isWebAssemblySupported =
-  typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
-
-if (isWebAssemblySupported == false) {
-  alert('Sorry, it appears that your browser does not support WebAssembly :(')
-}
-
-import '@/assets/wasm/wasm_exec.js'
 import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
 
-const geojson = ref(new GeoJSON())
-const activityFile = ref(new ActivityFile())
+const worker = new Worker(new URL('@/worker.ts', import.meta.url), { type: 'module' })
+
+const geojsons = ref(new Array<GeoJSON>())
+const activityFiles = ref(new Array<ActivityFile>())
 const timezoneOffsetHours = ref(0)
-const byteArray = ref(new Uint8Array())
+const timezoneOffsetHoursList = ref(new Array<Number>())
+const loading = ref(false)
+const begin = ref(0)
 
-watch(activityFile, (activityFile: ActivityFile) => {
-  if (!activityFile.activity?.timestamp || !activityFile.activity?.localDateTime) return
+watch(activityFiles, async (activityFiles: Array<ActivityFile>) => {
+  const timezoneOffsetHours = new Array<Number>()
+  for (let i = 0; i < activityFiles.length; i++) {
+    if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime) return
 
-  const localDateTime = new Date(activityFile.activity!.localDateTime!)
-  const timestamp = new Date(activityFile.activity!.timestamp!)
-  const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+    const localDateTime = new Date(activityFiles[i].activity!.localDateTime!)
+    const timestamp = new Date(activityFiles[i].activity!.timestamp!)
+    const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+    const tzOffsetHours = Math.floor(tzOffsetMillis / 1000 / 3600)
 
-  timezoneOffsetHours.value = Math.floor(tzOffsetMillis / 1000 / 3600)
-  console.log('timezone offset:', timezoneOffsetHours.value, 'hours')
+    timezoneOffsetHours.push(tzOffsetHours)
+  }
+
+  timezoneOffsetHoursList.value = timezoneOffsetHours
+  console.log('timezone offsets:', timezoneOffsetHours)
 })
 
-const go = new Go()
-
 class Result {
+  err: string
+  took: number
+  decodeResults: Array<DecodeResult>
+
+  constructor(json?: any) {
+    const casted = json as Result
+
+    this.err = casted?.err
+    this.took = casted?.took
+    this.decodeResults = casted?.decodeResults
+  }
+}
+
+class DecodeResult {
   feature: any
   activityFile: ActivityFile
   err: string
 
   constructor(json?: any) {
-    const casted = json as Result
+    const casted = json as DecodeResult
 
     this.feature = casted?.feature
     this.activityFile = new ActivityFile(casted?.activityFile)
@@ -68,69 +138,90 @@ class Result {
   }
 }
 
-const wasmUrl = 'wasm/fitsvc.wasm'
+worker.onmessage = (e) => {
+  const result = e.data as Result
+  if (result.err != '') {
+    console.error(`decode return with err: ${result.err}`)
+    alert(`decode return with err: ${result.err}`)
+    loading.value = false
+    return
+  }
 
-WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) => {
-  go.run(wasm.instance)
+  const decodeResults = new Array<DecodeResult>()
+  for (let i = 0; i < result.decodeResults.length; i++) {
+    decodeResults[i] = new DecodeResult(result.decodeResults[i])
+  }
 
-  watch(byteArray, (value: Uint8Array) => {
-    //@ts-ignore
-    const rawResult = decode(value)
+  const totalDuration = new Date().getTime() - begin.value
+  console.group('Elapsed')
+  console.log('Decode took:\t\t', result.took, 'ms')
+  console.log('Interop wasm to js:\t', totalDuration - result.took, 'ms')
+  console.log('Total elapsed:\t\t', totalDuration, 'ms')
+  console.groupEnd()
 
-    const begin = new Date().getTime()
-    const result: Result = new Result(rawResult)
-    console.log('js: deserialization took: ', new Date().getTime() - begin, 'ms')
+  const geoJSONList = new Array<GeoJSON>()
+  for (let i = 0; i < decodeResults.length; i++) {
+    geoJSONList.push(decodeResults[i].feature)
+  }
 
-    geojson.value = result.feature
-    activityFile.value = result.activityFile
+  geojsons.value = geoJSONList
+  const activityFileList = new Array<ActivityFile>()
+  for (let i = 0; i < decodeResults.length; i++) {
+    activityFileList.push(decodeResults[i].activityFile)
+  }
+  activityFiles.value = activityFileList
 
-    console.log(result.feature)
-    console.log(result.activityFile)
-  })
-
-  document.getElementById('fileInput')?.addEventListener('change', (e) => {
-    const fileInput = e.target as HTMLInputElement
-    const selectedFile = (fileInput.files as FileList)[0]
-    if (!selectedFile) {
-      return
-    }
-
-    const reader = new FileReader()
-
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      const fileData = e.target!.result as ArrayBuffer
-      byteArray.value = new Uint8Array(fileData)
-    }
-
-    reader.readAsArrayBuffer(selectedFile as File)
-  })
-})
+  loading.value = false
+}
 </script>
 
 <style>
+/* we will explain what these classes do next! */
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 100ms ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+
 .container {
-  max-width: 1280px;
-  width: 100vw;
-  height: 100vh;
   display: grid;
-  grid-template-columns: 70% 30%;
+  grid-template-columns: 40% 60%;
+  height: 100vh;
+  position: relative;
+  width: 100vw;
 }
 
 .map {
-  height: 80vh;
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
+  height: 100vh;
+}
+
+.navigator-center {
+  grid-column: 1;
+  grid-column-end: 3;
+  margin: auto;
+}
+
+.navigator-left {
+  grid-column: 1;
+  margin: 0 auto;
+  padding-top: 10px;
 }
 
 .navigator {
-  overflow: auto;
-  grid-column: 2;
   grid-row: 1;
-  padding: 1rem;
+  overflow: auto;
+  width: 100%;
 }
 
 .header {
   text-align: center;
+  margin: 10px auto;
 }
 
 @media (pointer: coarse) {
@@ -142,22 +233,18 @@ WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject).then((wasm) =>
   }
 
   .map {
-    height: 350px;
-    width: 100vw;
     grid-column: 1;
     grid-row: 2;
+    height: 65vh;
+    width: 100vw;
   }
 
   .navigator {
-    width: 100vw;
-    overflow: unset;
     grid-column: 1;
     grid-row: 3;
-    padding: 0;
-  }
-
-  .header {
-    margin: 10px auto;
+    margin: auto;
+    overflow: unset;
+    width: 100vw;
   }
 }
 

@@ -3,7 +3,7 @@
     <div class="elevation">Elevation</div>
     <svg></svg>
     <div id="tooltip">
-      <div id="popup" class="ol-popup">
+      <div id="popupElev" class="ol-popup">
         <div class="popup-content">
           <div>
             <span>Time:</span>

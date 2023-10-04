@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
+	js.Global().Set("decode", activity.Decode())
+
 	fmt.Println("Fit Service WebAssembly Instantiated")
-	js.Global().Set("decode", js.FuncOf(activity.Decode))
 	select {} // never exit
 }
