@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TheMap from './TheMap.vue'
-import AltitudeGraph from './AltitudeGraph.vue'
+import ElevationGraphPlot from './ElevationGraphPlot.vue'
 import TheNavigator from './TheNavigator.vue'
 import Loading from './Loading.vue'
 
@@ -65,7 +65,9 @@ onMounted(() => {
         :timezoneOffsetHours="timezoneOffsetHours"
         :isWebAssemblySupported="isWebAssemblySupported"
       />
-      <AltitudeGraph :activityFile="activityFiles[0]" v-show="activityFiles.length > 0" />
+      <div class="graph" v-show="activityFiles && activityFiles.length > 0">
+        <ElevationGraphPlot :activityFile="activityFiles[0]" />
+      </div>
     </div>
     <div class="map" v-show="activityFiles && activityFiles.length > 0">
       <TheMap
@@ -73,8 +75,6 @@ onMounted(() => {
         :activity-files="activityFiles"
         :timezoneOffsetHoursList="timezoneOffsetHoursList"
       />
-      <!-- <ElevationGraph></ElevationGraph> -->
-      <!-- <AltitudeGraphPlot :activityFile="activityFiles[0]"></AltitudeGraphPlot> -->
     </div>
   </div>
 </template>
