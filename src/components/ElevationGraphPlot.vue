@@ -82,7 +82,11 @@ export default {
     },
     options: function () {
       return {
-        y: { grid: true },
+        x: {
+          grid: true,
+          label: 'time'
+        },
+        y: { grid: true, label: 'Altitude (m)' },
         color: {
           interpolate: d3.piecewise(d3.interpolateRgb.gamma(2.2), [
             'lawngreen',
