@@ -1,4 +1,5 @@
 <template>
+  <div>aaaaa</div>
   <PlotFigure :options="options"></PlotFigure>
 </template>
 
@@ -63,7 +64,7 @@ export default {
                 tip: 'x'
               }
             )
-          ),
+          )
         ]
       }
     }
@@ -71,7 +72,9 @@ export default {
   methods: {
     getOptions() {}
   },
-  mounted() {}
+  mounted() {
+    console.log('mounted')
+  }
 }
 </script>
 

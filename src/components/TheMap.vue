@@ -1,9 +1,5 @@
 <template>
-  <div
-    id="map"
-    style="width: 100%; height: 100%"
-    v-show="activityFiles && activityFiles.length > 0"
-  ></div>
+  <div id="map" style="width: 100%; height: 100%"></div>
   <div id="popup" class="ol-popup">
     <div class="popup-content">
       <div>
@@ -80,7 +76,6 @@ import type { Coordinate } from 'ol/coordinate'
 import { ActivityFile, Record } from '@/spec/activity'
 import { toStringHDMS } from 'ol/coordinate.js'
 import { toTimezoneDateString } from '@/toolkit/date'
-import type { Extent } from 'ol/extent'
 
 const maximizeIcon = document.createElement('i')
 const minimizeIcon = document.createElement('i')

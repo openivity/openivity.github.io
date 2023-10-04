@@ -59,6 +59,7 @@ export class Record {
   cadence: number | null = null
   heartRate: number | null = null
   power: number | null = null
+  grade: number = 0
 
   constructor(data?: any) {
     const casted = data as Record
@@ -71,5 +72,6 @@ export class Record {
     this.speed = casted?.speed
     this.timestamp = casted?.timestamp
     this.power = casted?.power
+    this.grade = casted?.grade
   }
 }

@@ -1,6 +1,13 @@
 <template>
   <div style="text-align: center">
-    <input class="input" type="file" id="fileInput" accept=".fit" multiple />
+    <input
+      class="input"
+      type="file"
+      id="fileInput"
+      accept=".fit"
+      multiple
+      v-bind:disabled="!isWebAssemblySupported"
+    />
   </div>
   <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
     Created on:
@@ -169,7 +176,8 @@ import { avg, max, sum } from '@/toolkit/number'
 export default {
   props: {
     activityFiles: Array<ActivityFile>,
-    timezoneOffsetHours: Number
+    timezoneOffsetHours: Number,
+    isWebAssemblySupported: Boolean
   },
   computed: {
     summary(): Summary {
