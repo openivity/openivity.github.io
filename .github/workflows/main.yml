@@ -5,8 +5,6 @@ on:
       - dev
 permissions:
   contents: write
-env:
-  NODE_ENV: production
 jobs:
   build-and-deploy:
     concurrency: ci-${{ github.ref }} # Recommended if you intend to make multiple deployments in quick succession.
