@@ -170,7 +170,7 @@ decodeWorker.onmessage = (e) => {
   geojsons.value = geoJSONList
   const activityFileList = new Array<ActivityFile>()
 
-  const samplingDistance = 20
+  const samplingDistance = 100
   for (let i = 0; i < decodeResults.length; i++) {
     calculateGradePercentage(decodeResults[i].activityFile, samplingDistance)
     activityFileList.push(decodeResults[i].activityFile)
