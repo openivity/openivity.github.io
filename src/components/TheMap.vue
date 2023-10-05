@@ -3,7 +3,7 @@
   <div id="popup" class="ol-popup">
     <div class="popup-content">
       <div>
-        <span>Time:</span>
+        <span :style="{ width: titleWidth + 'px' }">Time:</span>
         <span>
           {{
             popupRecord.timestamp
@@ -13,37 +13,50 @@
         </span>
       </div>
       <div>
-        <span>Distance:</span>
+        <span :style="{ width: titleWidth + 'px' }">Distance:</span>
         <span>{{ popupRecord.distance ? (popupRecord.distance / 1000).toFixed(2) : '-' }}</span>
         <span>&nbsp;km</span>
       </div>
       <div>
-        <span>Speed:</span>
+        <span :style="{ width: titleWidth + 'px' }">Speed:</span>
         <span>{{ popupRecord.speed ? ((popupRecord.speed * 3600) / 1000).toFixed(2) : '-' }}</span>
         <span>&nbsp;km/h</span>
       </div>
-      <div>
-        <span>Cadence:</span>
+      <div v-show="hasCadence">
+        <span :style="{ width: titleWidth + 'px' }">Cadence:</span>
         <span>{{ popupRecord.cadence ? popupRecord.cadence : '-' }}</span>
         <span>&nbsp;rpm</span>
       </div>
-      <div>
-        <span>Heart Rate:</span>
+      <div v-show="hasHeartRate">
+        <span :style="{ width: titleWidth + 'px' }">Heart Rate:</span>
         <span>{{ popupRecord.heartRate ? popupRecord.heartRate : '-' }}</span>
         <span>&nbsp;bpm</span>
       </div>
-      <div>
-        <span>Power:</span>
+      <div v-show="hasPower">
+        <span :style="{ width: titleWidth + 'px' }">Power:</span>
         <span>{{ popupRecord.power ? popupRecord.power : '-' }}</span>
         <span>&nbsp;watts</span>
       </div>
-      <div>
-        <span>Altitude:</span>
-        <span>{{ popupRecord.altitude ? popupRecord.altitude?.toFixed(2) : '-' }}</span>
-        <span>&nbsp;masl</span>
+      <div v-show="hasTemperature">
+        <span :style="{ width: titleWidth + 'px' }">Temperature:</span>
+        <span>{{ popupRecord.temperature ? popupRecord.temperature : '-' }}</span>
+        <span>&nbsp;°C</span>
       </div>
+      <div style="display: grid">
+        <div style="grid-column: 1">
+          <span :style="{ width: titleWidth + 'px' }">Altitude:</span>
+          <span>{{ popupRecord.altitude ? popupRecord.altitude?.toFixed(2) : '-' }}</span>
+          <span>&nbsp;masl</span>
+        </div>
+        <div style="grid-column: 2">
+          <span>(Grade:&nbsp;</span>
+          <span>{{ popupRecord.grade ? Math.round(popupRecord.grade) : '0' }}</span>
+          <span>&nbsp;%)</span>
+        </div>
+      </div>
+
       <div>
-        <span>Location:</span>
+        <span :style="{ width: titleWidth + 'px' }">Location:</span>
         <span>
           {{
             popupRecord.positionLong && popupRecord.positionLat
@@ -92,6 +105,7 @@ export default {
     return {
       popupFreeze: new Boolean(),
       popupRecord: new Record(),
+      popupActivityIndex: 0,
       popupTimezoneOffsetHours: new Number(0),
       popupOverlay: new Overlay({}),
       vec: new VectorImageLayer({
@@ -191,6 +205,7 @@ export default {
 
     findNearestRecord(featureId: string, coordinate: Coordinate): Record {
       const index = Number(featureId.split('-')[1])
+      this.popupActivityIndex = index
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
@@ -232,11 +247,58 @@ export default {
         { hitTolerance: 10 }
       )
     },
+
     updateExtent() {
       this.map.getView().fit(this.vec.getSource()!.getExtent(), { padding: [50, 50, 50, 50] })
       this.zoomToExtent = new ZoomToExtent({
         extent: this.map.getView().getViewStateAndExtent().extent
       })
+    }
+  },
+  computed: {
+    titleWidth(): number {
+      this.popupRecord // make reactive to this
+      let maxWidth = 0
+      const titleElements = document.querySelectorAll(
+        '.popup-content > div:not([style*="display: none"]) > span:nth-child(1)'
+      )
+      titleElements.forEach((element: Element) => {
+        const width = (element as HTMLElement).innerHTML.length * 6 // assume 1 char require 6 pixels
+        maxWidth = Math.max(maxWidth, width)
+      })
+      return maxWidth
+    },
+    hasHeartRate(): Boolean {
+      if (this.activityFiles?.length == 0) return false
+      const records = this.activityFiles![this.popupActivityIndex].records
+      for (let i = 0; i < records.length; i++) {
+        if (records[i].heartRate) return true
+      }
+      return false
+    },
+    hasCadence(): Boolean {
+      if (this.activityFiles?.length == 0) return false
+      const records = this.activityFiles![this.popupActivityIndex].records
+      for (let i = 0; i < records.length; i++) {
+        if (records[i].cadence) return true
+      }
+      return false
+    },
+    hasPower(): Boolean {
+      if (this.activityFiles?.length == 0) return false
+      const records = this.activityFiles![this.popupActivityIndex].records
+      for (let i = 0; i < records.length; i++) {
+        if (records[i].power) return true
+      }
+      return false
+    },
+    hasTemperature(): Boolean {
+      if (this.activityFiles?.length == 0) return false
+      const records = this.activityFiles![this.popupActivityIndex].records
+      for (let i = 0; i < records.length; i++) {
+        if (records[i].temperature) return true
+      }
+      return false
     }
   },
   mounted() {
@@ -258,6 +320,10 @@ export default {
 }
 </script>
 <style>
+.ol-overlay-container {
+  position: relative !important;
+}
+
 .ol-popup {
   position: absolute;
   color: #000;
@@ -268,7 +334,6 @@ export default {
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 250px;
 }
 
 .ol-popup:after,
@@ -297,15 +362,12 @@ export default {
 }
 
 .popup-content {
+  position: relative;
   font-size: 10px;
 }
 
 .popup-content span {
   display: inline-block;
-}
-
-.popup-content span:nth-child(1) {
-  width: 60px;
 }
 
 .popup-content span:nth-child(2) {

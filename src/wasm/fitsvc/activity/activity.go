@@ -17,11 +17,11 @@ import (
 )
 
 type ActivityFile struct {
-	FileId   FileId `json:"fileId"`
+	FileId   FileId
 	Activity Activity
-	Sessions []any `json:"sessions,omitempty"`
-	Laps     []any `json:"laps,omitempty"`
-	Records  []any `json:"records,omitempty"`
+	Sessions []any
+	Laps     []any
+	Records  []any
 }
 
 func (m *ActivityFile) ToMap() map[string]any {
@@ -374,6 +374,12 @@ func NewRecord(mesg proto.Message) map[string]any {
 				continue
 			}
 			m["power"] = power
+		case fieldnum.RecordTemperature:
+			temperature, ok := field.Value.(int8)
+			if !ok {
+				continue
+			}
+			m["temperature"] = temperature
 		}
 	}
 
