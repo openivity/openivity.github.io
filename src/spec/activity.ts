@@ -1,8 +1,8 @@
 export class ActivityFile {
-  fileId: FileId | null = null
-  activity: Activity | null = null
-  sessions: Array<Session> | null = null
-  records: Array<Record> | null = null
+  fileId: FileId = new FileId()
+  activity: Activity = new Activity()
+  sessions: Array<Session> = new Array<Session>()
+  records: Array<Record> = new Array<Record>()
 
   constructor(json?: any) {
     const casted = json as ActivityFile
@@ -59,6 +59,7 @@ export class Record {
   cadence: number | null = null
   heartRate: number | null = null
   power: number | null = null
+  temperature: number | null = null
   grade: number = 0
 
   constructor(data?: any) {
@@ -72,6 +73,7 @@ export class Record {
     this.speed = casted?.speed
     this.timestamp = casted?.timestamp
     this.power = casted?.power
+    this.temperature = casted?.temperature
     this.grade = casted?.grade
   }
 }

@@ -17,7 +17,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        worker: resolve(__dirname, 'src/worker.ts')
+        fitsvc: resolve(__dirname, 'src/workers/fitsvc.ts'),
+        fitsvcDecode: resolve(__dirname, 'src/workers/fitsvc-decode.ts')
       }
     }
   }

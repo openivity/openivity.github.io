@@ -44,7 +44,7 @@ onMounted(() => {
     Promise.all(promisers).then((arr) => {
       begin.value = new Date().getTime()
       loading.value = true
-      worker.postMessage(arr)
+      decodeWorker.postMessage(arr)
     })
   })
 })
@@ -83,8 +83,11 @@ onMounted(() => {
 import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
+import { LinierRegression, Point } from '@/toolkit/linier-regression'
 
-const worker = new Worker(new URL('@/worker.ts', import.meta.url), { type: 'module' })
+const decodeWorker = new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
+  type: 'module'
+})
 
 const geojsons = ref(new Array<GeoJSON>())
 const activityFiles = ref(new Array<ActivityFile>())
@@ -138,7 +141,7 @@ class DecodeResult {
   }
 }
 
-worker.onmessage = (e) => {
+decodeWorker.onmessage = (e) => {
   const result = e.data as Result
   if (result.err != '') {
     console.error(`decode return with err: ${result.err}`)
@@ -166,17 +169,54 @@ worker.onmessage = (e) => {
 
   geojsons.value = geoJSONList
   const activityFileList = new Array<ActivityFile>()
+
+  const samplingDistance = 20
   for (let i = 0; i < decodeResults.length; i++) {
+    calculateGradePercentage(decodeResults[i].activityFile, samplingDistance)
     activityFileList.push(decodeResults[i].activityFile)
   }
   activityFiles.value = activityFileList
-
   loading.value = false
+}
+
+function calculateGradePercentage(activityFile: ActivityFile, samplingDistance: number) {
+  const n = activityFile.records.length
+
+  for (let i = 0; i < n; i++) {
+    const points = new Array<Point>()
+    let distance: number = 0
+    let j = i
+
+    points.push(new Point(activityFile.records[i].distance!, activityFile.records[i].altitude!))
+    while (distance < samplingDistance && j > 0) {
+      distance += activityFile.records[j].distance! - activityFile.records[j - 1].distance!
+      points.push(new Point(activityFile.records[j].distance!, activityFile.records[j].altitude!))
+      j--
+    }
+
+    if (points.length == 1 && i - 1 > 0) {
+      // In case the 'samplingDistance' value is less than the actual distance being sampled in the file,
+      // add the previous record's value as the pivot.
+      points.push(
+        new Point(activityFile.records[i - 1].distance!, activityFile.records[i - 1].altitude!)
+      )
+    }
+
+    const currentAltitude = activityFile.records[i].altitude!
+    const linierRegression = new LinierRegression()
+    linierRegression.train(points)
+    const pivotAltitude = linierRegression.predictY(points[points.length - 1].X) // smoothing the value.
+
+    const rise = currentAltitude - pivotAltitude
+    const run = Math.sqrt(Math.pow(distance, 2) - Math.pow(rise, 2))
+    const grade = (rise / run) * 100
+
+    activityFile.records[i].grade = grade
+  }
 }
 </script>
 
 <style>
-/* we will explain what these classes do next! */
 .v-enter-active,
 .v-leave-active {
   transition: opacity 100ms ease;
