@@ -139,7 +139,8 @@ export default {
     options: Object,
     mark: Object,
     defer: Boolean,
-    method: { type: String, default: "plot" }
+    method: { type: String, default: "plot" },
+    onRender: Function,
   },
   render() {
     const { method } = this;
@@ -154,9 +155,11 @@ export default {
     if (this.defer) {
       const mounted = (el) => {
         disconnect(); // remove old listeners
-        function observed() {
+        const observed = () => {
           unmounted(el); // remove old plot (and listeners)
-          el.append(Plot[method](options));
+          const plot = Plot[method](options)
+          el.append(plot);
+          this.onRender(plot);
         }
         const rect = el.getBoundingClientRect();
         if (rect.bottom > 0 && rect.top < window.innerHeight) {
@@ -220,9 +223,12 @@ export default {
       const replace = (el) => {
         while (el.lastChild) el.lastChild.remove();
         el.append(plot);
+        this.onRender(plot);
       };
       return withDirectives(h("span", [toHyperScript(plot)]), [[{ mounted: replace, updated: replace }]]);
     }
-    return h("span", [Plot[method]({ ...options, document: new Document() }).toHyperScript()]);
+    const plot = Plot[method]({ ...options, document: new Document() })
+    this.onRender(plot);
+    return h("span", [plot.toHyperScript()]);
   }
 };

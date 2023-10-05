@@ -1,5 +1,5 @@
 <template>
-  <PlotFigure :options="options" :mark="marks" ref="plot"></PlotFigure>
+  <PlotFigure :options="options" :mark="marks" defer :onRender="plotRendered"></PlotFigure>
 </template>
 
 <script lang="ts">
@@ -13,12 +13,13 @@ export default {
     PlotFigure: PlotFigure
   },
   props: {
-    activityFile: ActivityFile
+    activityFiles: Array<ActivityFile>
   },
   data() {
     return {
-      x: (d: Record) => new Date(d.timestamp),
-      y: (d: Record) => d.altitude
+      x: (d: Record) => new Date(String(d.timestamp)),
+      y: (d: Record) => d.altitude,
+      hovered: new Record()
     }
   },
   watch: {
@@ -28,7 +29,10 @@ export default {
   },
   computed: {
     marks: function () {
-      const data = this.activityFile?.records || []
+      let data: Record[] = []
+      this.activityFiles?.forEach((activityFile: ActivityFile) => {
+        data = data.concat(activityFile.records)
+      })
       return [
         Plot.areaY(data, {
           x: this.x,
@@ -48,7 +52,8 @@ export default {
               z: null,
               stroke: this.y,
               strokeWidth: 5,
-              strokeOpacity: 0.7
+              strokeOpacity: 0.7,
+              ariaDescription: 'elevation-line'
             }
           )
         ),
@@ -105,8 +110,14 @@ export default {
     }
   },
   methods: {
-    getOptions() {}
+    getOptions() {},
+    plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
+      plot.addEventListener('input', () => {
+        this.$emit('input', plot.value)
+      })
+    }
   },
+  updated() {},
   mounted() {}
 }
 </script>

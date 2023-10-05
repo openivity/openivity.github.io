@@ -66,7 +66,7 @@ onMounted(() => {
         :isWebAssemblySupported="isWebAssemblySupported"
       />
       <div class="graph" v-show="activityFiles && activityFiles.length > 0">
-        <ElevationGraphPlot :activityFile="activityFiles[0]" />
+        <ElevationGraphPlot :activityFiles="activityFiles" />
       </div>
     </div>
     <div class="map" v-show="activityFiles && activityFiles.length > 0">
@@ -84,6 +84,7 @@ import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
 import { LinierRegression, Point } from '@/toolkit/linier-regression'
+import { preventDefault } from 'ol/events/Event'
 
 const decodeWorker = new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
   type: 'module'
