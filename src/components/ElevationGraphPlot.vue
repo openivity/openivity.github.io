@@ -133,7 +133,6 @@ export default {
     getOptions() {},
     plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
       plot.addEventListener('input', () => {
-        console.log(plot.value)
         this.$emit('input', plot.value)
       })
     }
