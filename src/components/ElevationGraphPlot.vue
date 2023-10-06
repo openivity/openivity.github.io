@@ -41,32 +41,35 @@ export default {
           data = data.concat(activityFile.records)
         }
       })
+
+      // window
+      const k = (data.length < 50 ? 50 : data.length) / 50
+
       return [
-        Plot.areaY(data, {
-          x: this.x,
-          y: this.y,
-          z: null,
-          fill: '#2A303F'
-        }),
+        Plot.areaY(
+          data,
+          Plot.windowY(k, {
+            x: this.x,
+            y: this.y,
+            z: null,
+            fill: '#2A303F',
+            curve: 'basis'
+          })
+        ),
         Plot.lineY(
           data,
-          Plot.map(
-            {
-              stroke: Plot.window({ k: 5, reduce: 'difference' })
-            },
-            {
-              x: this.x,
-              y: this.y,
-              z: null,
-              stroke: 'grade',
-              strokeWidth: 5,
-              strokeOpacity: 0.7,
-              curve: 'basis'
-            }
-          )
+          Plot.windowY(k, {
+            x: this.x,
+            y: this.y,
+            z: null,
+            stroke: 'grade',
+            curve: 'basis',
+            strokeWidth: 4,
+            strokeOpacity: 0.5
+          })
         ),
-        Plot.ruleX(data, Plot.pointerX({ x: this.x, py: this.y, stroke: 'lawngreen' })),
-        Plot.dot(data, Plot.pointerX({ x: this.x, y: this.y, r: 10, stroke: 'lawngreen' })),
+        Plot.ruleX(data, Plot.pointerX({ x: this.x, py: this.y, stroke: '#f15a22' })),
+        Plot.dot(data, Plot.pointerX({ x: this.x, y: this.y, r: 10, stroke: '#f15a22' })),
         Plot.tip(
           data,
           Plot.pointerX({
@@ -102,30 +105,16 @@ export default {
         x: {
           grid: true,
           label: 'Distance (km)',
-          nice: true,
           transform: (d) => d / 1000
         },
         y: { grid: true, label: 'Altitude (m)', nice: true },
         color: {
-          interpolate: d3.piecewise(d3.interpolateRgb.gamma(2.2), [
-            'lawngreen',
-            'lawngreen',
-            'yellow',
-            'yellow',
-            'yellow',
-            'yellow',
-            'yellow',
-            'red',
-            'red'
-          ]),
-          domain: [-0.5, 0.5]
+          type: 'diverging',
+          scheme: 'RdYlGn',
+          reverse: true,
+          pivot: 0,
+          symmetric: true
         }
-        // color: {
-        //   type: 'diverging',
-        //   scheme: 'RdYlGn',
-        //   reverse: true,
-        //   domain: [-1, 1]
-        // }
       }
     }
   },

@@ -161,102 +161,16 @@ export default {
             .attr('x2', width - marginRight)
         )
 
-      // Calculate the maximum altitude change in the dataset.
-      const maxDelta = max - min
-      // const maxDelta = d3.max(data, (d, i) => {
-      //   if (i > 0) {
-      //     return Math.abs(d.altitude - data[i - 1].altitude)
-      //   }
-      //   return 0
-      // })
-
-      // Create a color scale based on the percentage change relative to the average delta of the last 5 data points.
-      const colorScaleDelta = 5
-      const colorScale = (previousColor, d, i) => {
-        if (i >= colorScaleDelta) {
-          // Calculate the average delta from the last 5 data points.
-          // const last5DeltaAbs = data.slice(i - colorScaleDelta, i).map((item, index) => {
-          //   return Math.abs(item.altitude - data[i - index - 1].altitude)
-          // })
-          const last5Delta = data.slice(i - colorScaleDelta, i).map((item, index) => {
-            return item.altitude - data[i - index - 1].altitude
-          })
-          // const last5 = data.slice(i - colorScaleDelta, i)
-
-          const averageDelta = d3.mean(last5Delta, (d) => d.altitude)
-          // const averageValue = d3.mean(last5, (d) => d.altitude)
-
-          // const delta = Math.abs(d.altitude - data[i - 1].altitude)
-          const percentageChange = ((averageDelta || 1) / (maxDelta || 1)) * 100
-
-          // const delta = d.altitude - averageValue
-          // const percentageChange = ((delta || 1) / (averageValue || 1)) * 100
-
-          if (d.altitude > data[i - 1].altitude) {
-            return d3.interpolateRgb.gamma(2.2)(previousColor, 'red')((percentageChange * 5) / 100)
-          } else if (d.altitude < data[i - 1].altitude) {
-            return d3.interpolateRgb.gamma(2.2)(previousColor, 'lawngreen')(
-              (percentageChange * 5) / 100
-            )
-          }
-          return d3.interpolateRgbBasis([previousColor, 'yellow'])((percentageChange * 1) / 100)
-
-          // if (d.altitude > data[i - 1].altitude) {
-          //   return d3.interpolateRgbBasis(['yellow', 'red'])((percentageChange * 1.2) / 100)
-          // } else if (d.altitude < data[i - 1].altitude) {
-          //   return d3.interpolateRgbBasis(['yellow', 'green'])((percentageChange * 1.2) / 100)
-          // }
-          // if (d.altitude > data[i - 1].altitude) {
-          //   return d3.interpolateRgbBasis([previousColor, 'darkred'])(
-          //     (percentageChange * 1.2) / 100
-          //   )
-          // } else if (d.altitude < data[i - 1].altitude) {
-          //   return d3.interpolateRgbBasis([previousColor, 'lawngreen'])(
-          //     (percentageChange * 1.2) / 100
-          //   )
-          // }
-          // return d3.interpolateRgbBasis([previousColor, 'yellow'])(percentageChange / 100)
-        }
-        return 'yellow' // Default to yellow for no change or the first data points.
-      }
-
-      // Initialize a variable to store the previous color.
-      let previousColor = 'yellow'
-
-      // Iterate through the data and create line segments with different colors.
-      for (let i = 1; i < data.length; i++) {
-        const color = colorScale(previousColor, data[i], i)
-        previousColor = color
-        // const lineData = [data[i - 1], data[i]]
-
-        // // Extract x and y values from lineData and format them as pairs.
-        // const points = lineData.map((d) => {
-        //   const xVal = x(new Date(d.timestamp))
-        //   const yVal = y(d.altitude)
-        //   return `${xVal},${yVal}`
-        // })
-        // // Join the points to create a polyline.
-        // svg
-        //   .append('polyline')
-        //   .attr('points', points.join(' '))
-        //   .attr('fill', 'none')
-        //   .attr('stroke', color)
-        //   .attr('stroke-width', 5)
-        //   .attr('stroke-linejoin', 'round')
-        //   .attr('stroke-linecap', 'round')
-        //   .attr('stroke-opacity', 0.8) // Adjust the opacity as needed
-
-        svg
-          .append('path')
-          .datum([data[i - 1], data[i]])
-          .attr('fill', 'none')
-          .attr('stroke', (d) => color)
-          .attr('stroke-width', 8)
-          .attr('stroke-linejoin', 'round')
-          .attr('stroke-linecap', 'round')
-          .attr('d', line)
-          .attr('stroke-opacity', 0.8) // Adjust the opacity as needed
-      }
+      svg
+        .append('path')
+        .datum(data)
+        .attr('fill', 'none')
+        .attr('stroke', 'yellow')
+        .attr('stroke-width', 8)
+        .attr('stroke-linejoin', 'round')
+        .attr('stroke-linecap', 'round')
+        .attr('d', line)
+        .attr('stroke-opacity', 0.8) // Adjust the opacity as needed
 
       // Append the area below the line with the same fill color (blue).
       svg
