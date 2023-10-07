@@ -250,6 +250,9 @@ export default {
     },
 
     showPopUpRecord(record: Record) {
+      this.popupOverlay.setPosition(undefined)
+      if (!record) return
+
       this.popupRecord = record
       this.popupOverlay.setPosition([
         this.popupRecord.positionLong,

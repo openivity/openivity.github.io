@@ -217,8 +217,7 @@ function calculateGradePercentage(activityFile: ActivityFile, samplingDistance: 
   }
 }
 
-function elevationOnRecord(value: any) {
-  const { record } = value
+function elevationOnRecord(record: any) {
   theMap.value.showPopUpRecord(record)
 }
 </script>

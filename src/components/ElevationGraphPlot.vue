@@ -131,13 +131,7 @@ export default {
     getOptions() {},
     plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
       plot.addEventListener('input', () => {
-        if (!plot.value) return
-
-        this.$emit('record', {
-          record: plot.value,
-          activityIndex: plot.value.activityIndex,
-          recordIndex: plot.value.recordIndex
-        })
+        this.$emit('record', plot.value)
       })
     }
   },
