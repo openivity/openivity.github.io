@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon'
+import { DateTime, Duration, type ToHumanDurationOptions } from 'luxon'
 
 export function toTimezoneDateString(
   s?: string | null,
@@ -46,4 +46,16 @@ export function secondsToDHMS(seconds: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(
     seconds
   ).padStart(2, '0')}`
+}
+
+export function toHuman(dur: Duration, smallestUnit = "seconds", opts?: ToHumanDurationOptions): string {
+  const units = ["years", "months", "days", "hours", "minutes", "seconds", "milliseconds",];
+  const smallestIdx = units.indexOf(smallestUnit);
+  const entries = Object.entries(
+    dur.shiftTo(...units).normalize().toObject()
+  ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx);
+  const dur2 = Duration.fromObject(
+    entries.length === 0 ? { [smallestUnit]: 0 } : Object.fromEntries(entries)
+  );
+  return dur2.toHuman(opts);
 }

@@ -1,18 +1,24 @@
 <template>
-  <PlotFigure :options="options" defer :onRender="plotRendered"></PlotFigure>
+  <div>
+    <PlotFigure :options="options" defer :onRender="plotRendered"> </PlotFigure>
+  </div>
 </template>
 
 <script lang="ts">
 import { ActivityFile, Record } from '@/spec/activity'
 import * as Plot from '@observablehq/plot'
 import PlotFigure from './PlotFigure'
+import { DateTime } from 'luxon'
+import { toHuman } from '@/toolkit/date'
+import { distanceToHuman } from '@/toolkit/distance'
 
 export default {
   components: {
-    PlotFigure: PlotFigure
+    PlotFigure
   },
   props: {
-    activityFiles: Array<ActivityFile>
+    activityFiles: Array<ActivityFile>,
+    activityTimezoneOffset: Array<Number>
   },
   data() {
     return {
@@ -95,31 +101,26 @@ export default {
           ),
           Plot.ruleX(data, Plot.pointerX({ x: this.x, py: this.y, stroke: '#f15a22' })),
           Plot.dot(data, Plot.pointerX({ x: this.x, y: this.y, r: 10, stroke: '#f15a22' })),
-          Plot.tip(
+          Plot.text(
             data,
             Plot.pointerX({
-              x: this.x,
-              y: this.y,
-              fill: '#2A303F',
-              fontSize: 16,
-              fontWeight: 'bolder',
-              channels: {
-                grade: {
-                  label: 'Grade',
-                  value: 'grade'
-                },
-                altitude: {
-                  label: 'Altitude',
-                  value: 'altitude'
-                },
-                speed: {
-                  label: 'Speed',
-                  value: 'speed'
-                }
-              },
-              format: {
-                y: false,
-                x: false
+              px: this.x,
+              py: this.y,
+              dy: 5,
+              fontSize: 12,
+              frameAnchor: 'top',
+              fontVariant: 'tabular-nums',
+              text: (d) => {
+                const diff = DateTime.fromISO(d.timestamp).diff(DateTime.fromISO(data[0].timestamp))
+                const text = [
+                  `Distance ${distanceToHuman(d.totalDistance, 2)}`,
+                  `Duration ${toHuman(diff, 'seconds', {
+                    unitDisplay: 'short'
+                  })}`,
+                  `Altitude ${d.altitude.toFixed(2)}`,
+                  `Grade ${Math.round(d.grade)}%`
+                ].join('  ')
+                return text
               }
             })
           )
@@ -128,6 +129,8 @@ export default {
     }
   },
   methods: {
+    distanceToHuman: distanceToHuman,
+    toHuman: toHuman,
     getOptions() {},
     plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
       plot.addEventListener('input', () => {
