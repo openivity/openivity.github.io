@@ -149,6 +149,7 @@ export default {
       }
     }
   },
+  expose: ['showPopUpRecord'],
   methods: {
     toStringHDMS: toStringHDMS,
     toTimezoneDateString: toTimezoneDateString,
@@ -246,6 +247,15 @@ export default {
         },
         { hitTolerance: 10 }
       )
+    },
+
+    showPopUpRecord(record: Record) {
+      this.popupRecord = record
+      this.popupOverlay.setPosition([
+        this.popupRecord.positionLong,
+        this.popupRecord.positionLat
+      ] as Coordinate)
+      this.popupFreeze = true
     },
 
     updateExtent() {

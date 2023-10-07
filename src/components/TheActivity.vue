@@ -66,7 +66,7 @@ onMounted(() => {
         :isWebAssemblySupported="isWebAssemblySupported"
       />
       <div class="graph" v-show="activityFiles && activityFiles.length > 0">
-        <ElevationGraphPlot :activityFiles="activityFiles" />
+        <ElevationGraphPlot :activityFiles="activityFiles" v-on:record="elevationOnRecord" />
       </div>
     </div>
     <div class="map" v-show="activityFiles && activityFiles.length > 0">
@@ -74,6 +74,7 @@ onMounted(() => {
         :geojsons="geojsons"
         :activity-files="activityFiles"
         :timezoneOffsetHoursList="timezoneOffsetHoursList"
+        ref="theMap"
       />
     </div>
   </div>
@@ -82,9 +83,8 @@ onMounted(() => {
 <script lang="ts">
 import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
-import { ActivityFile } from '@/spec/activity'
+import { ActivityFile, Record } from '@/spec/activity'
 import { LinierRegression, Point } from '@/toolkit/linier-regression'
-import { preventDefault } from 'ol/events/Event'
 
 const decodeWorker = new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
   type: 'module'
@@ -96,6 +96,7 @@ const timezoneOffsetHours = ref(0)
 const timezoneOffsetHoursList = ref(new Array<Number>())
 const loading = ref(false)
 const begin = ref(0)
+const theMap = ref(null)
 
 watch(activityFiles, async (activityFiles: Array<ActivityFile>) => {
   const timezoneOffsetHours = new Array<Number>()
@@ -214,6 +215,11 @@ function calculateGradePercentage(activityFile: ActivityFile, samplingDistance: 
 
     activityFile.records[i].grade = grade
   }
+}
+
+function elevationOnRecord(value: any) {
+  const { record } = value
+  theMap.value.showPopUpRecord(record)
 }
 </script>
 
