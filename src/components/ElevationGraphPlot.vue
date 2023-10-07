@@ -34,12 +34,14 @@ export default {
       let yMax: number = 0
       let yMin: number = 0
 
-      this.activityFiles?.forEach((activityFile: ActivityFile) => {
+      this.activityFiles?.forEach((activityFile: ActivityFile, activityIndex: number) => {
         if (activityFile.records.length > 0) {
-          activityFile.records.map((d) => {
+          activityFile.records.map((d, i) => {
             d.totalDistance = lastDistance + d.distance
             if (d.altitude > yMax) yMax = d.altitude
             if (d.altitude < yMin) yMin = d.altitude
+            d.activityIndex = activityIndex
+            d.recordIndex = i
           })
           lastDistance = activityFile.records[activityFile.records.length - 1].totalDistance
           data = data.concat(activityFile.records)
@@ -129,7 +131,7 @@ export default {
     getOptions() {},
     plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
       plot.addEventListener('input', () => {
-        this.$emit('input', plot.value)
+        this.$emit('record', plot.value)
       })
     }
   },
