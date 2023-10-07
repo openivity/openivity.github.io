@@ -38,7 +38,7 @@ export default {
       let data: Record[] = []
       let lastDistance: Number = 0
       let yMax: number = 0
-      let yMin: number = 0
+      let yMin: number = Number.MAX_VALUE
 
       this.activityFiles?.forEach((activityFile: ActivityFile, activityIndex: number) => {
         if (activityFile.records.length > 0) {
@@ -66,8 +66,7 @@ export default {
         y: {
           grid: true,
           label: 'Altitude (m)',
-          nice: true,
-          domain: [yMin, yMax]
+          nice: true
         },
         color: {
           type: 'diverging',
@@ -84,7 +83,8 @@ export default {
               y: this.y,
               z: null,
               fill: '#2A303F',
-              curve: 'basis'
+              curve: 'basis',
+              y1: yMin
             })
           ),
           Plot.lineY(
