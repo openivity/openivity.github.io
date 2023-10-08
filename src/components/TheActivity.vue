@@ -3,51 +3,6 @@ import TheMap from './TheMap.vue'
 import ElevationGraphPlot from './ElevationGraphPlot.vue'
 import TheNavigator from './TheNavigator.vue'
 import Loading from './Loading.vue'
-
-import { onMounted } from 'vue'
-
-const isWebAssemblySupported = ref(false)
-
-onMounted(() => {
-  isWebAssemblySupported.value =
-    typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
-
-  if (isWebAssemblySupported.value == false) {
-    alert('Sorry, it appears that your browser does not support WebAssembly :(')
-    return
-  }
-
-  document.getElementById('fileInput')?.addEventListener('change', (e) => {
-    const fileInput = e.target as HTMLInputElement
-    if (!fileInput.files) return
-
-    let promisers = new Array<Promise<Uint8Array>>()
-    for (let i = 0; i < fileInput.files?.length!; i++) {
-      promisers.push(
-        new Promise<Uint8Array>((resolve, reject) => {
-          const selectedFile = (fileInput.files as FileList)[i]
-          if (!selectedFile) {
-            return
-          }
-
-          const reader = new FileReader()
-          reader.onload = (e: ProgressEvent<FileReader>) => {
-            const fileData = e.target!.result as ArrayBuffer
-            resolve(new Uint8Array(fileData))
-          }
-          reader.onerror = reject
-          reader.readAsArrayBuffer(selectedFile as File)
-        })
-      )
-    }
-
-    Promise.all(promisers).then((arr) => {
-      begin.value = new Date().getTime()
-      loading.value = true
-      decodeWorker.postMessage(arr)
-    })
-  })
-})
 </script>
 
 <template>
@@ -62,7 +17,7 @@ onMounted(() => {
       <div class="header"><h2 class="title">Open Activity</h2></div>
       <TheNavigator
         :activityFiles="activityFiles"
-        :timezoneOffsetHours="timezoneOffsetHours"
+        :timezoneOffsetHour="timezoneOffsetHour"
         :isWebAssemblySupported="isWebAssemblySupported"
       />
       <div class="graph" v-show="activityFiles && activityFiles.length > 0">
@@ -85,39 +40,16 @@ onMounted(() => {
 </template>
 
 <script lang="ts">
-import { ref, watch } from 'vue'
 import { GeoJSON } from 'ol/format'
-import { ActivityFile, Record } from '@/spec/activity'
+import { ActivityFile } from '@/spec/activity'
 import { LinierRegression, Point } from '@/toolkit/linier-regression'
 
-const decodeWorker = new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
-  type: 'module'
-})
+const isWebAssemblySupported =
+  typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
 
-const geojsons = ref(new Array<GeoJSON>())
-const activityFiles = ref(new Array<ActivityFile>())
-const timezoneOffsetHours = ref(0)
-const timezoneOffsetHoursList = ref(new Array<Number>())
-const loading = ref(false)
-const begin = ref(0)
-const theMap = ref(null)
-
-watch(activityFiles, async (activityFiles: Array<ActivityFile>) => {
-  const timezoneOffsetHours = new Array<Number>()
-  for (let i = 0; i < activityFiles.length; i++) {
-    if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime) return
-
-    const localDateTime = new Date(activityFiles[i].activity!.localDateTime!)
-    const timestamp = new Date(activityFiles[i].activity!.timestamp!)
-    const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
-    const tzOffsetHours = Math.floor(tzOffsetMillis / 1000 / 3600)
-
-    timezoneOffsetHours.push(tzOffsetHours)
-  }
-
-  timezoneOffsetHoursList.value = timezoneOffsetHours
-  console.log('timezone offsets:', timezoneOffsetHours)
-})
+if (isWebAssemblySupported == false) {
+  alert('Sorry, it appears that your browser does not support WebAssembly :(')
+}
 
 class Result {
   err: string
@@ -147,82 +79,159 @@ class DecodeResult {
   }
 }
 
-decodeWorker.onmessage = (e) => {
-  const result = e.data as Result
-  if (result.err != '') {
-    console.error(`decode return with err: ${result.err}`)
-    alert(`decode return with err: ${result.err}`)
-    loading.value = false
-    return
-  }
-
-  const decodeResults = new Array<DecodeResult>()
-  for (let i = 0; i < result.decodeResults.length; i++) {
-    decodeResults[i] = new DecodeResult(result.decodeResults[i])
-  }
-
-  const totalDuration = new Date().getTime() - begin.value
-  console.group('Elapsed')
-  console.log('Decode took:\t\t', result.took, 'ms')
-  console.log('Interop wasm to js:\t', totalDuration - result.took, 'ms')
-  console.log('Total elapsed:\t\t', totalDuration, 'ms')
-  console.groupEnd()
-
-  const geoJSONList = new Array<GeoJSON>()
-  for (let i = 0; i < decodeResults.length; i++) {
-    geoJSONList.push(decodeResults[i].feature)
-  }
-
-  geojsons.value = geoJSONList
-  const activityFileList = new Array<ActivityFile>()
-
-  const samplingDistance = 100
-  for (let i = 0; i < decodeResults.length; i++) {
-    calculateGradePercentage(decodeResults[i].activityFile, samplingDistance)
-    activityFileList.push(decodeResults[i].activityFile)
-  }
-  activityFiles.value = activityFileList
-  loading.value = false
-}
-
-function calculateGradePercentage(activityFile: ActivityFile, samplingDistance: number) {
-  const n = activityFile.records.length
-
-  for (let i = 0; i < n; i++) {
-    const points = new Array<Point>()
-    let distance: number = 0
-    let j = i
-
-    points.push(new Point(activityFile.records[i].distance!, activityFile.records[i].altitude!))
-    while (distance < samplingDistance && j > 0) {
-      distance += activityFile.records[j].distance! - activityFile.records[j - 1].distance!
-      points.push(new Point(activityFile.records[j].distance!, activityFile.records[j].altitude!))
-      j--
+export default {
+  data() {
+    return {
+      decodeWorker: new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
+        type: 'module'
+      }),
+      geojsons: new Array<GeoJSON>(),
+      activityFiles: new Array<ActivityFile>(),
+      timezoneOffsetHour: 0,
+      timezoneOffsetHoursList: new Array<Number>(),
+      loading: false,
+      begin: 0
     }
+  },
+  watch: {
+    activityFiles: {
+      async handler(activityFiles: ActivityFile[]) {
+        const tzOffsetHours = new Array<number>()
+        for (let i = 0; i < activityFiles.length; i++) {
+          if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime)
+            return
 
-    if (points.length == 1 && i - 1 > 0) {
-      // In case the 'samplingDistance' value is less than the actual distance being sampled in the file,
-      // add the previous record's value as the pivot.
-      points.push(
-        new Point(activityFile.records[i - 1].distance!, activityFile.records[i - 1].altitude!)
-      )
+          const localDateTime = new Date(activityFiles[i].activity!.localDateTime!)
+          const timestamp = new Date(activityFiles[i].activity!.timestamp!)
+          const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
+          const tzOffsetHour = Math.floor(tzOffsetMillis / 1000 / 3600)
+
+          tzOffsetHours.push(tzOffsetHour)
+        }
+
+        this.timezoneOffsetHoursList = tzOffsetHours
+        this.timezoneOffsetHour = tzOffsetHours[0]
+        console.log('timezone offsets:', tzOffsetHours)
+      }
     }
+  },
+  methods: {
+    fileInputEventListener(e: Event) {
+      const fileInput = e.target as HTMLInputElement
+      if (!fileInput.files) return
 
-    const currentAltitude = activityFile.records[i].altitude!
-    const linierRegression = new LinierRegression()
-    linierRegression.train(points)
-    const pivotAltitude = linierRegression.predictY(points[points.length - 1].X) // smoothing the value.
+      let promisers = new Array<Promise<Uint8Array>>()
+      for (let i = 0; i < fileInput.files?.length!; i++) {
+        promisers.push(
+          new Promise<Uint8Array>((resolve, reject) => {
+            const selectedFile = (fileInput.files as FileList)[i]
+            if (!selectedFile) {
+              return
+            }
 
-    const rise = currentAltitude - pivotAltitude
-    const run = Math.sqrt(Math.pow(distance, 2) - Math.pow(rise, 2))
-    const grade = (rise / run) * 100
+            const reader = new FileReader()
+            reader.onload = (e: ProgressEvent<FileReader>) => {
+              const fileData = e.target!.result as ArrayBuffer
+              resolve(new Uint8Array(fileData))
+            }
+            reader.onerror = reject
+            reader.readAsArrayBuffer(selectedFile as File)
+          })
+        )
+      }
 
-    activityFile.records[i].grade = grade
+      Promise.all(promisers).then((arr) => {
+        this.begin = new Date().getTime()
+        this.loading = true
+        this.decodeWorker.postMessage(arr)
+      })
+    },
+
+    decodeWorkerOnMessage(e: MessageEvent) {
+      const result = e.data as Result
+      if (result.err != '') {
+        console.error(`decode return with err: ${result.err}`)
+        alert(`decode return with err: ${result.err}`)
+        this.loading = false
+        return
+      }
+
+      const decodeResults = new Array<DecodeResult>()
+      for (let i = 0; i < result.decodeResults.length; i++) {
+        decodeResults[i] = new DecodeResult(result.decodeResults[i])
+      }
+
+      const totalDuration = new Date().getTime() - this.begin
+      console.group('Elapsed')
+      console.log('Decode took:\t\t', result.took, 'ms')
+      console.log('Interop wasm to js:\t', totalDuration - result.took, 'ms')
+      console.log('Total elapsed:\t\t', totalDuration, 'ms')
+      console.groupEnd()
+
+      const geoJSONList = new Array<GeoJSON>()
+      for (let i = 0; i < decodeResults.length; i++) {
+        geoJSONList.push(decodeResults[i].feature)
+      }
+
+      this.geojsons = geoJSONList
+      const activityFileList = new Array<ActivityFile>()
+
+      const samplingDistance = 100
+      for (let i = 0; i < decodeResults.length; i++) {
+        this.calculateGradePercentage(decodeResults[i].activityFile, samplingDistance)
+        activityFileList.push(decodeResults[i].activityFile)
+      }
+      this.activityFiles = activityFileList
+      this.loading = false
+    },
+
+    calculateGradePercentage(activityFile: ActivityFile, samplingDistance: number) {
+      const n = activityFile.records.length
+
+      for (let i = 0; i < n; i++) {
+        const points = new Array<Point>()
+        let distance: number = 0
+        let j = i
+
+        points.push(new Point(activityFile.records[i].distance!, activityFile.records[i].altitude!))
+        while (distance < samplingDistance && j > 0) {
+          distance += activityFile.records[j].distance! - activityFile.records[j - 1].distance!
+          points.push(
+            new Point(activityFile.records[j].distance!, activityFile.records[j].altitude!)
+          )
+          j--
+        }
+
+        if (points.length == 1 && i - 1 > 0) {
+          // In case the 'samplingDistance' value is less than the actual distance being sampled in the file,
+          // add the previous record's value as the pivot.
+          points.push(
+            new Point(activityFile.records[i - 1].distance!, activityFile.records[i - 1].altitude!)
+          )
+        }
+
+        const currentAltitude = activityFile.records[i].altitude!
+        const linierRegression = new LinierRegression()
+        linierRegression.train(points)
+        const pivotAltitude = linierRegression.predictY(points[points.length - 1].X) // smoothing the value.
+
+        const rise = currentAltitude - pivotAltitude
+        const run = Math.sqrt(Math.pow(distance, 2) - Math.pow(rise, 2))
+        const grade = (rise / run) * 100
+
+        activityFile.records[i].grade = grade
+      }
+    },
+    elevationOnRecord(record: any) {
+      //@ts-ignore
+      this.$refs.theMap.showPopUpRecord(record)
+    }
+  },
+  mounted() {
+    document.getElementById('fileInput')?.addEventListener('change', this.fileInputEventListener)
+
+    this.decodeWorker.onmessage = this.decodeWorkerOnMessage
   }
-}
-
-function elevationOnRecord(record: any) {
-  theMap.value.showPopUpRecord(record)
 }
 </script>
 

@@ -58,7 +58,7 @@ export default {
       firstData: Record,
       hovered: Record,
       cumulativeData: [],
-      yMin: 0,
+      yMin: Number.MAX_VALUE,
       yMax: 0
     }
   },
@@ -72,8 +72,8 @@ export default {
           if (activityFile.records.length > 0) {
             activityFile.records.map((d, i) => {
               d.totalDistance = lastDistance + d.distance
-              if (d.altitude > this.yMax) this.yMax = d.altitude
-              if (d.altitude < this.yMin) this.yMin = d.altitude
+              if (typeof d.altitude === 'number' && d.altitude > this.yMax) this.yMax = d.altitude
+              if (typeof d.altitude === 'number' && d.altitude < this.yMin) this.yMin = d.altitude
               d.activityIndex = activityIndex
               d.recordIndex = i
             })
@@ -197,7 +197,7 @@ export default {
   grid-template-columns: 1fr 1.5fr 1fr 0.7fr;
   color: var(--color-title);
   padding-bottom: 5px;
-  
+
   .detail-value {
     text-align: center;
   }
