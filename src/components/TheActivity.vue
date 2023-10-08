@@ -66,7 +66,11 @@ onMounted(() => {
         :isWebAssemblySupported="isWebAssemblySupported"
       />
       <div class="graph" v-show="activityFiles && activityFiles.length > 0">
-        <ElevationGraphPlot :activityFiles="activityFiles" v-on:record="elevationOnRecord" />
+        <ElevationGraphPlot
+          :activityFiles="activityFiles"
+          :activityTimezoneOffset="timezoneOffsetHoursList"
+          v-on:record="elevationOnRecord"
+        />
       </div>
     </div>
     <div class="map" v-show="activityFiles && activityFiles.length > 0">
