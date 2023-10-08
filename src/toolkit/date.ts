@@ -48,14 +48,21 @@ export function secondsToDHMS(seconds: number): string {
   ).padStart(2, '0')}`
 }
 
-export function toHuman(dur: Duration, smallestUnit = "seconds", opts?: ToHumanDurationOptions): string {
-  const units = ["years", "months", "days", "hours", "minutes", "seconds", "milliseconds",];
-  const smallestIdx = units.indexOf(smallestUnit);
+export function toHuman(
+  dur: Duration,
+  smallestUnit = 'seconds',
+  opts?: ToHumanDurationOptions
+): string {
+  const units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds']
+  const smallestIdx = units.indexOf(smallestUnit)
   const entries = Object.entries(
-    dur.shiftTo(...units).normalize().toObject()
-  ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx);
+    dur
+      .shiftTo(...units)
+      .normalize()
+      .toObject()
+  ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx)
   const dur2 = Duration.fromObject(
     entries.length === 0 ? { [smallestUnit]: 0 } : Object.fromEntries(entries)
-  );
-  return dur2.toHuman(opts);
+  )
+  return dur2.toHuman(opts)
 }

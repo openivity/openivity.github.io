@@ -11,8 +11,8 @@
   </div>
   <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
     Created on:
-    {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHours) }}
-    {{ GMTString(timezoneOffsetHours) }}
+    {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHour) }}
+    {{ GMTString(timezoneOffsetHour) }}
   </div>
   <div class="manufacturer" v-if="activityFiles && activityFiles.length != 0">
     Device: {{ activityFiles[0]?.fileId?.manufacturer }} ({{ activityFiles[0]?.fileId?.product }})
@@ -176,7 +176,7 @@ import { avg, max, sum } from '@/toolkit/number'
 export default {
   props: {
     activityFiles: Array<ActivityFile>,
-    timezoneOffsetHours: Number,
+    timezoneOffsetHour: Number,
     isWebAssemblySupported: Boolean
   },
   computed: {
