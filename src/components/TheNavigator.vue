@@ -1,16 +1,6 @@
 <template>
   <!-- input -->
   <div class="navigator">
-    <div class="navigator-input" style="text-align: center">
-      <input
-        class="input"
-        type="file"
-        id="fileInput"
-        accept=".fit"
-        multiple
-        v-bind:disabled="!isWebAssemblySupported"
-      />
-    </div>
     <div class="navigator-info">
       <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
         Created on:
@@ -183,8 +173,7 @@ import { avg, max, sum } from '@/toolkit/number'
 export default {
   props: {
     activityFiles: Array<ActivityFile>,
-    timezoneOffsetHour: Number,
-    isWebAssemblySupported: Boolean
+    timezoneOffsetHour: Number
   },
   computed: {
     summary(): Summary {
@@ -236,17 +225,6 @@ export default {
 .title {
   color: var(--color-title);
   font-weight: bold;
-}
-
-.input {
-  color: var(--color-title);
-  display: inline-block;
-  padding: 15px 20px;
-  background-color: var(--color-background-mute);
-  color: var(--color-text);
-  border-radius: 5px;
-  cursor: pointer;
-  margin: 0 0 5px 0;
 }
 
 .time-created {

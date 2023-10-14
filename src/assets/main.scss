@@ -1,5 +1,3 @@
-@import './bootstrap.scss';
-
 :root {
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
@@ -54,6 +52,8 @@
     --color-title: var(--open-activity-color-vivid);
   }
 }
+
+@import './bootstrap.scss';
 
 // *,
 // *::before,

@@ -7,8 +7,6 @@
 @import '~bootstrap/scss/functions';
 
 // 2. Include any default variable overrides here
-// $body-bg: #000;
-// $body-color: #fff;
 
 // 3. Include remainder of required Bootstrap stylesheets
 @import '~bootstrap/scss/variables';
@@ -34,3 +32,16 @@
 @import '~bootstrap/scss/utilities/api';
 
 // 8. Add additional custom code here
+
+// 2. Include any default variable overrides here
+:root {
+  --bs-heading-color: #f15a22;
+  --bs-body-bg: #ffffff;
+  --bs-body-color: rgba(60, 60, 60, 0.66);
+}
+
+[data-bs-theme='dark'] {
+  color-scheme: dark;
+  --bs-body-bg: #181818;
+  --bs-body-color: rgba(235, 235, 235, 0.64);
+}
