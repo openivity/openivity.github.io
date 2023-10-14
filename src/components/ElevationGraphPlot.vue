@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="display: flex; flex-direction: column; height: 100%">
     <div class="graph-detail">
       <div class="detail">
         <span><i class="fa-solid fa-road"></i></span>
@@ -20,8 +20,9 @@
         <span class="detail-value">{{ hoveredResult ? hoveredResult.grade ?? '-' : '-' }}%</span>
       </div>
     </div>
-
-    <PlotFigure :options="options" defer :onRender="plotRendered"></PlotFigure>
+    <div class="graph" style="flex-grow: 1">
+      <PlotFigure :options="options" defer :onRender="plotRendered"></PlotFigure>
+    </div>
   </div>
 </template>
 
@@ -32,16 +33,6 @@ import PlotFigure from './PlotFigure'
 import { DateTime } from 'luxon'
 import { toHuman } from '@/toolkit/date'
 import { distanceToHuman } from '@/toolkit/distance'
-
-interface Data {
-  x: Function
-  y: Function
-  firstData: Record | null
-  hovered: Record | null
-  cumulativeData: Record[]
-  yMin: number
-  yMax: number
-}
 
 export default {
   components: {
@@ -59,7 +50,9 @@ export default {
       hovered: Record,
       cumulativeData: [],
       yMin: Number.MAX_VALUE,
-      yMax: 0
+      yMax: 0,
+      plotSizeWidth: 0,
+      plotSizeHeight: 0
     }
   },
   watch: {
@@ -108,6 +101,8 @@ export default {
       const k = (this.cumulativeData.length < 50 ? 50 : this.cumulativeData.length) / 50
 
       return {
+        width: this.plotSizeWidth <= 0 ? undefined : this.plotSizeWidth,
+        height: this.plotSizeHeight <= 0 ? undefined : this.plotSizeHeight,
         x: {
           grid: true,
           label: 'Distance (km)',
@@ -177,14 +172,33 @@ export default {
     toHuman: toHuman,
     getOptions() {},
     plotRendered(plot: (SVGSVGElement | HTMLElement) & Plot.Plot) {
+      this.onResize()
       plot.addEventListener('input', () => {
         this.hovered = plot.value
         this.$emit('record', plot.value)
       })
+    },
+    onResize() {
+      if (!this.$el) return
+
+      let width = this.$el.offsetWidth
+      let height = this.$el.offsetHeight - this.$el.querySelector('.graph-detail').offsetHeight - 1
+
+      if (this.plotSizeWidth != width) this.plotSizeWidth = width
+      if (this.plotSizeHeight != height) this.plotSizeHeight = height
+      console.log(this.plotSizeWidth, this.plotSizeHeight)
     }
   },
   updated() {},
-  mounted() {}
+  mounted() {
+    this.$nextTick(() => {
+      window.addEventListener('resize', this.onResize)
+      this.onResize()
+    })
+  },
+  unmounted() {
+    window.removeEventListener('resize', this.onResize)
+  }
 }
 </script>
 

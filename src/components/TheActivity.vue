@@ -6,35 +6,82 @@ import Loading from './Loading.vue'
 </script>
 
 <template>
-  <div class="container">
+  <div class="container-fluid text-center">
     <Transition>
       <Loading v-show="loading"></Loading>
     </Transition>
-    <div
-      :class="activityFiles.length > 0 ? 'navigator-left' : 'navigator-center'"
-      class="navigator"
-    >
-      <div class="header"><h2 class="title">Open Activity</h2></div>
-      <TheNavigator
-        :activityFiles="activityFiles"
-        :timezoneOffsetHour="timezoneOffsetHour"
-        :isWebAssemblySupported="isWebAssemblySupported"
-      />
-      <div class="graph" v-show="activityFiles && activityFiles.length > 0">
-        <ElevationGraphPlot
+    <div :class="['row h-100', !isActivityFileReady ? 'align-items-center' : '']">
+      <!-- left navigator -->
+      <div
+        :class="['navigator', 'col-12', isActivityFileReady ? 'col-xl-3 col-md-5' : 'col-md-12']"
+      >
+        <div class="header">
+          <h2 class="title">Open Activity</h2>
+          <p class="h6 subtitle">by Openivity</p>
+        </div>
+        <TheNavigator
           :activityFiles="activityFiles"
-          :activityTimezoneOffset="timezoneOffsetHoursList"
-          v-on:record="elevationOnRecord"
+          :timezoneOffsetHour="timezoneOffsetHour"
+          :isWebAssemblySupported="isWebAssemblySupported"
         />
       </div>
-    </div>
-    <div class="map" v-show="activityFiles && activityFiles.length > 0">
-      <TheMap
-        :geojsons="geojsons"
-        :activity-files="activityFiles"
-        :timezoneOffsetHoursList="timezoneOffsetHoursList"
-        ref="theMap"
-      />
+      <!-- map & graph -->
+      <div class="col-12 col-md-7 col-xl-9 map-container" v-show="isActivityFileReady">
+        <div class="row">
+          <!-- the map -->
+          <div :class="['col-12', 'map']">
+            <TheMap
+              :geojsons="geojsons"
+              :activity-files="activityFiles"
+              :timezoneOffsetHoursList="timezoneOffsetHoursList"
+              ref="theMap"
+            />
+          </div>
+          <!-- the bottom graph -->
+          <div :class="['col-12', 'bottom-info-button']">
+            <nav class="position-relative bottom-info-nav">
+              <div class="nav nav-tabs" role="tablist">
+                <button
+                  class="nav-link active"
+                  id="nav-elevation-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#nav-graph"
+                  type="button"
+                  role="tab"
+                  aria-controls="nav-graph"
+                  aria-selected="true"
+                >
+                  Elevation
+                </button>
+              </div>
+            </nav>
+          </div>
+          <div :class="['col-12', 'bottom-info']">
+            <div class="tab-content h-100">
+              <div
+                :class="['tab-pane fade show active h-100', 'graph']"
+                id="nav-graph"
+                role="tabpanel"
+                aria-labelledby="nav-elevation-tab"
+                tabindex="0"
+              >
+                <ElevationGraphPlot
+                  :activityFiles="activityFiles"
+                  :activityTimezoneOffset="timezoneOffsetHoursList"
+                  v-on:record="elevationOnRecord"
+                />
+              </div>
+              <div
+                :class="['tab-pane fade h-100', 'graph']"
+                id="nav-hr"
+                role="tabpanel"
+                aria-labelledby="nav-hr-tab"
+                tabindex="0"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -91,6 +138,12 @@ export default {
       timezoneOffsetHoursList: new Array<Number>(),
       loading: false,
       begin: 0
+      //
+    }
+  },
+  computed: {
+    isActivityFileReady: function () {
+      return this.activityFiles && this.activityFiles.length > 0
     }
   },
   watch: {
@@ -246,6 +299,32 @@ export default {
   opacity: 0;
 }
 
+.container-fluid {
+  height: 100vh;
+}
+
+.map-container {
+  height: 100vh;
+}
+
+.map {
+  height: 70vh;
+}
+
+.bottom-info-button {
+  height: 0;
+}
+
+.bottom-info {
+  height: 30vh;
+}
+
+.bottom-info-nav {
+  top: -42px;
+  height: 0;
+}
+
+/* 
 .container {
   display: grid;
   grid-template-columns: 40% 60%;
@@ -281,12 +360,12 @@ export default {
 .header {
   text-align: center;
   margin: 10px auto;
-}
+} */
 
 @media (pointer: coarse) {
   /* mobile device */
 
-  .container {
+  /* .container {
     overflow: visible;
     height: unset;
   }
@@ -304,7 +383,7 @@ export default {
     margin: auto;
     overflow: unset;
     width: 100vw;
-  }
+  } */
 }
 
 @media (pointer: fine), (pointer: none) {

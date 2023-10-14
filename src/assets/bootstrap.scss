@@ -1,9 +1,14 @@
+// // Import all of Bootstrap's CSS
+// @import "~bootstrap/scss/bootstrap";
+
 // Option B: Include parts of Bootstrap
 
 // 1. Include functions first (so you can manipulate colors, SVGs, calc, etc)
 @import '~bootstrap/scss/functions';
 
 // 2. Include any default variable overrides here
+// $body-bg: #000;
+// $body-color: #fff;
 
 // 3. Include remainder of required Bootstrap stylesheets
 @import '~bootstrap/scss/variables';

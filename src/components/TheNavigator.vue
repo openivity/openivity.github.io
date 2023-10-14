@@ -1,165 +1,172 @@
 <template>
-  <div style="text-align: center">
-    <input
-      class="input"
-      type="file"
-      id="fileInput"
-      accept=".fit"
-      multiple
-      v-bind:disabled="!isWebAssemblySupported"
-    />
-  </div>
-  <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
-    Created on:
-    {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHour) }}
-    {{ GMTString(timezoneOffsetHour) }}
-  </div>
-  <div class="manufacturer" v-if="activityFiles && activityFiles.length != 0">
-    Device: {{ activityFiles[0]?.fileId?.manufacturer }} ({{ activityFiles[0]?.fileId?.product }})
-  </div>
-  <div class="analysis">
-    <div class="summary">
-      <h4 class="section-title" v-if="activityFiles?.length != 0">Summary</h4>
-      <div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.sport">
-            <div class="summary-title">Sport</div>
-            <div class="summary-value">{{ summary.sport }}</div>
-          </div>
-          <div class="summary-item" v-if="summary.subSport">
-            <div class="summary-title">Sub Sport</div>
-            <div class="summary-value">{{ summary.subSport }}</div>
-          </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.totalMovingTime">
-            <div class="summary-title">Total Moving Time</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-hourglass-half"></i>
-              {{ secondsToDHMS(summary.totalMovingTime) }}
+  <!-- input -->
+  <div class="navigator">
+    <div class="navigator-input" style="text-align: center">
+      <input
+        class="input"
+        type="file"
+        id="fileInput"
+        accept=".fit"
+        multiple
+        v-bind:disabled="!isWebAssemblySupported"
+      />
+    </div>
+    <div class="navigator-info">
+      <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
+        Created on:
+        {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHour) }}
+        {{ GMTString(timezoneOffsetHour) }}
+      </div>
+      <div class="manufacturer" v-if="activityFiles && activityFiles.length != 0">
+        Device: {{ activityFiles[0]?.fileId?.manufacturer }} ({{
+          activityFiles[0]?.fileId?.product
+        }})
+      </div>
+    </div>
+    <div class="navigator-summary analysis">
+      <div class="summary">
+        <h4 class="section-title" v-if="activityFiles?.length != 0">Summary</h4>
+        <div>
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.sport">
+              <div class="summary-title">Sport</div>
+              <div class="summary-value">{{ summary.sport }}</div>
+            </div>
+            <div class="summary-item" v-if="summary.subSport">
+              <div class="summary-title">Sub Sport</div>
+              <div class="summary-value">{{ summary.subSport }}</div>
             </div>
           </div>
-          <div class="summary-item" v-if="summary.totalElapsedTime">
-            <div class="summary-title">Total Elapsed Time</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-hourglass-end"></i>
-              {{ secondsToDHMS(summary.totalElapsedTime) }}
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.totalMovingTime">
+              <div class="summary-title">Total Moving Time</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-hourglass-half"></i>
+                {{ secondsToDHMS(summary.totalMovingTime) }}
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.totalElapsedTime">
+              <div class="summary-title">Total Elapsed Time</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-hourglass-end"></i>
+                {{ secondsToDHMS(summary.totalElapsedTime) }}
+              </div>
             </div>
           </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.totalDistance">
-            <div class="summary-title">Total Distance</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-road"></i> {{ (summary.totalDistance / 1000)?.toFixed(2) }} km
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.totalDistance">
+              <div class="summary-title">Total Distance</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-road"></i> {{ (summary.totalDistance / 1000)?.toFixed(2) }} km
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.totalCalories">
+              <div class="summary-title">Total Calories</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-droplet"></i>
+                {{ summary.totalCalories.toLocaleString() }} Cal
+              </div>
             </div>
           </div>
-          <div class="summary-item" v-if="summary.totalCalories">
-            <div class="summary-title">Total Calories</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-droplet"></i>
-              {{ summary.totalCalories.toLocaleString() }} Cal
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgSpeed">
+              <div class="summary-title">Avg Speed</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-gauge"></i>
+                {{ ((summary.avgSpeed * 3600) / 1000)?.toFixed(2) }} km/h
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.maxSpeed">
+              <div class="summary-title">Max Speed</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-gauge-high"></i>
+                {{ ((summary.maxSpeed * 3600) / 1000)?.toFixed(2) }} km/h
+              </div>
             </div>
           </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgSpeed">
-            <div class="summary-title">Avg Speed</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-gauge"></i>
-              {{ ((summary.avgSpeed * 3600) / 1000)?.toFixed(2) }} km/h
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgHeartRate">
+              <div class="summary-title">Avg Heart Rate</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-heart-pulse"></i> {{ Math.round(summary.avgHeartRate) }} bpm
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.maxHeartRate">
+              <div class="summary-title">Max Heart Rate</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-heart-pulse"></i> {{ summary.maxHeartRate }} bpm
+              </div>
             </div>
           </div>
-          <div class="summary-item" v-if="summary.maxSpeed">
-            <div class="summary-title">Max Speed</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-gauge-high"></i>
-              {{ ((summary.maxSpeed * 3600) / 1000)?.toFixed(2) }} km/h
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgCadence">
+              <div class="summary-title">Avg Cadence</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-rotate"></i> {{ Math.round(summary.avgCadence) }} rpm
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.maxCadence">
+              <div class="summary-title">Max Cadence</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-rotate"></i> {{ summary.maxCadence }} rpm
+              </div>
             </div>
           </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgHeartRate">
-            <div class="summary-title">Avg Heart Rate</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-heart-pulse"></i> {{ Math.round(summary.avgHeartRate) }} bpm
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgPower">
+              <div class="summary-title">Avg Power</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-bolt-lightning"></i> {{ Math.round(summary.avgPower) }}
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.maxPower">
+              <div class="summary-title">Max Power</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-bolt-lightning"></i> {{ summary.maxPower }}
+              </div>
             </div>
           </div>
-          <div class="summary-item" v-if="summary.maxHeartRate">
-            <div class="summary-title">Max Heart Rate</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-heart-pulse"></i> {{ summary.maxHeartRate }} bpm
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgTemperature">
+              <div class="summary-title">Avg Temperature</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-temperature-low"></i>
+                {{ Math.round(summary.avgTemperature) }} °C
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.maxTemperature">
+              <div class="summary-title">Max Temperature</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-temperature-high"></i> {{ summary.maxTemperature }} °C
+              </div>
             </div>
           </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgCadence">
-            <div class="summary-title">Avg Cadence</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-rotate"></i> {{ Math.round(summary.avgCadence) }} rpm
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.totalAscent">
+              <div class="summary-title">Total Ascent</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-arrow-trend-up"></i> {{ summary.totalAscent }} m
+              </div>
+            </div>
+            <div class="summary-item" v-if="summary.totalDescent">
+              <div class="summary-title">Total Descent</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-arrow-trend-down"></i> {{ summary.totalDescent }} m
+              </div>
             </div>
           </div>
-          <div class="summary-item" v-if="summary.maxCadence">
-            <div class="summary-title">Max Cadence</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-rotate"></i> {{ summary.maxCadence }} rpm
+          <div class="summary-grid">
+            <div class="summary-item" v-if="summary.avgAltitude">
+              <div class="summary-title">Avg Altitude</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-mountain"></i> {{ summary.avgAltitude.toFixed(2) }} m
+              </div>
             </div>
-          </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgPower">
-            <div class="summary-title">Avg Power</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-bolt-lightning"></i> {{ Math.round(summary.avgPower) }}
-            </div>
-          </div>
-          <div class="summary-item" v-if="summary.maxPower">
-            <div class="summary-title">Max Power</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-bolt-lightning"></i> {{ summary.maxPower }}
-            </div>
-          </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgTemperature">
-            <div class="summary-title">Avg Temperature</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-temperature-low"></i>
-              {{ Math.round(summary.avgTemperature) }} °C
-            </div>
-          </div>
-          <div class="summary-item" v-if="summary.maxTemperature">
-            <div class="summary-title">Max Temperature</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-temperature-high"></i> {{ summary.maxTemperature }} °C
-            </div>
-          </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.totalAscent">
-            <div class="summary-title">Total Ascent</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-arrow-trend-up"></i> {{ summary.totalAscent }} m
-            </div>
-          </div>
-          <div class="summary-item" v-if="summary.totalDescent">
-            <div class="summary-title">Total Descent</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-arrow-trend-down"></i> {{ summary.totalDescent }} m
-            </div>
-          </div>
-        </div>
-        <div class="summary-grid">
-          <div class="summary-item" v-if="summary.avgAltitude">
-            <div class="summary-title">Avg Altitude</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-mountain"></i> {{ summary.avgAltitude.toFixed(2) }} m
-            </div>
-          </div>
-          <div class="summary-item" v-if="summary.maxAltitude">
-            <div class="summary-title">Max Altitude</div>
-            <div class="summary-value">
-              <i class="fa-solid fa-mountain"></i> {{ summary.maxAltitude.toFixed(2) }} m
+            <div class="summary-item" v-if="summary.maxAltitude">
+              <div class="summary-title">Max Altitude</div>
+              <div class="summary-value">
+                <i class="fa-solid fa-mountain"></i> {{ summary.maxAltitude.toFixed(2) }} m
+              </div>
             </div>
           </div>
         </div>
