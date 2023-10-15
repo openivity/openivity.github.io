@@ -127,6 +127,7 @@ import Loading from './Loading.vue'
 import { GeoJSON } from 'ol/format'
 import { ActivityFile } from '@/spec/activity'
 import { LinierRegression, Point } from '@/toolkit/linier-regression'
+import { Offcanvas } from 'bootstrap'
 
 const isWebAssemblySupported =
   typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
