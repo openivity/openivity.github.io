@@ -147,7 +147,7 @@ export default {
     const options = {
       ...(method === "plot" && {
         marks: this.mark == null ? [] : [this.mark],
-        width: 688 // better default for VitePress
+        // width: 688 // better default for VitePress
       }),
       ...this.options,
       className: "plot"
@@ -200,8 +200,9 @@ export default {
               h("div", {
                 style: {
                   maxWidth: "100%",
-                  width: `688px`,
-                  aspectRatio: `688 / ${height}`
+                  // width: `100%`,
+                  // width: `688px`,
+                  // aspectRatio: `688 / ${height}`
                 }
               })
             ]

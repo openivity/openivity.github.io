@@ -7,9 +7,17 @@ import { resolve } from 'node:path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "~bootstrap/scss/bootstrap";`
+      }
+    }
+  },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '~bootstrap': resolve(__dirname, 'node_modules/bootstrap'),
     }
   },
   build: {

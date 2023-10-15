@@ -1,4 +1,5 @@
-import './assets/main.css'
+// import './assets/bootstrap.scss'
+import './assets/main.scss'
 import './assets/fontawesome/css/fontawesome.min.css'
 import './assets/fontawesome/css/brands.min.css'
 import './assets/fontawesome/css/solid.min.css'
@@ -8,6 +9,9 @@ import { createApp } from 'vue'
 
 import App from './App.vue'
 import router from './router'
+
+// Import all of Bootstrap's JS
+import * as bootstrap from 'bootstrap'
 
 const app = createApp(App)
 

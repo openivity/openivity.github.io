@@ -1,40 +1,124 @@
 <script setup lang="ts">
 import TheMap from './TheMap.vue'
 import ElevationGraphPlot from './ElevationGraphPlot.vue'
+import TheNavigatorInput from './TheNavigatorInput.vue'
 import TheNavigator from './TheNavigator.vue'
 import Loading from './Loading.vue'
 </script>
 
 <template>
-  <div class="container">
+  <div>
     <Transition>
       <Loading v-show="loading"></Loading>
     </Transition>
+    <!-- mobile summary -->
     <div
-      :class="activityFiles.length > 0 ? 'navigator-left' : 'navigator-center'"
-      class="navigator"
+      class="offcanvas offcanvas-start"
+      tabindex="-1"
+      id="offcanvasSummary"
+      aria-labelledby="offcanvasSummaryLabel"
     >
-      <div class="header"><h2 class="title">Open Activity</h2></div>
-      <TheNavigator
-        :activityFiles="activityFiles"
-        :timezoneOffsetHour="timezoneOffsetHour"
-        :isWebAssemblySupported="isWebAssemblySupported"
-      />
-      <div class="graph" v-show="activityFiles && activityFiles.length > 0">
-        <ElevationGraphPlot
-          :activityFiles="activityFiles"
-          :activityTimezoneOffset="timezoneOffsetHoursList"
-          v-on:record="elevationOnRecord"
-        />
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title title" id="offcanvasSummaryLabel">Open Activity</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="offcanvas-body">
+        <TheNavigatorInput :isWebAssemblySupported="isWebAssemblySupported" id="fileInputMobile">
+        </TheNavigatorInput>
+        <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHour="timezoneOffsetHour" />
       </div>
     </div>
-    <div class="map" v-show="activityFiles && activityFiles.length > 0">
-      <TheMap
-        :geojsons="geojsons"
-        :activity-files="activityFiles"
-        :timezoneOffsetHoursList="timezoneOffsetHoursList"
-        ref="theMap"
-      />
+    <div class="activity container-fluid text-center">
+      <div :class="['row h-100', !isActivityFileReady ? 'align-items-center' : '']">
+        <!-- navigator but desktop -->
+        <div
+          :class="[
+            'navigator',
+            'col-12',
+            isActivityFileReady ? 'col-xl-3 col-md-5 d-none d-md-block' : 'col-md-12'
+          ]"
+        >
+          <div class="header pt-3 pb-1">
+            <h2 class="title">Open Activity</h2>
+          </div>
+          <TheNavigatorInput :isWebAssemblySupported="isWebAssemblySupported"> </TheNavigatorInput>
+          <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHour="timezoneOffsetHour" />
+        </div>
+        <!-- map & graph -->
+        <div class="col-12 col-md-7 col-xl-9 map-container" v-show="isActivityFileReady">
+          <div class="row">
+            <!-- the map -->
+            <div :class="['col-12', 'map']">
+              <TheMap
+                :geojsons="geojsons"
+                :activity-files="activityFiles"
+                :timezoneOffsetHoursList="timezoneOffsetHoursList"
+                ref="theMap"
+              />
+            </div>
+            <!-- the bottom graph -->
+            <div :class="['col-12', 'bottom-info-button']">
+              <nav class="position-relative bottom-info-nav">
+                <div class="nav nav-tabs" role="tablist">
+                  <!-- show only on mobile -->
+                  <button
+                    class="nav-link d-md-none"
+                    type="button"
+                    role="tab"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#offcanvasSummary"
+                    aria-controls="offcanvasSummary"
+                    aria-label="Toggle Summary"
+                  >
+                    <i class="fa-solid fa-bar"></i> Summary
+                  </button>
+                  <button
+                    class="nav-link active"
+                    id="nav-elevation-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#nav-graph"
+                    type="button"
+                    role="tab"
+                    aria-controls="nav-graph"
+                    aria-selected="true"
+                  >
+                    Elevation
+                  </button>
+                </div>
+              </nav>
+            </div>
+            <div :class="['col-12', 'bottom-info']">
+              <div class="tab-content h-100">
+                <div
+                  :class="['tab-pane fade show active h-100', 'graph']"
+                  id="nav-graph"
+                  role="tabpanel"
+                  aria-labelledby="nav-elevation-tab"
+                  tabindex="0"
+                >
+                  <ElevationGraphPlot
+                    :activityFiles="activityFiles"
+                    :activityTimezoneOffset="timezoneOffsetHoursList"
+                    v-on:record="elevationOnRecord"
+                  />
+                </div>
+                <div
+                  :class="['tab-pane fade h-100', 'graph']"
+                  id="nav-hr"
+                  role="tabpanel"
+                  aria-labelledby="nav-hr-tab"
+                  tabindex="0"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -91,6 +175,12 @@ export default {
       timezoneOffsetHoursList: new Array<Number>(),
       loading: false,
       begin: 0
+      //
+    }
+  },
+  computed: {
+    isActivityFileReady: function () {
+      return this.activityFiles && this.activityFiles.length > 0
     }
   },
   watch: {
@@ -229,13 +319,17 @@ export default {
   },
   mounted() {
     document.getElementById('fileInput')?.addEventListener('change', this.fileInputEventListener)
+    document
+      .getElementById('fileInputMobile')
+      ?.addEventListener('change', this.fileInputEventListener)
 
     this.decodeWorker.onmessage = this.decodeWorkerOnMessage
   }
 }
 </script>
 
-<style>
+<style scoped lang="scss">
+// animation
 .v-enter-active,
 .v-leave-active {
   transition: opacity 100ms ease;
@@ -246,6 +340,46 @@ export default {
   opacity: 0;
 }
 
+.activity {
+  height: 100vh;
+}
+
+// summary sidebar
+.offcanvas.offcanvas-start {
+  width: 100%;
+}
+
+// app
+.map-container {
+  height: 100vh;
+}
+
+.map {
+  height: 70vh;
+}
+
+.bottom-info-button {
+  height: 0;
+}
+
+.bottom-info {
+  height: 30vh;
+}
+
+.bottom-info-nav {
+  top: -42px;
+  height: 0;
+}
+
+.bottom-info-nav .nav-link {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+.bottom-info-nav .nav-link.active {
+  background-color: var(--color-title);
+}
+
+/* 
 .container {
   display: grid;
   grid-template-columns: 40% 60%;
@@ -281,12 +415,12 @@ export default {
 .header {
   text-align: center;
   margin: 10px auto;
-}
+} */
 
 @media (pointer: coarse) {
   /* mobile device */
 
-  .container {
+  /* .container {
     overflow: visible;
     height: unset;
   }
@@ -304,7 +438,7 @@ export default {
     margin: auto;
     overflow: unset;
     width: 100vw;
-  }
+  } */
 }
 
 @media (pointer: fine), (pointer: none) {
