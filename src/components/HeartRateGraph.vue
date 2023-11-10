@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import LineGraph from './LineGraph.vue'
+import AreaGraph from './AreaGraph.vue'
 </script>
 
 <template>
   <div class="col-12 h-100 pt-2">
-    <LineGraph
+    <AreaGraph
       :name="'Heart Rate'"
       :icon="'fa-heart-pulse'"
       :record-field="'heartRate'"
@@ -18,7 +18,7 @@ import LineGraph from './LineGraph.vue'
       :unit="'bpm'"
       :received-record="receivedRecord"
       v-on:hoveredRecord="onHoveredRecord"
-    ></LineGraph>
+    ></AreaGraph>
   </div>
 </template>
 

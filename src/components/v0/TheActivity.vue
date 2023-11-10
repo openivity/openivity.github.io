@@ -90,7 +90,7 @@ import TheSummary from '../TheSummary.vue'
               v-on:hoveredRecord="onHoveredRecord"
             ></TemperatureGraph>
           </div>
-          <span class="footer pt-1">
+          <span class="footer pt-3">
             <span class="mx-1">
               <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
             </span>
