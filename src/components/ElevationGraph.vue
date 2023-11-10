@@ -31,7 +31,7 @@
         </span>
         <span class="text-end">
           <i class="fa-solid fa-arrow-up-right-dots fa-sm"></i>
-          {{ recordView.grade ? Math.ceil(recordView.grade) : '0' }} %
+          {{ recordView.grade ? Math.round(recordView.grade) : '0' }} %
         </span>
       </div>
     </div>
