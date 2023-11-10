@@ -66,3 +66,34 @@ export function toHuman(
   )
   return dur2.toHuman(opts)
 }
+
+/**
+ * Returns a string representation of milliseconds in this format "1d 2h 51m 22s".
+ * Zero value will be omitted (expect seconds).
+ */
+export function formatMillis(d: number): String {
+  if (d <= 0) {
+    return '0s'
+  }
+
+  const days = Math.floor(d / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((d % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((d % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((d % (1000 * 60)) / 1000)
+
+  let formattedTime = ''
+  if (days > 0) {
+    formattedTime += days + 'd '
+  }
+  if (hours > 0) {
+    formattedTime += hours + 'h '
+  }
+  if (minutes > 0) {
+    formattedTime += minutes + 'm '
+  }
+  if (seconds > 0) {
+    formattedTime += seconds + 's'
+  }
+
+  return formattedTime
+}

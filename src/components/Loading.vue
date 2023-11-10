@@ -44,7 +44,7 @@ $duration: 1500ms;
 $timing: linear;
 
 .spinner-container {
-  position: absolute;
+  position: fixed;
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.3);
