@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Record } from '@/spec/activity'
-import TheGraph from '../components/v0/TheGraph.vue'
+import ElevationGraph from '../../components/ElevationGraph.vue'
 </script>
 
 <template>
   <main>
+    <h4>Example Elevation Graph</h4>
     <div style="height: 400px">
-      <TheGraph :name="'example'" :graph-records="records" />
+      <ElevationGraph :name="'example'" :graph-records="records" :records="records" />
     </div>
   </main>
 </template>

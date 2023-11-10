@@ -404,7 +404,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .elevation-hover {
   color: var(--color-text);
   flex: 1 0 0%;

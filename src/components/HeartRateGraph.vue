@@ -7,7 +7,9 @@ import LineGraph from './LineGraph.vue'
     <LineGraph
       :name="'Heart Rate'"
       :icon="'fa-heart-pulse'"
-      :selected-field="'heartRate'"
+      :record-field="'heartRate'"
+      :avg="summary?.avgHeartRate?.toFixed(0) ?? 0"
+      :max="summary?.maxHeartRate?.toFixed(0) ?? 0"
       :records="records"
       :graph-records="graphRecords"
       :summary="summary"

@@ -9,7 +9,7 @@
       </div>
       <div class="col text-end">
         <span>
-          {{ scaleUnit(recordView[selectedField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
+          {{ scaleUnit(recordView[recordField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
           {{ unit }}&nbsp;
         </span>
       </div>
@@ -29,7 +29,9 @@ export default {
       required: true
     },
     icon: String,
-    selectedField: { type: String, required: true },
+    recordField: { type: String, required: true },
+    summaryAvgField: { type: String, required: true },
+    summaryMaxField: { type: String, required: true },
     graphRecords: {
       type: Array<Record>,
       required: true,
@@ -45,7 +47,9 @@ export default {
     color: { type: String, required: true },
     pointerColor: { type: String, default: '#78e08f' },
     summary: Summary,
-    receivedRecord: Record
+    receivedRecord: Record,
+    avg: String,
+    max: String
   },
   data() {
     return {
@@ -79,40 +83,6 @@ export default {
         this.$nextTick(() => {
           requestAnimationFrame(() => this.renderGraph())
         })
-      }
-    }
-  },
-  computed: {
-    avg(): string {
-      switch (this.selectedField) {
-        case 'speed':
-          return (this.scaleUnit(this.summary?.avgSpeed!) ?? 0).toFixed(2)
-        case 'cadence':
-          return (this.summary?.avgCadence ?? 0).toFixed(0)
-        case 'heartRate':
-          return (this.summary?.avgHeartRate ?? 0).toFixed(0)
-        case 'temperature':
-          return (this.summary?.avgTemperature ?? 0).toFixed(0)
-        case 'power':
-          return (this.summary?.avgPower ?? 0).toFixed(0)
-        default:
-          return '0'
-      }
-    },
-    max(): string {
-      switch (this.selectedField) {
-        case 'speed':
-          return (this.scaleUnit(this.summary?.maxSpeed!) ?? 0).toFixed(2)
-        case 'cadence':
-          return (this.summary?.maxCadence ?? 0).toFixed(0)
-        case 'heartRate':
-          return (this.summary?.maxHeartRate ?? 0).toFixed(0)
-        case 'temperature':
-          return (this.summary?.maxTemperature ?? 0).toFixed(0)
-        case 'power':
-          return (this.summary?.maxPower ?? 0).toFixed(0)
-        default:
-          return '0'
       }
     }
   },
@@ -170,7 +140,7 @@ export default {
         .domain(
           d3.extent(
             graphRecords,
-            (d) => this.scaleUnit(d[this.selectedField as keyof Record] as number) ?? 0
+            (d) => this.scaleUnit(d[this.recordField as keyof Record] as number) ?? 0
           ) as Number[]
         )
         .rangeRound([height - marginBottom, marginTop])
@@ -270,7 +240,7 @@ export default {
         .curve(d3.curveBasis)
         .x((d: Record) => xScale(d.distance! / 1000) as number)
         .y0(yScale(d3.min(yScale.domain())!))
-        .y1((d) => yScale(this.scaleUnit(d[this.selectedField as keyof Record] as number) ?? 0))
+        .y1((d) => yScale(this.scaleUnit(d[this.recordField as keyof Record] as number) ?? 0))
 
       svg
         .append('g')
@@ -350,7 +320,7 @@ export default {
       })
     },
     scaleUnit(value: number): number | null {
-      if (this.selectedField === 'speed') {
+      if (this.recordField === 'speed') {
         value = (value * 3600) / 1000
       }
       if (isNaN(value)) return null
@@ -375,7 +345,7 @@ export default {
   }
 }
 </script>
-<style>
+<style scoped>
 .line-graph-hover {
   font-size: 0.9em;
 }

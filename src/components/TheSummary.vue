@@ -112,7 +112,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .title {
   color: var(--color-title);
   font-weight: bold;

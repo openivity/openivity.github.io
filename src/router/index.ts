@@ -29,9 +29,9 @@ const router = createRouter({
       component: () => import('../views/ElevationGraph.vue')
     },
     {
-      path: '/components/graph',
+      path: '/components/elevationgraph',
       name: 'graph',
-      component: () => import('../views/ComponentGraphView.vue')
+      component: () => import('../views/example/ElevationGraphView.vue')
     }
   ]
 })

@@ -335,14 +335,16 @@ export default {
 }
 </script>
 <style>
+/* override open layers's default style */
 .ol-overlay-container {
   position: relative !important;
 }
-
+</style>
+<style scoped>
 .ol-popup {
   position: absolute;
   color: #000;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.88);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   padding: 15px;
   border-radius: 10px;
@@ -363,7 +365,7 @@ export default {
 }
 
 .ol-popup:after {
-  border-top-color: white;
+  border-top-color: rgba(255, 255, 255, 0.88);
   border-width: 10px;
   left: 48px;
   margin-left: -10px;

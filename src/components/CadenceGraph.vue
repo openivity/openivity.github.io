@@ -7,7 +7,9 @@ import LineGraph from './LineGraph.vue'
     <LineGraph
       :name="'Cadence'"
       :icon="'fa-rotate'"
-      :selected-field="'cadence'"
+      :record-field="'cadence'"
+      :avg="summary?.avgCadence?.toFixed(0) ?? 0"
+      :max="summary?.maxCadence?.toFixed(0) ?? 0"
       :records="records"
       :graph-records="graphRecords"
       :summary="summary"

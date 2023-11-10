@@ -7,7 +7,9 @@ import LineGraph from './LineGraph.vue'
     <LineGraph
       :name="'Temperature'"
       :icon="'fa-temperature-low'"
-      :selected-field="'temperature'"
+      :record-field="'temperature'"
+      :avg="summary?.avgTemperature?.toFixed(0) ?? 0"
+      :max="summary?.maxTemperature?.toFixed(0) ?? 0"
       :records="records"
       :graph-records="graphRecords"
       :summary="summary"

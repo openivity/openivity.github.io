@@ -7,7 +7,9 @@ import LineGraph from './LineGraph.vue'
     <LineGraph
       :name="'Power'"
       :icon="'fa-bolt-lightning'"
-      :selected-field="'power'"
+      :record-field="'power'"
+      :avg="summary?.avgPower?.toFixed(0) ?? 0"
+      :max="summary?.maxPower?.toFixed(0) ?? 0"
       :records="records"
       :graph-records="graphRecords"
       :summary="summary"

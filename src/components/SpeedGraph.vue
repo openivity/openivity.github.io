@@ -7,7 +7,9 @@ import LineGraph from './LineGraph.vue'
     <LineGraph
       :name="'Speed'"
       :icon="'fa-gauge-high'"
-      :selected-field="'speed'"
+      :record-field="'speed'"
+      :avg="summary?.avgSpeed?.toFixed(2) ?? 0"
+      :max="summary?.maxSpeed?.toFixed(2) ?? 0"
       :records="records"
       :graph-records="graphRecords"
       :summary="summary"
