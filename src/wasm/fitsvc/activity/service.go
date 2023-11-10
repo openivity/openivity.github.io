@@ -27,14 +27,12 @@ func (m Result) ToMap() map[string]any {
 
 type DecodeResult struct {
 	Err          string        `json:"err"`
-	Feature      *Feature      `json:"feature"`
 	ActivityFile *ActivityFile `json:"activityFile"`
 }
 
 func (m DecodeResult) ToMap() map[string]any {
 	return map[string]any{
 		"err":          m.Err,
-		"feature":      m.Feature.ToMap(),
 		"activityFile": m.ActivityFile.ToMap(),
 	}
 }
@@ -59,7 +57,6 @@ func decodeWorker(rc <-chan io.Reader, resc chan<- DecodeResult) {
 	lis.Wait()
 
 	resc <- DecodeResult{
-		Feature:      lis.Feature(),
 		ActivityFile: lis.ActivityFile(),
 	}
 }

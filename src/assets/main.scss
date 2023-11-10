@@ -89,6 +89,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (pointer: coarse) {
+    body {
+        font-size: 13px;
+    }
+}
+
 // // Additional global css
 // #app {
 //   /* max-width: 1280px; */

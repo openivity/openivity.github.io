@@ -8,7 +8,6 @@ import (
 type Listener struct {
 	mesgc        chan proto.Message
 	done         chan struct{}
-	coordinates  []any
 	activityFile *ActivityFile
 }
 
@@ -16,7 +15,6 @@ func NewListener() *Listener {
 	l := &Listener{
 		mesgc:        make(chan proto.Message, 1000),
 		done:         make(chan struct{}),
-		coordinates:  make([]any, 0),
 		activityFile: &ActivityFile{},
 	}
 	go l.loop()
@@ -40,10 +38,6 @@ func (l *Listener) loop() {
 			if record["positionLong"] == nil || record["positionLat"] == nil {
 				continue
 			}
-			l.coordinates = append(l.coordinates, []any{
-				record["positionLong"],
-				record["positionLat"],
-			})
 		}
 	}
 	close(l.done)
@@ -55,16 +49,6 @@ func (l *Listener) Wait() {
 }
 
 func (l *Listener) OnMesg(mesg proto.Message) { l.mesgc <- mesg }
-
-func (l *Listener) Feature() *Feature {
-	return &Feature{
-		Type: "Feature",
-		Geometry: Geometry{
-			Type:        "LineString",
-			Coordinates: l.coordinates,
-		},
-	}
-}
 
 func (l *Listener) ActivityFile() *ActivityFile {
 	return l.activityFile

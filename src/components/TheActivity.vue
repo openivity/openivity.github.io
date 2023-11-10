@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import TheMap from './TheMap.vue'
+import type { Feature } from 'ol'
 import ElevationGraphPlot from './ElevationGraphPlot.vue'
-import TheNavigatorInput from './TheNavigatorInput.vue'
-import TheNavigator from './TheNavigator.vue'
 import Loading from './Loading.vue'
+import TheMap from './TheMap.vue'
+import TheNavigator from './TheNavigator.vue'
+import TheNavigatorInput from './TheNavigatorInput.vue'
 </script>
 
 <template>
@@ -43,7 +44,7 @@ import Loading from './Loading.vue'
             isActivityFileReady ? 'col-xl-3 col-md-5 d-none d-md-block' : 'col-md-12'
           ]"
         >
-          <div class="header pt-3 pb-1">
+          <div class="header pt-5 pb-1">
             <h2 class="title">Open Activity</h2>
           </div>
           <TheNavigatorInput :isWebAssemblySupported="isWebAssemblySupported"> </TheNavigatorInput>
@@ -55,9 +56,13 @@ import Loading from './Loading.vue'
             <!-- the map -->
             <div :class="['col-12', 'map']">
               <TheMap
-                :geojsons="geojsons"
+                :features="features"
                 :activity-files="activityFiles"
                 :timezoneOffsetHoursList="timezoneOffsetHoursList"
+                :hasCadence="hasCadence"
+                :hasHeartRate="hasHeartRate"
+                :hasPower="hasPower"
+                :hasTemperature="hasTemperature"
                 ref="theMap"
               />
             </div>
@@ -124,10 +129,8 @@ import Loading from './Loading.vue'
 </template>
 
 <script lang="ts">
+import { ActivityFile, Record } from '@/spec/activity'
 import { GeoJSON } from 'ol/format'
-import { ActivityFile } from '@/spec/activity'
-import { LinierRegression, Point } from '@/toolkit/linier-regression'
-import { Offcanvas } from 'bootstrap'
 
 const isWebAssemblySupported =
   typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
@@ -175,13 +178,44 @@ export default {
       timezoneOffsetHour: 0,
       timezoneOffsetHoursList: new Array<Number>(),
       loading: false,
-      begin: 0
-      //
+      begin: 0,
+      features: new Array<Feature>()
     }
   },
   computed: {
     isActivityFileReady: function () {
       return this.activityFiles && this.activityFiles.length > 0
+    },
+    combinedRecords: function (): Record[] {
+      return this.activityFiles?.flatMap((act) => act.records)
+    },
+    hasCadence(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        const cad = this.combinedRecords[i].cadence
+        if (typeof cad === 'number' && cad != 255 && cad != 0) return true
+      }
+      return false
+    },
+    hasHeartRate(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        const hr = this.combinedRecords[i].heartRate
+        if (typeof hr === 'number' && hr != 255 && hr != 0) return true
+      }
+      return false
+    },
+    hasPower(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        const pwr = this.combinedRecords[i].power
+        if (typeof pwr === 'number' && pwr != 65535 && pwr != 0) return true
+      }
+      return false
+    },
+    hasTemperature(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        const temp = this.combinedRecords[i].temperature
+        if (typeof temp === 'number' && temp != 127) return true
+      }
+      return false
     }
   },
   watch: {
@@ -207,6 +241,26 @@ export default {
     }
   },
   methods: {
+    createFeatures(activityFiles: ActivityFile[]): Feature[] {
+      const features: Feature[] = []
+      activityFiles.forEach((act, i) => {
+        const coordinates: number[][] = []
+        act.records.forEach((d) => {
+          if (d.positionLong == null || d.positionLat == null) return
+          coordinates.push([d.positionLong!, d.positionLat!])
+        })
+        const feature = new GeoJSON().readFeature({
+          id: 'lineString-' + i,
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        })
+        features.push(feature)
+      })
+      return features
+    },
     fileInputEventListener(e: Event) {
       const fileInput = e.target as HTMLInputElement
       if (!fileInput.files) return
@@ -259,59 +313,61 @@ export default {
       console.log('Total elapsed:\t\t', totalDuration, 'ms')
       console.groupEnd()
 
-      const geoJSONList = new Array<GeoJSON>()
-      for (let i = 0; i < decodeResults.length; i++) {
-        geoJSONList.push(decodeResults[i].feature)
-      }
-
-      this.geojsons = geoJSONList
       const activityFileList = new Array<ActivityFile>()
 
-      const samplingDistance = 100
       for (let i = 0; i < decodeResults.length; i++) {
-        this.calculateGradePercentage(decodeResults[i].activityFile, samplingDistance)
+        let records = decodeResults[i].activityFile.records
+        records = this.smoothingElevation(records, 30)
+        records = this.calculateGrade(records, 100)
+        decodeResults[i].activityFile.records = records
         activityFileList.push(decodeResults[i].activityFile)
       }
+
       this.activityFiles = activityFileList
+      this.features = this.createFeatures(activityFileList)
+
       this.loading = false
     },
+    calculateGrade(records: Record[], distance: number): Record[] {
+      for (let i = 0; i < records.length - 1; i++) {
+        if (typeof records[i].altitude !== 'number') continue
 
-    calculateGradePercentage(activityFile: ActivityFile, samplingDistance: number) {
-      const n = activityFile.records.length
+        let run = 0
+        let rise = 0
+        for (let j = i + 1; j < records.length; j++) {
+          if (typeof records[j].altitude !== 'number') continue
 
-      for (let i = 0; i < n; i++) {
-        const points = new Array<Point>()
-        let distance: number = 0
-        let j = i
-
-        points.push(new Point(activityFile.records[i].distance!, activityFile.records[i].altitude!))
-        while (distance < samplingDistance && j > 0) {
-          distance += activityFile.records[j].distance! - activityFile.records[j - 1].distance!
-          points.push(
-            new Point(activityFile.records[j].distance!, activityFile.records[j].altitude!)
-          )
-          j--
+          const d = records[j].distance! - records[i].distance!
+          if (d > distance) break
+          rise = records[j].altitude! - records[i].altitude!
+          run = d
         }
 
-        if (points.length == 1 && i - 1 > 0) {
-          // In case the 'samplingDistance' value is less than the actual distance being sampled in the file,
-          // add the previous record's value as the pivot.
-          points.push(
-            new Point(activityFile.records[i - 1].distance!, activityFile.records[i - 1].altitude!)
-          )
-        }
-
-        const currentAltitude = activityFile.records[i].altitude!
-        const linierRegression = new LinierRegression()
-        linierRegression.train(points)
-        const pivotAltitude = linierRegression.predictY(points[points.length - 1].X) // smoothing the value.
-
-        const rise = currentAltitude - pivotAltitude
-        const run = Math.sqrt(Math.pow(distance, 2) - Math.pow(rise, 2))
-        const grade = (rise / run) * 100
-
-        activityFile.records[i].grade = grade
+        records[i].grade = (rise / run) * 100
       }
+
+      return records
+    },
+    smoothingElevation(records: Record[], distance: number): Record[] {
+      // Simple Moving Average
+      for (let i = 1; i < records.length; i++) {
+        if (records[i].distance! < distance) continue
+        if (typeof records[i].altitude !== 'number') continue
+
+        let sum = 0
+        let counter = 0
+        for (let j = i; j >= 0; j--) {
+          if (typeof records[j].altitude !== 'number') continue
+
+          const d = records[i].distance! - records[j].distance!
+          if (d > distance) break
+          sum += records[j].altitude!
+          counter++
+        }
+
+        records[i].altitude = sum / counter
+      }
+      return records
     },
     elevationOnRecord(record: any) {
       //@ts-ignore

@@ -1,9 +1,9 @@
 <template>
   <!-- input -->
   <div class="navigator">
-    <div class="navigator-input" style="text-align: center">
+    <div class="navigator-input mx-auto">
       <input
-        class="input"
+        class="form-control form-control-sm"
         type="file"
         :id="id ?? 'fileInput'"
         accept=".fit"
@@ -18,20 +18,14 @@
 export default {
   props: {
     id: String,
+    isActivityFileReady: Boolean,
     isWebAssemblySupported: Boolean
   }
 }
 </script>
-
 <style>
-.input {
-  color: var(--color-title);
-  display: inline-block;
-  padding: 15px 20px;
-  background-color: var(--color-background-mute);
-  color: var(--color-text);
-  border-radius: 5px;
-  cursor: pointer;
-  margin: 0 0 5px 0;
+.navigator-input {
+  text-align: center;
+  max-width: 320px;
 }
 </style>
