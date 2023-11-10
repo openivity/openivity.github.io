@@ -30,8 +30,6 @@ export default {
     },
     icon: String,
     recordField: { type: String, required: true },
-    summaryAvgField: { type: String, required: true },
-    summaryMaxField: { type: String, required: true },
     graphRecords: {
       type: Array<Record>,
       required: true,
