@@ -67,6 +67,10 @@ export function toHuman(
   return dur2.toHuman(opts)
 }
 
+/**
+ * Returns a string representation of milliseconds in this format "1d 2h 51m 22s".
+ * Zero value will be omitted (expect seconds).
+ */
 export function formatMillis(d: number): String {
   if (d <= 0) {
     return '0s'
