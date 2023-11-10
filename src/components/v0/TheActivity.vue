@@ -301,7 +301,10 @@ export default {
       console.debug('Total elapsed:\t\t', totalDuration, 'ms')
       console.groupEnd()
 
-      requestAnimationFrame(() => this.preprocessingResults(result.decodeResults))
+      requestAnimationFrame(() => {
+        this.preprocessingResults(result.decodeResults)
+        this.scrollTop()
+      })
     },
     preprocessingResults(decodeResults: DecodeResult[]) {
       const activityFiles = new Array<ActivityFile>()
@@ -479,9 +482,9 @@ export default {
 
       return summarized
     },
-    elevationOnRecord(record: any) {
-      //@ts-ignore
-      this.$refs.theMap.showPopUpRecord(record)
+    scrollTop() {
+      document.body.scrollTop = 0 // For Safari
+      document.documentElement.scrollTop = 0 // For Chrome, Firefox, IE and Opera
     },
     receiveSummary(summary: Summary) {
       this.summary = summary
