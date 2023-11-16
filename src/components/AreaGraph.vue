@@ -1,20 +1,53 @@
 <template>
   <div class="col-12 h-100">
-    <div class="line-graph-hover row">
+    <div
+      class="line-graph-hover row m-0"
+      style="cursor: pointer"
+      data-bs-toggle="collapse"
+      v-bind:data-bs-target="`#${graphContainerName}`"
+      aria-expanded="false"
+      v-bind:aria-controls="graphContainerName"
+    >
       <div class="col text-start">
-        <h6 style="text-align: left; display: inline-block">
+        <h6 class="title">
+          <i class="fa-solid fa-caret-down when-opened"></i>
+          <i class="fa-solid fa-caret-right when-closed"></i>
           {{ name }}
           <i :class="['fa-solid', icon]"></i>
         </h6>
       </div>
       <div class="col text-end">
         <span>
-          {{ scaleUnit(recordView[recordField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
-          {{ unit }}&nbsp;
+          <span class="pe-1 fs-6">
+            {{ scaleUnit(recordView[recordField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
+          </span>
+          <span>{{ unit }}</span>
         </span>
       </div>
     </div>
-    <div :ref="name"></div>
+    <div class="collapse show" v-bind:id="graphContainerName">
+      <div :ref="graphName"></div>
+      <div class="graph-summary pt-1 pb-1">
+        <div class="row">
+          <span class="col px-0 text-start">
+            <span style="font-size: 0.9em">Average {{ name }}</span>
+          </span>
+          <span class="col px-0 text-end">
+            <span class="fs-6 pe-1">{{ avg }}</span>
+            <span style="font-size: 0.9em">{{ unit }}</span>
+          </span>
+        </div>
+        <div class="row">
+          <span class="col px-0 text-start">
+            <span style="font-size: 0.9em">Max {{ name }}</span>
+          </span>
+          <span class="col px-0 text-end">
+            <span class="fs-6 pe-1">{{ max }}</span>
+            <span style="font-size: 0.9em">{{ unit }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -51,7 +84,7 @@ export default {
   },
   data() {
     return {
-      previousWindowWidth: 0,
+      elemWidth: 0,
       hoveredRecord: new Record(),
       recordView: new Record(),
       xScale: d3.scaleLinear()
@@ -71,37 +104,43 @@ export default {
       }
     },
     hoveredRecord: {
-      async handler(record: Record) {
+      handler(record: Record) {
         this.recordView = record
         this.$emit('hoveredRecord', record)
       }
     },
     graphRecords: {
-      async handler() {
-        this.$nextTick(() => {
-          requestAnimationFrame(() => this.renderGraph())
-        })
+      handler() {
+        this.$nextTick(() => requestAnimationFrame(() => this.renderGraph()))
       }
     }
   },
+  computed: {
+    graphName(): string {
+      return this.name.toLowerCase().replace(/\s/g, '-') + '-graph'
+    },
+    graphContainerName(): string {
+      return this.graphName + '-container'
+    }
+  },
   methods: {
+    prerender() {},
     renderGraph() {
       const graphRecords = this.graphRecords
       if (graphRecords.length == 0) return
 
       const marginTop = 25
-      const marginRight = 5
-      const marginBottom = 35
+      const marginRight = 10
+      const marginBottom = 25
       const marginLeft = 35
 
-      const $elem = this.$el as Element
-      const width = $elem.clientWidth
-      const height = $elem.clientHeight - marginBottom
+      const width = this.elemWidth
+      const height = 230 - marginBottom
 
       const xTicks = width > 720 ? 10 : 5
       const yTicks = 3
 
-      const container = d3.select(this.$refs[`${this.name}`] as HTMLElement)
+      const container = d3.select(this.$refs[`${this.graphName}`] as HTMLElement)
 
       container
         .select('svg')
@@ -168,22 +207,13 @@ export default {
         .text('Dist. (km) →')
 
       svg
-        .append('foreignObject')
+        .append('text')
+        .attr('class', 'y-axis-label')
         .attr('x', 0)
-        .attr('y', -5)
-        .attr('width', width)
-        .attr('height', 100)
-        .attr('class', 'text-start')
+        .attr('y', marginTop - 15)
+        .style('fill', 'currentColor')
         .style('font-size', '0.9em')
-        .style('width', '100%').html(`
-            <span>↑ ${this.yLabel}&nbsp;</span>
-            <span>
-                Avg: ${this.avg} ${this.unit}&nbsp;
-            </span>
-            <span>
-                Max: ${this.max} ${this.unit}&nbsp;
-            </span>
-            `)
+        .text(`↑ ${this.yLabel}`)
 
       // Create Grid Lines
       svg
@@ -287,7 +317,7 @@ export default {
         pointer.attr('transform', `translate(${px}, 0)`)
 
         const pointerPercentage = (px - xMin) / (xMax - xMin)
-        const lookupIndex = Math.round(pointerPercentage * this.records.length - 1)
+        const lookupIndex = Math.round(pointerPercentage * (this.records.length - 1))
 
         let nearestRecord: Record = new Record()
         let dx = Number.MAX_VALUE
@@ -327,15 +357,24 @@ export default {
     onResize() {
       // Ensure DOM is fully re-rendered after resize
       this.$nextTick(() => {
+        // Prevent re-render graph when width is zero
+        const $el = this.$el as HTMLElement
+        if ($el.clientWidth == 0) return
+
         // Prevent re-render graph when width is not changing
-        if (window.innerWidth == this.previousWindowWidth) return
-        this.previousWindowWidth = window.innerWidth
+        if ($el.clientWidth == this.elemWidth) return
+
+        this.elemWidth = $el.clientWidth
         this.renderGraph()
       })
     }
   },
   mounted() {
-    this.$nextTick(() => (this.previousWindowWidth = window.innerHeight))
+    this.$nextTick(() => {
+      const $el = this.$el as HTMLElement
+      this.elemWidth = $el.clientWidth
+      requestAnimationFrame(() => this.renderGraph())
+    })
     window.addEventListener('resize', this.onResize)
   },
   unmounted() {
@@ -344,7 +383,31 @@ export default {
 }
 </script>
 <style scoped>
+.title {
+  text-align: left;
+  display: inline-block;
+}
+
 .line-graph-hover {
   font-size: 0.9em;
+}
+.graph-summary {
+  margin-left: 45px;
+  padding-left: 0px;
+  padding-right: 10px;
+  margin-right: 15px;
+}
+
+.graph-summary div {
+  padding-bottom: 1px;
+  margin-bottom: 3px;
+}
+.graph-summary div:nth-child(odd) {
+  box-shadow: 0px 0.5px grey;
+}
+
+.collapsed > div > h6 > .fa-caret-down,
+:not(.collapsed) > div > h6 > .fa-caret-right {
+  display: none;
 }
 </style>

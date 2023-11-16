@@ -1,119 +1,231 @@
 <script setup lang="ts">
 import { Summary } from '@/spec/summary'
-import CadenceGraph from '../CadenceGraph.vue'
-import ElevationGraph from '../ElevationGraph.vue'
-import HeartRateGraph from '../HeartRateGraph.vue'
-import Loading from '../Loading.vue'
-import PowerGraph from '../PowerGraph.vue'
-import SpeedGraph from '../SpeedGraph.vue'
-import TemperatureGraph from '../TemperatureGraph.vue'
-import TheMap from '../TheMap.vue'
-import TheNavigatorInput from '../TheNavigatorInput.vue'
-import TheSummary from '../TheSummary.vue'
+import CadenceGraph from './CadenceGraph.vue'
+import ElevationGraph from './ElevationGraph.vue'
+import HeartRateGraph from './HeartRateGraph.vue'
+import PowerGraph from './PowerGraph.vue'
+import SpeedGraph from './SpeedGraph.vue'
+import TemperatureGraph from './TemperatureGraph.vue'
+import TheLap from './TheLap.vue'
+import TheLoading from './TheLoading.vue'
+import TheMap from './TheMap.vue'
+import TheNavigatorInput from './TheNavigatorInput.vue'
+import TheSession from './TheSession.vue'
+import TheSummary from './TheSummary.vue'
 </script>
 
 <template>
   <div>
     <Transition>
-      <Loading v-show="loading"></Loading>
+      <TheLoading v-if="loading"></TheLoading>
     </Transition>
     <div class="activity container-fluid text-center flex-container">
-      <div :class="['row h-100', !isActivityFileReady ? 'align-items-center' : '']">
+      <div :class="['row', !isActivityFileReady ? 'align-items-center' : '']">
         <div
           id="left"
           :class="[
             'sidebar',
             'col-12',
+            'px-0',
             isActivityFileReady
               ? 'col-xxl-3 col-xl-4 col-lg-5 d-md-block float-sm-right'
               : 'col-md-12 landing'
           ]"
         >
-          <div class="header pt-4 pb-2">
-            <h5 class="title">Open Activity</h5>
-            <span style="font-size: 0.9em"> Your Data, Your Control: 100% Client-Side Power. </span>
-          </div>
-          <TheNavigatorInput
-            :isActivityFileReady="isActivityFileReady"
-            :isWebAssemblySupported="isWebAssemblySupported"
-          >
-          </TheNavigatorInput>
-          <div class="mb-4" v-show="isActivityFileReady">
-            <TheSummary
-              :activityFiles="activityFiles"
-              :timezoneOffsetHour="createdAtTimezoneOffsetHour"
-              v-on:summary="receiveSummary"
-            />
-          </div>
-          <div class="graph" v-show="isActivityFileReady">
-            <SpeedGraph
-              :records="combinedRecords"
-              :graph-records="graphRecords"
-              :summary="summary"
-              :received-record="hoveredRecord"
-              v-on:hoveredRecord="onHoveredRecord"
-            ></SpeedGraph>
-          </div>
-          <div class="graph" v-show="hasCadence">
-            <CadenceGraph
-              :records="combinedRecords"
-              :graph-records="graphRecords"
-              :summary="summary"
-              :received-record="hoveredRecord"
-              v-on:hoveredRecord="onHoveredRecord"
-            ></CadenceGraph>
-          </div>
-          <div class="graph" v-show="hasHeartRate">
-            <HeartRateGraph
-              :records="combinedRecords"
-              :graph-records="graphRecords"
-              :summary="summary"
-              :received-record="hoveredRecord"
-              v-on:hoveredRecord="onHoveredRecord"
-            ></HeartRateGraph>
-          </div>
-          <div class="graph" v-show="hasPower">
-            <PowerGraph
-              :records="combinedRecords"
-              :graph-records="graphRecords"
-              :summary="summary"
-              :received-record="hoveredRecord"
-              v-on:hoveredRecord="onHoveredRecord"
-            ></PowerGraph>
-          </div>
-          <div class="graph" v-show="hasTemperature">
-            <TemperatureGraph
-              :records="combinedRecords"
-              :graph-records="graphRecords"
-              :summary="summary"
-              :received-record="hoveredRecord"
-              v-on:hoveredRecord="onHoveredRecord"
-            ></TemperatureGraph>
-          </div>
-          <span class="footer pt-3">
-            <span class="mx-1">
-              <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
+          <div>
+            <div :class="[isActivityFileReady ? 'default-border-top' : '']">
+              <div class="pt-4 pb-2">
+                <h5 class="title">Open Activity</h5>
+                <div style="font-size: 0.9em">
+                  Your data stays in your computer: 100% client-side power.
+                </div>
+              </div>
+              <TheNavigatorInput
+                :isActivityFileReady="isActivityFileReady"
+                :isWebAssemblySupported="isWebAssemblySupported"
+              >
+              </TheNavigatorInput>
+              <div style="font-size: 0.8em" class="pt-1">Supported files: *.fit, *.gpx, *.tcx</div>
+            </div>
+            <div class="mb-3" v-if="isActivityFileReady">
+              <TheSummary
+                :activityFiles="activityFiles"
+                :is-activity-file-ready="isActivityFileReady"
+                v-on:summary="receiveSummary"
+              />
+            </div>
+            <!-- Tab -->
+            <div v-if="isActivityFileReady">
+              <!-- Tab Toggler -->
+              <ul class="nav nav-tabs ps-2" id="menu" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green active"
+                    id="tab1-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab1-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab1-body"
+                    aria-selected="true"
+                  >
+                    Analysis
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab2-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab2-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab2-body"
+                    aria-selected="false"
+                  >
+                    Sessions
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab3-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab3-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab3-body"
+                    aria-selected="false"
+                  >
+                    Laps
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab4-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab4-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab4-body"
+                    aria-selected="false"
+                  >
+                    Tools
+                  </button>
+                </li>
+              </ul>
+              <!-- Tab Toggler Ends -->
+              <!-- Tab Content -->
+              <div class="tab-content">
+                <div
+                  class="tab-pane fade show active"
+                  id="tab1-body"
+                  role="tabpanel"
+                  aria-labelledby="tab1-tab"
+                >
+                  <div class="graph" v-if="hasSpeed">
+                    <SpeedGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></SpeedGraph>
+                  </div>
+                  <div class="graph" v-if="hasCadence">
+                    <CadenceGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></CadenceGraph>
+                  </div>
+                  <div class="graph" v-if="hasHeartRate">
+                    <HeartRateGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></HeartRateGraph>
+                  </div>
+                  <div class="graph" v-if="hasPower">
+                    <PowerGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></PowerGraph>
+                  </div>
+                  <div class="graph" v-if="hasTemperature">
+                    <TemperatureGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></TemperatureGraph>
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab2-body"
+                  role="tabpanel"
+                  aria-labelledby="tab2-tab"
+                >
+                  <div v-if="combinedSessions.length > 0">
+                    <TheSession :sessions="combinedSessions" />
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab3-body"
+                  role="tabpanel"
+                  aria-labelledby="tab2-tab"
+                >
+                  <div v-if="combinedLaps.length > 0">
+                    <TheLap :laps="combinedLaps" />
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab4-body"
+                  role="tabpanel"
+                  aria-labelledby="tab3-tab"
+                >
+                  <div class="pt-3">Coming Soon</div>
+                </div>
+              </div>
+              <!-- Tab Content Ends -->
+            </div>
+            <!-- Tab Ends -->
+            <span class="footer pt-3">
+              <span class="mx-1">
+                <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
+              </span>
+              <span class="mx-1">
+                <a href="http://github.com/openivity/openivity.github.io" target="_blank">
+                  <i class="fa-brands fa-github"></i> Code
+                </a>
+              </span>
+              <div class="mx-1 pt-1">Openivity's Open Source Project</div>
             </span>
-            <span class="mx-1">
-              <a href="http://github.com/openivity/openivity.github.io" target="_blank">
-                <i class="fa-brands fa-github"></i> Code
-              </a>
-            </span>
-            <div class="mx-1 pt-1">Openivity's Open Source Project</div>
-          </span>
+          </div>
         </div>
 
         <div
           id="right"
           class="col-12 col-xxl-9 col-xl-8 col-lg-7 map-container"
-          v-show="isActivityFileReady"
+          v-if="isActivityFileReady"
         >
           <div class="row">
             <div :class="['col-12', 'map']">
               <TheMap
                 :features="features"
                 :activity-files="activityFiles"
-                :timezoneOffsetHoursList="timezoneOffsetHours"
                 :hasCadence="hasCadence"
                 :hasHeartRate="hasHeartRate"
                 :hasPower="hasPower"
@@ -126,6 +238,7 @@ import TheSummary from '../TheSummary.vue'
             <div class="col-12 elevation-section">
               <ElevationGraph
                 :name="'elev'"
+                :has-altitude="hasAltitude"
                 :summary="summary"
                 :records="combinedRecords"
                 :graph-records="graphRecords"
@@ -142,7 +255,7 @@ import TheSummary from '../TheSummary.vue'
 </template>
 
 <script lang="ts">
-import { ActivityFile, Record } from '@/spec/activity'
+import { ActivityFile, Lap, Record, Session } from '@/spec/activity'
 import * as d3 from 'd3'
 import type { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
@@ -191,6 +304,8 @@ export default {
       activityFiles: new Array<ActivityFile>(),
       features: new Array<Feature>(),
       combinedRecords: new Array<Record>(),
+      combinedSessions: new Array<Session>(),
+      combinedLaps: new Array<Lap>(),
       graphRecords: new Array<Record>(),
       summary: new Summary(),
       hoveredRecord: new Record()
@@ -198,58 +313,41 @@ export default {
   },
   computed: {
     isActivityFileReady: function () {
-      return this.activityFiles && this.activityFiles.length > 0
+      return this.activityFiles.length > 0
     },
-    createdAtTimezoneOffsetHour: function (): number {
-      if (this.timezoneOffsetHours.length == 0) return 0
-      return this.timezoneOffsetHours[0]
-    },
-    timezoneOffsetHours: function (): number[] {
-      const tzOffsetHours: number[] = []
-      for (let i = 0; i < this.activityFiles.length; i++) {
-        if (
-          !this.activityFiles[i].activity?.timestamp ||
-          !this.activityFiles[i].activity?.localDateTime
-        ) {
-          tzOffsetHours.push(0) // Default: UTC
-          continue
-        }
-
-        const localDateTime = new Date(this.activityFiles[i].activity!.localDateTime!)
-        const timestamp = new Date(this.activityFiles[i].activity!.timestamp!)
-        const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
-        const tzOffsetHour = Math.floor(tzOffsetMillis / 1000 / 3600)
-
-        tzOffsetHours.push(tzOffsetHour)
+    hasAltitude(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        if (this.combinedRecords[i].altitude != null) return true
       }
-
-      return tzOffsetHours
+      return false
+    },
+    hasSpeed(): boolean {
+      for (let i = 0; i < this.combinedRecords.length; i++) {
+        if (this.combinedRecords[i].speed) return true
+      }
+      return false
     },
     hasCadence(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
-        const cad = this.combinedRecords[i].cadence
-        if (typeof cad === 'number' && cad != 255 && cad != 0) return true
+        if (this.combinedRecords[i].cadence) return true
       }
       return false
     },
     hasHeartRate(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
-        const hr = this.combinedRecords[i].heartRate
-        if (typeof hr === 'number' && hr != 255 && hr != 0) return true
+        if (this.combinedRecords[i].heartRate) return true
       }
       return false
     },
     hasPower(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
-        const pwr = this.combinedRecords[i].power
-        if (typeof pwr === 'number' && pwr != 65535 && pwr != 0) return true
+        if (this.combinedRecords[i].power) return true
       }
       return false
     },
     hasTemperature(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
-        const temp = this.combinedRecords[i].temperature
-        if (typeof temp === 'number' && temp != 127) return true
+        if (this.combinedRecords[i].temperature != null) return true
       }
       return false
     }
@@ -306,13 +404,13 @@ export default {
         this.scrollTop()
       })
     },
-    preprocessingResults(decodeResults: DecodeResult[]) {
+    async preprocessingResults(decodeResults: DecodeResult[]) {
       const activityFiles = new Array<ActivityFile>()
 
       const begin = new Date()
 
+      let lastDistance = 0
       for (let i = 0; i < decodeResults.length; i++) {
-        let lastDistance = 0
         let records = decodeResults[i].activityFile.records
 
         const filteredRecords: Record[] = []
@@ -337,12 +435,23 @@ export default {
       this.activityFiles = activityFiles
       this.features = this.createFeatures(activityFiles)
       this.combinedRecords = this.activityFiles.flatMap((d) => d.records)
+      this.createLapsIfNotExist(activityFiles)
+      this.combinedLaps = this.activityFiles.flatMap((d) => d.laps)
+      this.combinedSessions = this.activityFiles.flatMap((d) => d.sessions)
       this.graphRecords = this.summarizeRecords(this.combinedRecords, 100)
 
       setTimeout(() => (this.loading = false), 200)
 
       const elapsed = new Date().getTime() - begin.getTime()
       console.debug('Preprocessing Results:\t\t', elapsed, 'ms')
+    },
+    createLapsIfNotExist(activityFiles: ActivityFile[]) {
+      activityFiles.forEach((d) => {
+        if (d.laps.length > 0) return
+        const laps: Lap[] = []
+        d.sessions.forEach((ses) => laps.push(new Lap(ses)))
+        d.laps = laps
+      })
     },
     createFeatures(activityFiles: ActivityFile[]): Feature[] {
       const features: Feature[] = []
@@ -352,6 +461,9 @@ export default {
           if (d.positionLong == null || d.positionLat == null) return
           coordinates.push([d.positionLong!, d.positionLat!])
         })
+
+        if (coordinates.length == 0) return
+
         const feature = new GeoJSON().readFeature({
           id: 'lineString-' + i,
           type: 'Feature',
@@ -406,7 +518,7 @@ export default {
       return records
     },
     summarizeRecords(records: Record[], distance: number): Record[] {
-      if (records.length == 0) return records
+      if (records.length < 1000) return records
 
       let altitudes: number[] = []
       let cadences: number[] = []
@@ -440,6 +552,7 @@ export default {
             record.power = powers.reduce((sum, val) => sum + val, 0) / powers.length
           if (speeds.length > 0)
             record.speed = speeds.reduce((sum, val) => sum + val, 0) / speeds.length
+
           if (temps.length > 0)
             record.temperature = temps.reduce((sum, val) => sum + val, 0) / temps.length
 
@@ -500,8 +613,7 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
-// animation
+<style scoped>
 .v-enter-active,
 .v-leave-active {
   transition: opacity 100ms ease;
@@ -512,47 +624,50 @@ export default {
   opacity: 0;
 }
 
-.activity {
-  height: 100vh;
-}
-
-// app
 .map-container {
-  height: 100vh;
+  padding-left: 0;
 }
 
 .map {
-  height: 75vh;
+  height: 73vh;
 }
 
 .elevation-section {
-  height: 25vh;
-}
-
-.graph {
-  height: 230px;
+  height: 27vh;
 }
 
 .sidebar {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
   overflow-y: scroll;
+  overflow-x: hidden;
   height: 100vh;
 }
 
+.graph {
+  padding: 10px;
+  border-bottom: 0.5rem solid var(--color-background-soft);
+}
+
+.graph:last-child {
+  border-bottom: unset !important;
+}
+
 .landing {
-  position: fixed;
-  overflow-y: hidden;
-  top: 29%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .footer {
   display: inline-block;
   height: 70px;
   font-size: 0.8em;
-  color: #2ecc71;
+  color: var(--green-text);
 }
 
 .footer a {
-  color: #2ecc71;
+  color: var(--green-text);
 }
 
 .footer div {
@@ -563,6 +678,10 @@ export default {
 @media (pointer: coarse) {
   /* mobile device */
 
+  .default-border-top {
+    border-top: 0.5rem solid var(--color-background-soft);
+  }
+
   .flex-container {
     display: flex;
     flex-direction: column;
@@ -570,6 +689,7 @@ export default {
 
   .sidebar {
     overflow: unset;
+    height: 80vh;
   }
 
   #left {
@@ -580,19 +700,25 @@ export default {
   }
 
   .activity {
-    height: 100vh;
+    height: 100%;
   }
 
   .map-container {
-    height: 81vh;
+    padding-left: 5px;
+    height: 100%;
+  }
+
+  .elevation-section {
+    padding-left: 20px;
   }
 
   .map {
+    padding: 0;
     height: 50vh;
   }
 
   .elevation-section {
-    height: 30vh;
+    height: 35vh;
   }
 }
 

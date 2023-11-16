@@ -25,9 +25,9 @@ func (l *Listener) loop() {
 	for mesg := range l.mesgc {
 		switch mesg.Num {
 		case mesgnum.FileId:
-			l.activityFile.FileId = NewFileId(mesg)
+			l.activityFile.Creator = NewCreator(mesg)
 		case mesgnum.Activity:
-			l.activityFile.Activity = NewActivity(mesg)
+			l.activityFile.Timezone = CreateTimezone(mesg)
 		case mesgnum.Session:
 			l.activityFile.Sessions = append(l.activityFile.Sessions, NewSession(mesg))
 		case mesgnum.Lap:
@@ -43,13 +43,23 @@ func (l *Listener) loop() {
 	close(l.done)
 }
 
-func (l *Listener) Wait() {
-	close(l.mesgc)
-	<-l.done
-}
-
 func (l *Listener) OnMesg(mesg proto.Message) { l.mesgc <- mesg }
 
 func (l *Listener) ActivityFile() *ActivityFile {
-	return l.activityFile
+	l.WaitAndClose()
+
+	activityFile := *l.activityFile
+
+	l.mesgc = make(chan proto.Message, 1000)
+	l.done = make(chan struct{})
+	l.activityFile = &ActivityFile{}
+
+	go l.loop()
+
+	return &activityFile
+}
+
+func (l *Listener) WaitAndClose() {
+	close(l.mesgc)
+	<-l.done
 }

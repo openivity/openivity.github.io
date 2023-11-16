@@ -1,14 +1,23 @@
 import { DateTime, Duration, type ToHumanDurationOptions } from 'luxon'
 
-export function toTimezoneDateString(
-  s?: string | null,
-  timezoneOffsetHours?: Number | null
-): string {
-  if (!s) return ''
+export function toTimezone(s: string, timezoneOffsetHours: number = 0): DateTime {
   let d = DateTime.fromISO(s)
-  if (timezoneOffsetHours) d = d.setZone(`UTC+${timezoneOffsetHours}`)
+  let tzStr = ''
+  if (timezoneOffsetHours > 0) tzStr = '+' + timezoneOffsetHours?.toString()
+  else if (timezoneOffsetHours < 0) tzStr = timezoneOffsetHours?.toString()
 
-  return d.toLocaleString({
+  if (timezoneOffsetHours) d = d.setZone(`UTC${tzStr}`)
+
+  return d
+}
+
+export function toTimezoneDate(s: string, timezoneOffsetHours: number = 0): Date {
+  return toTimezone(s, timezoneOffsetHours).toJSDate()
+}
+
+export function toTimezoneDateString(s?: string | null, timezoneOffsetHours: number = 0): string {
+  if (!s) s
+  return toTimezone(s!, timezoneOffsetHours).toLocaleString({
     weekday: 'short',
     year: 'numeric',
     month: 'short',
@@ -36,6 +45,7 @@ export function secondsToDHMS(seconds: number): string {
 
   const minutes = Math.floor(seconds / 60)
   seconds -= minutes * 60
+  seconds = Math.round(seconds)
 
   if (days > 0) {
     return `${String(days).padStart(2, '0')}:${String(hours).padStart(2, '0')}:${String(

@@ -2,8 +2,10 @@ package activity
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"sync"
 	"syscall/js"
 	"time"
 
@@ -37,7 +39,9 @@ func (m DecodeResult) ToMap() map[string]any {
 	}
 }
 
-func decodeWorker(rc <-chan io.Reader, resc chan<- DecodeResult) {
+func decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- DecodeResult, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	r := <-rc
 
 	lis := NewListener()
@@ -45,20 +49,23 @@ func decodeWorker(rc <-chan io.Reader, resc chan<- DecodeResult) {
 		decoder.WithMesgListener(lis),
 		decoder.WithBroadcastOnly(),
 		decoder.WithNoComponentExpansion(),
+		decoder.WithIgnoreChecksum(),
 	)
 
-	_, err := dec.Decode()
-	if err != nil {
-		fmt.Printf("could not decode: %s\n", err)
-		resc <- DecodeResult{Err: err.Error()}
-		return
+	for dec.Next() {
+		_, err := dec.DecodeWithContext(ctx)
+		if err != nil {
+			fmt.Printf("could not decode: %s\n", err)
+			resc <- DecodeResult{Err: err.Error()}
+			return
+		}
+
+		resc <- DecodeResult{
+			ActivityFile: lis.ActivityFile(),
+		}
 	}
 
-	lis.Wait()
-
-	resc <- DecodeResult{
-		ActivityFile: lis.ActivityFile(),
-	}
+	lis.WaitAndClose()
 }
 
 func Decode() js.Func {
@@ -73,25 +80,48 @@ func Decode() js.Func {
 		rc := make(chan io.Reader, input.Length())
 		resc := make(chan DecodeResult, input.Length())
 
+		var wg sync.WaitGroup
+		wg.Add(input.Length())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		for i := 0; i < input.Length(); i++ {
-			go decodeWorker(rc, resc)
+			go decodeWorker(ctx, rc, resc, &wg)
 
 			b := make([]byte, input.Index(i).Length())
 			js.CopyBytesToGo(b, input.Index(i))
 			rc <- bytes.NewReader(b)
 		}
 
-		decodeResults := make([]DecodeResult, input.Length())
-		for i := 0; i < input.Length(); i++ {
-			decodeResults[i] = <-resc
-
-			if decodeResults[i].Err != "" {
-				return Result{Err: decodeResults[i].Err}.ToMap()
+		decodeResults := make([]DecodeResult, 0, input.Length())
+		var err string
+		done := make(chan struct{})
+		go func() {
+			for decodeResult := range resc {
+				if decodeResult.Err != "" {
+					err = decodeResult.Err
+					cancel()
+					break
+				}
+				decodeResults = append(decodeResults, decodeResult)
 			}
+			close(done)
+		}()
+
+		wg.Wait()
+
+		close(rc)
+		close(resc)
+
+		<-done
+
+		if err != "" {
+			return Result{Err: err}.ToMap()
 		}
 
 		slices.SortStableFunc(decodeResults, func(a, b DecodeResult) int {
-			if a.ActivityFile.FileId.TimeCreated.Before(b.ActivityFile.FileId.TimeCreated) {
+			if a.ActivityFile.Creator.TimeCreated.Before(b.ActivityFile.Creator.TimeCreated) {
 				return -1
 			}
 			return 1
