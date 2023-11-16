@@ -39,7 +39,7 @@
         </div>
       </div>
       <div class="collapse show text-start pb-3" v-bind:id="'sessions-' + index">
-        <div class="row">
+        <div class="row m-0">
           <div class="col ps-4 pe-0">
             <div>&nbsp;</div>
             <div class="right-border">
@@ -75,18 +75,18 @@
               <div class="detail-value">{{ session.maxPower ? session.maxPower : '-' }}</div>
             </div>
           </div>
-          <div class="col p-0">
+          <div class="col m-0">
             <div>&nbsp;</div>
             <div>
-              <div class="ps-3 detail-unit">km/h</div>
-              <div class="ps-3 detail-unit">rpm</div>
-              <div class="ps-3 detail-unit">bpm</div>
-              <div class="ps-3 detail-unit">W</div>
+              <div class="ps-2 detail-unit">km/h</div>
+              <div class="ps-2 detail-unit">rpm</div>
+              <div class="ps-2 detail-unit">bpm</div>
+              <div class="ps-2 detail-unit">W</div>
             </div>
           </div>
         </div>
         <div class="calories mt-1">
-          <div class="row pt-1 pb-1">
+          <div class="row m-0 pt-1 pb-1">
             <div class="col ps-4 m-0 text-start detail-title">Calories</div>
             <div class="col pe-4 m-0 text-end">
               <span class="fw-bold pe-1">{{

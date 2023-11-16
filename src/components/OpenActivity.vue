@@ -17,10 +17,10 @@ import TheSummary from './TheSummary.vue'
 <template>
   <div>
     <Transition>
-      <TheLoading v-show="loading"></TheLoading>
+      <TheLoading v-if="loading"></TheLoading>
     </Transition>
     <div class="activity container-fluid text-center flex-container">
-      <div :class="['row h-100', !isActivityFileReady ? 'align-items-center' : '']">
+      <div :class="['row', !isActivityFileReady ? 'align-items-center' : '']">
         <div
           id="left"
           :class="[
@@ -32,175 +32,194 @@ import TheSummary from './TheSummary.vue'
               : 'col-md-12 landing'
           ]"
         >
-          <div class="header pt-5 pb-2">
-            <h5 class="title">Open Activity</h5>
-            <div style="font-size: 0.9em">
-              Your data stays in your computer: 100% client-side power.
-            </div>
-          </div>
-          <TheNavigatorInput
-            :isActivityFileReady="isActivityFileReady"
-            :isWebAssemblySupported="isWebAssemblySupported"
-          >
-          </TheNavigatorInput>
-          <div style="font-size: 0.8em" class="pt-1">Supported files: *.fit, *.gpx, *.tcx</div>
-          <div class="mb-3" v-show="isActivityFileReady">
-            <TheSummary
-              :activityFiles="activityFiles"
-              :is-activity-file-ready="isActivityFileReady"
-              v-on:summary="receiveSummary"
-            />
-          </div>
-          <!-- Tab -->
-          <div v-show="isActivityFileReady">
-            <!-- Tab Toggler -->
-            <ul class="nav nav-tabs ps-2" id="menu" role="tablist">
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link flat-green active"
-                  id="tab1-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#tab1-body"
-                  type="button"
-                  role="tab"
-                  aria-controls="tab1-body"
-                  aria-selected="true"
-                >
-                  Analysis
-                </button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link flat-green"
-                  id="tab2-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#tab2-body"
-                  type="button"
-                  role="tab"
-                  aria-controls="tab2-body"
-                  aria-selected="false"
-                >
-                  Sessions
-                </button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link flat-green"
-                  id="tab3-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#tab3-body"
-                  type="button"
-                  role="tab"
-                  aria-controls="tab3-body"
-                  aria-selected="false"
-                >
-                  Laps
-                </button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link flat-green"
-                  id="tab4-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#tab4-body"
-                  type="button"
-                  role="tab"
-                  aria-controls="tab4-body"
-                  aria-selected="false"
-                >
-                  Tools
-                </button>
-              </li>
-            </ul>
-            <!-- Tab Toggler Ends -->
-            <!-- Tab Content -->
-            <div class="tab-content">
-              <div
-                class="tab-pane fade show active"
-                id="tab1-body"
-                role="tabpanel"
-                aria-labelledby="tab1-tab"
+          <div>
+            <div :class="[isActivityFileReady ? 'default-border-top' : '']">
+              <div class="pt-4 pb-2">
+                <h5 class="title">Open Activity</h5>
+                <div style="font-size: 0.9em">
+                  Your data stays in your computer: 100% client-side power.
+                </div>
+              </div>
+              <TheNavigatorInput
+                :isActivityFileReady="isActivityFileReady"
+                :isWebAssemblySupported="isWebAssemblySupported"
               >
-                <div class="graph" v-show="hasSpeed">
-                  <SpeedGraph
-                    :records="combinedRecords"
-                    :graph-records="graphRecords"
-                    :summary="summary"
-                    :received-record="hoveredRecord"
-                    v-on:hoveredRecord="onHoveredRecord"
-                  ></SpeedGraph>
-                </div>
-                <div class="graph" v-show="hasCadence">
-                  <CadenceGraph
-                    :records="combinedRecords"
-                    :graph-records="graphRecords"
-                    :summary="summary"
-                    :received-record="hoveredRecord"
-                    v-on:hoveredRecord="onHoveredRecord"
-                  ></CadenceGraph>
-                </div>
-                <div class="graph" v-show="hasHeartRate">
-                  <HeartRateGraph
-                    :records="combinedRecords"
-                    :graph-records="graphRecords"
-                    :summary="summary"
-                    :received-record="hoveredRecord"
-                    v-on:hoveredRecord="onHoveredRecord"
-                  ></HeartRateGraph>
-                </div>
-                <div class="graph" v-show="hasPower">
-                  <PowerGraph
-                    :records="combinedRecords"
-                    :graph-records="graphRecords"
-                    :summary="summary"
-                    :received-record="hoveredRecord"
-                    v-on:hoveredRecord="onHoveredRecord"
-                  ></PowerGraph>
-                </div>
-                <div class="graph" v-show="hasTemperature">
-                  <TemperatureGraph
-                    :records="combinedRecords"
-                    :graph-records="graphRecords"
-                    :summary="summary"
-                    :received-record="hoveredRecord"
-                    v-on:hoveredRecord="onHoveredRecord"
-                  ></TemperatureGraph>
-                </div>
-              </div>
-              <div class="tab-pane fade" id="tab2-body" role="tabpanel" aria-labelledby="tab2-tab">
-                <div v-show="combinedSessions.length > 0">
-                  <TheSession :sessions="combinedSessions" />
-                </div>
-              </div>
-              <div class="tab-pane fade" id="tab3-body" role="tabpanel" aria-labelledby="tab2-tab">
-                <div v-show="combinedLaps.length > 0">
-                  <TheLap :laps="combinedLaps" />
-                </div>
-              </div>
-              <div class="tab-pane fade" id="tab4-body" role="tabpanel" aria-labelledby="tab3-tab">
-                <div class="pt-3">Coming Soon</div>
-              </div>
+              </TheNavigatorInput>
+              <div style="font-size: 0.8em" class="pt-1">Supported files: *.fit, *.gpx, *.tcx</div>
             </div>
-            <!-- Tab Content Ends -->
+            <div class="mb-3" v-if="isActivityFileReady">
+              <TheSummary
+                :activityFiles="activityFiles"
+                :is-activity-file-ready="isActivityFileReady"
+                v-on:summary="receiveSummary"
+              />
+            </div>
+            <!-- Tab -->
+            <div v-if="isActivityFileReady">
+              <!-- Tab Toggler -->
+              <ul class="nav nav-tabs ps-2" id="menu" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green active"
+                    id="tab1-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab1-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab1-body"
+                    aria-selected="true"
+                  >
+                    Analysis
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab2-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab2-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab2-body"
+                    aria-selected="false"
+                  >
+                    Sessions
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab3-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab3-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab3-body"
+                    aria-selected="false"
+                  >
+                    Laps
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link flat-green"
+                    id="tab4-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#tab4-body"
+                    type="button"
+                    role="tab"
+                    aria-controls="tab4-body"
+                    aria-selected="false"
+                  >
+                    Tools
+                  </button>
+                </li>
+              </ul>
+              <!-- Tab Toggler Ends -->
+              <!-- Tab Content -->
+              <div class="tab-content">
+                <div
+                  class="tab-pane fade show active"
+                  id="tab1-body"
+                  role="tabpanel"
+                  aria-labelledby="tab1-tab"
+                >
+                  <div class="graph" v-if="hasSpeed">
+                    <SpeedGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></SpeedGraph>
+                  </div>
+                  <div class="graph" v-if="hasCadence">
+                    <CadenceGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></CadenceGraph>
+                  </div>
+                  <div class="graph" v-if="hasHeartRate">
+                    <HeartRateGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></HeartRateGraph>
+                  </div>
+                  <div class="graph" v-if="hasPower">
+                    <PowerGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></PowerGraph>
+                  </div>
+                  <div class="graph" v-if="hasTemperature">
+                    <TemperatureGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></TemperatureGraph>
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab2-body"
+                  role="tabpanel"
+                  aria-labelledby="tab2-tab"
+                >
+                  <div v-if="combinedSessions.length > 0">
+                    <TheSession :sessions="combinedSessions" />
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab3-body"
+                  role="tabpanel"
+                  aria-labelledby="tab2-tab"
+                >
+                  <div v-if="combinedLaps.length > 0">
+                    <TheLap :laps="combinedLaps" />
+                  </div>
+                </div>
+                <div
+                  class="tab-pane fade"
+                  id="tab4-body"
+                  role="tabpanel"
+                  aria-labelledby="tab3-tab"
+                >
+                  <div class="pt-3">Coming Soon</div>
+                </div>
+              </div>
+              <!-- Tab Content Ends -->
+            </div>
+            <!-- Tab Ends -->
+            <span class="footer pt-3">
+              <span class="mx-1">
+                <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
+              </span>
+              <span class="mx-1">
+                <a href="http://github.com/openivity/openivity.github.io" target="_blank">
+                  <i class="fa-brands fa-github"></i> Code
+                </a>
+              </span>
+              <div class="mx-1 pt-1">Openivity's Open Source Project</div>
+            </span>
           </div>
-          <!-- Tab Ends -->
-          <span class="footer pt-3">
-            <span class="mx-1">
-              <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
-            </span>
-            <span class="mx-1">
-              <a href="http://github.com/openivity/openivity.github.io" target="_blank">
-                <i class="fa-brands fa-github"></i> Code
-              </a>
-            </span>
-            <div class="mx-1 pt-1">Openivity's Open Source Project</div>
-          </span>
         </div>
 
         <div
           id="right"
           class="col-12 col-xxl-9 col-xl-8 col-lg-7 map-container"
-          v-show="isActivityFileReady"
+          v-if="isActivityFileReady"
         >
           <div class="row">
             <div :class="['col-12', 'map']">
@@ -237,7 +256,6 @@ import TheSummary from './TheSummary.vue'
 
 <script lang="ts">
 import { ActivityFile, Lap, Record, Session } from '@/spec/activity'
-import * as bootstrap from 'bootstrap'
 import * as d3 from 'd3'
 import type { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
@@ -374,12 +392,6 @@ export default {
         return
       }
 
-      // FIXME: this is a workaround to ensure the graphs are visible before rendering,
-      //        otherwise, the graphs will not be rendered properly.
-      bootstrap.Tab.getInstance(
-        document.querySelector('#menu li:first-child button') as HTMLElement
-      )?.show()
-
       const totalDuration = new Date().getTime() - this.decodeBeginTimestamp
       console.group('Decoding')
       console.debug('Decode took:\t\t', result.took, 'ms')
@@ -392,7 +404,7 @@ export default {
         this.scrollTop()
       })
     },
-    preprocessingResults(decodeResults: DecodeResult[]) {
+    async preprocessingResults(decodeResults: DecodeResult[]) {
       const activityFiles = new Array<ActivityFile>()
 
       const begin = new Date()
@@ -427,7 +439,6 @@ export default {
       this.combinedLaps = this.activityFiles.flatMap((d) => d.laps)
       this.combinedSessions = this.activityFiles.flatMap((d) => d.sessions)
       this.graphRecords = this.summarizeRecords(this.combinedRecords, 100)
-      console.log(this.graphRecords)
 
       setTimeout(() => (this.loading = false), 200)
 
@@ -602,8 +613,7 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
-// animation
+<style scoped>
 .v-enter-active,
 .v-leave-active {
   transition: opacity 100ms ease;
@@ -614,14 +624,8 @@ export default {
   opacity: 0;
 }
 
-.activity {
-  height: 100vh;
-}
-
-// app
 .map-container {
   padding-left: 0;
-  height: 100vh;
 }
 
 .map {
@@ -633,7 +637,10 @@ export default {
 }
 
 .sidebar {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
   overflow-y: scroll;
+  overflow-x: hidden;
   height: 100vh;
 }
 
@@ -647,9 +654,9 @@ export default {
 }
 
 .landing {
-  position: fixed;
-  overflow-y: hidden;
-  top: 30%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .footer {
@@ -671,6 +678,10 @@ export default {
 @media (pointer: coarse) {
   /* mobile device */
 
+  .default-border-top {
+    border-top: 0.5rem solid var(--color-background-soft);
+  }
+
   .flex-container {
     display: flex;
     flex-direction: column;
@@ -678,6 +689,7 @@ export default {
 
   .sidebar {
     overflow: unset;
+    height: 80vh;
   }
 
   #left {
@@ -688,12 +700,12 @@ export default {
   }
 
   .activity {
-    height: 100vh;
+    height: 100%;
   }
 
   .map-container {
     padding-left: 5px;
-    height: 81vh;
+    height: 100%;
   }
 
   .elevation-section {
@@ -701,11 +713,12 @@ export default {
   }
 
   .map {
+    padding: 0;
     height: 50vh;
   }
 
   .elevation-section {
-    height: 30vh;
+    height: 35vh;
   }
 }
 

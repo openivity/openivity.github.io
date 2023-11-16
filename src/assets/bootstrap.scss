@@ -35,13 +35,14 @@
 
 // 2. Include any default variable overrides here
 :root {
-  --bs-heading-color: #f15a22;
+  --bs-heading-color: #e14a12;
   --bs-body-bg: #ffffff;
   --bs-body-color: var(--color-text);
 }
 
 [data-bs-theme='dark'] {
   color-scheme: dark;
+  --bs-heading-color: #f15a22;
   --bs-body-bg: #181818;
   --bs-body-color: rgba(235, 235, 235, 0.64);
 }

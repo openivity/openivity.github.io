@@ -3,6 +3,7 @@
   <div class="summary mt-4" v-if="isActivityFileReady">
     <div class="px-3 pt-3 pb-4">
       <div class="time-created pb-2">
+        <i class="fa-solid fa-clock"></i>&nbsp;
         {{ formatCreatedDate(activityFiles![0].creator?.timeCreated!, activityFiles![0].timezone) }}
         &nbsp;|
         {{
@@ -11,7 +12,7 @@
             : activityFiles![0].timezone
         }}
       </div>
-      <div class="row" style="font-size: 1em; color: var(--color-title)">
+      <div class="row" style="font-size: 1em; color: var(--bs-heading-color)">
         <div class="col text-start">
           <span> Sport: {{ summary.sport ?? 'Unknown' }} </span>
         </div>
@@ -191,7 +192,7 @@ export default {
 .time-created {
   color: var(--color-text);
   text-align: left;
-  font-size: 10px;
+  font-size: 0.9em;
 }
 
 .summary-title {

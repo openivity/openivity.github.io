@@ -95,6 +95,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+// For finding overflow element
+// * {
+//     outline: 1px solid #f00 !important;
+// }
+
 @media (pointer: coarse) {
     body {
         font-size: 13px;

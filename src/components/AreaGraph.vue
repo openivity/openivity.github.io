@@ -1,7 +1,7 @@
 <template>
   <div class="col-12 h-100">
     <div
-      class="line-graph-hover row pe-1"
+      class="line-graph-hover row m-0"
       style="cursor: pointer"
       data-bs-toggle="collapse"
       v-bind:data-bs-target="`#${name.replace(/\s/g, '') + '-graph'}`"
@@ -16,7 +16,7 @@
           <i :class="['fa-solid', icon]"></i>
         </h6>
       </div>
-      <div class="col text-end pe-3">
+      <div class="col text-end">
         <span>
           <span class="pe-1 fs-6">
             {{ scaleUnit(recordView[recordField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
@@ -33,7 +33,7 @@
             <span style="font-size: 0.9em">Average {{ name }}</span>
           </span>
           <span class="col px-0 text-end">
-            <span class="fs-6 me-1">{{ avg }}</span>
+            <span class="fs-6 pe-1">{{ avg }}</span>
             <span style="font-size: 0.9em">{{ unit }}</span>
           </span>
         </div>
@@ -42,7 +42,7 @@
             <span style="font-size: 0.9em">Max {{ name }}</span>
           </span>
           <span class="col px-0 text-end">
-            <span class="fs-6 me-1">{{ max }}</span>
+            <span class="fs-6 pe-1">{{ max }}</span>
             <span style="font-size: 0.9em">{{ unit }}</span>
           </span>
         </div>
@@ -84,7 +84,7 @@ export default {
   },
   data() {
     return {
-      previousWindowWidth: 0,
+      elemWidth: 0,
       hoveredRecord: new Record(),
       recordView: new Record(),
       xScale: d3.scaleLinear()
@@ -104,16 +104,14 @@ export default {
       }
     },
     hoveredRecord: {
-      async handler(record: Record) {
+      handler(record: Record) {
         this.recordView = record
         this.$emit('hoveredRecord', record)
       }
     },
     graphRecords: {
-      async handler() {
-        this.$nextTick(() => {
-          requestAnimationFrame(() => this.renderGraph())
-        })
+      handler() {
+        this.$nextTick(() => requestAnimationFrame(() => this.renderGraph()))
       }
     }
   },
@@ -128,9 +126,7 @@ export default {
       const marginBottom = 25
       const marginLeft = 35
 
-      const $elem = this.$el as Element
-      const width = $elem.clientWidth
-      //   const height = $elem.clientHeight - marginBottom
+      const width = this.elemWidth
       const height = 230 - marginBottom
 
       const xTicks = width > 720 ? 10 : 5
@@ -358,15 +354,19 @@ export default {
         if ($el.clientWidth == 0) return
 
         // Prevent re-render graph when width is not changing
-        if (window.innerWidth == this.previousWindowWidth) return
+        if ($el.clientWidth == this.elemWidth) return
 
-        this.previousWindowWidth = window.innerWidth
+        this.elemWidth = $el.clientWidth
         this.renderGraph()
       })
     }
   },
   mounted() {
-    this.$nextTick(() => (this.previousWindowWidth = window.innerWidth))
+    this.$nextTick(() => {
+      const $el = this.$el as HTMLElement
+      this.elemWidth = $el.clientWidth
+      requestAnimationFrame(() => this.renderGraph())
+    })
     window.addEventListener('resize', this.onResize)
   },
   unmounted() {

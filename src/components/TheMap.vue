@@ -1,7 +1,7 @@
 <template>
   <div class="map-container w-100 h-100">
     <div v-if="features?.length == 0">No map data</div>
-    <div v-else id="map" ref="map" style="width: 100%; height: 100%"></div>
+    <div v-else class="map" ref="map"></div>
     <div id="popup" class="ol-popup">
       <div class="popup-content">
         <div>
@@ -102,7 +102,10 @@ minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
 
 export default {
   props: {
-    features: Array<Feature>,
+    features: {
+      type: Array<Feature>,
+      required: true
+    },
     activityFiles: Array<ActivityFile>,
     receivedRecord: Record,
     hasCadence: Boolean,
@@ -334,6 +337,8 @@ export default {
     this.map.on('change:size', this.updateExtent)
     this.map.on('pointermove', this.lineStringFeatureListener)
     this.map.on('singleclick', this.lineStringFeatureListener)
+
+    this.updateMapSource(this.features)
   },
   unmounted() {
     this.map.un('change:size', this.updateExtent)
@@ -354,13 +359,19 @@ export default {
   align-items: center;
   justify-content: center;
 }
+
+.map {
+  width: 100%;
+  height: 100%;
+  /* border: 0.5px solid black; */
+}
 .ol-popup {
   position: absolute;
   color: #000;
   background-color: rgba(255, 255, 255, 0.88);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   padding: 15px;
-  border-radius: 10px;
+  border-radius: 5px;
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;

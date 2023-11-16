@@ -1,7 +1,7 @@
 <template>
   <div class="col-12 h-100 pt-2">
-    <div class="row">
-      <div class="col">
+    <div class="row" :ref="'title-' + name">
+      <div class="col-auto">
         <h6 class="pt-1 title">
           Elevation
           <i class="fa-solid fa-solid fa-mountain"></i>
@@ -35,7 +35,7 @@
         </span>
       </div>
     </div>
-    <div :class="['elevation-container', !hasAltitude ? 'h-75' : '']">
+    <div>
       <div v-if="!hasAltitude">No altitude data</div>
       <div :ref="name" v-else></div>
     </div>
@@ -73,7 +73,7 @@ export default {
       elapsed: 0, // ms
       hoveredRecord: new Record(),
       recordView: new Record(),
-      previousWindowWidth: 0,
+      elemWidth: 0,
       xScale: d3.scaleLinear(),
       color: d3
         .scaleSequential()
@@ -138,12 +138,16 @@ export default {
 
       const marginTop = 25
       const marginRight = 5
-      const marginBottom = 35
+      const marginBottom = 20
       const marginLeft = 35
 
-      const $elem = this.$el as Element
-      const width = $elem.clientWidth
-      const height = $elem.clientHeight - marginBottom
+      const width = this.elemWidth
+
+      const $el = this.$el as Element
+      const $titleRef = this.$refs[`title-${this.name}`] as Element
+
+      const elemHeight = $el.clientHeight - $titleRef.clientHeight
+      const height = elemHeight - marginBottom
 
       const xTicks = width > 720 ? 10 : 5
       const yTicks = 3
@@ -391,15 +395,24 @@ export default {
     onResize() {
       // Ensure DOM is fully re-rendered after resize
       this.$nextTick(() => {
+        // Prevent re-render graph when width is zero
+        const $el = this.$el as HTMLElement
+        if ($el.clientWidth == 0) return
+
         // Prevent re-render graph when width is not changing
-        if (window.innerWidth == this.previousWindowWidth) return
-        this.previousWindowWidth = window.innerWidth
+        if ($el.clientWidth == this.elemWidth) return
+
+        this.elemWidth = $el.clientWidth
         this.renderGraph()
       })
     }
   },
   mounted() {
-    this.$nextTick(() => (this.previousWindowWidth = window.innerHeight))
+    this.$nextTick(() => {
+      const $el = this.$el as HTMLElement
+      this.elemWidth = $el.clientWidth
+      requestAnimationFrame(() => this.renderGraph())
+    })
     window.addEventListener('resize', this.onResize)
   },
   unmounted() {
