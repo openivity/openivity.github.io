@@ -1,6 +1,7 @@
 <template>
-  <div class="w-100 h-100">
-    <div id="map" style="width: 100%; height: 100%"></div>
+  <div class="map-container w-100 h-100">
+    <div v-if="features?.length == 0">No map data</div>
+    <div v-else id="map" ref="map" style="width: 100%; height: 100%"></div>
     <div id="popup" class="ol-popup">
       <div class="popup-content">
         <div>
@@ -103,7 +104,6 @@ export default {
   props: {
     features: Array<Feature>,
     activityFiles: Array<ActivityFile>,
-    timezoneOffsetHoursList: Array<Number>,
     receivedRecord: Record,
     hasCadence: Boolean,
     hasHeartRate: Boolean,
@@ -116,7 +116,7 @@ export default {
       popupRecord: new Record(),
       hoveredRecord: new Record(),
       popupActivityIndex: 0,
-      popupTimezoneOffsetHours: new Number(0),
+      popupTimezoneOffsetHours: 0,
       popupOverlay: new Overlay({}),
       vec: new VectorImageLayer({
         source: new VectorSource({
@@ -153,7 +153,10 @@ export default {
   watch: {
     features: {
       handler(features: Array<Feature>) {
-        requestAnimationFrame(() => this.updateMapSource(features))
+        this.$nextTick(() => {
+          this.map.setTarget(this.$refs.map as HTMLElement)
+          requestAnimationFrame(() => this.updateMapSource(features))
+        })
       }
     },
     zoomToExtent: {
@@ -189,6 +192,11 @@ export default {
 
       const view = this.map.getView()
       const source = this.vec.getSource()!
+
+      if (features.length == 0) {
+        source.clear()
+        return
+      }
 
       source.clear()
       source.addFeatures(features)
@@ -233,7 +241,7 @@ export default {
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
-      this.popupTimezoneOffsetHours = this.timezoneOffsetHoursList![index] as Number
+      this.popupTimezoneOffsetHours = this.activityFiles![index].timezone
       this.activityFiles![index].records?.forEach((record) => {
         if (!record.positionLong || !record.positionLat) return
         const euclidean = Math.abs(
@@ -318,7 +326,7 @@ export default {
     this.map.addOverlay(this.popupOverlay as Overlay)
 
     this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
-    this.map.setTarget('map')
+    this.map.setTarget(this.$refs.map as HTMLElement)
 
     this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
     this.map.addControl(new ScaleLine())
@@ -341,6 +349,11 @@ export default {
 }
 </style>
 <style scoped>
+.map-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .ol-popup {
   position: absolute;
   color: #000;

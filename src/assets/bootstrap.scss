@@ -37,11 +37,22 @@
 :root {
   --bs-heading-color: #f15a22;
   --bs-body-bg: #ffffff;
-  --bs-body-color: rgba(60, 60, 60, 0.66);
+  --bs-body-color: var(--color-text);
 }
 
 [data-bs-theme='dark'] {
   color-scheme: dark;
   --bs-body-bg: #181818;
   --bs-body-color: rgba(235, 235, 235, 0.64);
+}
+
+.nav-tabs .nav-link.flat-green {
+    font-weight: 500!important;
+    color: var(--green-text)!important;
+    border-top-left-radius: unset!important;
+    border-top-right-radius: unset!important;
+}
+
+.nav-tabs .nav-link.flat-green.active {
+    color: var(--color-heading)!important;
 }

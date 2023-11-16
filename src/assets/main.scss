@@ -1,4 +1,6 @@
 :root {
+  --palm-springs-splash: #218c74;
+  --medium-sea-green: #41b883;
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
@@ -35,6 +37,8 @@
   --color-text: var(--vt-c-text-light-1);
   --color-title: var(--vt-c-text-light-1);
 
+  --green-text: var(--palm-springs-splash);
+
   --section-gap: 160px;
 }
 
@@ -50,6 +54,8 @@
     --color-heading: var(--vt-c-text-dark-1);
     --color-text: var(--vt-c-text-dark-2);
     --color-title: var(--open-activity-color-vivid);
+
+    --green-text: var(--medium-sea-green);
   }
 }
 

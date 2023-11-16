@@ -13,18 +13,18 @@ export default {
   props: {
     size: {
       default: '70px'
-    },
-    color: {
-      default: '#41b883'
     }
+    // color: {
+    //   default: '#41b883'
+    // }
   },
   computed: {
     diamondStyle() {
       let size = parseInt(this.size)
       return {
         width: size / 4 + 'px',
-        height: size / 4 + 'px',
-        '--bg-color': this.color
+        height: size / 4 + 'px'
+        // '--bg-color': this.color
       }
     },
     styles() {
@@ -39,7 +39,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-$accent: #41b883;
+// $accent: #41b883;
 $duration: 1500ms;
 $timing: linear;
 
@@ -64,7 +64,7 @@ $timing: linear;
       left: 0;
       top: 0;
       border-radius: 2px;
-      background: var(--bg-color);
+      background: var(--green-text);
       transform: translateX(-50%) rotate(45deg) scale(0);
       animation: diamonds $duration $timing infinite;
       @for $i from 1 through 4 {

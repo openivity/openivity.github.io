@@ -2,13 +2,13 @@
   <div class="col-12 h-100 pt-2">
     <div class="row">
       <div class="col">
-        <h6 class="pt-1" style="text-align: left">
+        <h6 class="pt-1 title">
           Elevation
           <i class="fa-solid fa-solid fa-mountain"></i>
         </h6>
       </div>
-      <div class="col text-md-end text-sm-center elevation-hover">
-        <span class="text-start">
+      <div class="text-md-end text-sm-center elevation-hover" v-if="hasAltitude">
+        <span class="text-start pe-1">
           <i class="fa-solid fa-hourglass-half"></i>
           {{
             recordView.timestamp
@@ -16,7 +16,7 @@
               : '0 s'
           }}
         </span>
-        <span class="text-end">
+        <span class="text-end pe-1">
           <i class="fa-solid fa-road"></i>
           {{
             typeof recordView.distance === 'number'
@@ -25,7 +25,7 @@
           }}
           km
         </span>
-        <span class="text-end">
+        <span class="text-end pe-1">
           <i class="fa-solid fa-mountain"></i>
           {{ recordView.altitude?.toFixed(0) ?? '0' }} m
         </span>
@@ -35,7 +35,10 @@
         </span>
       </div>
     </div>
-    <div :ref="name"></div>
+    <div :class="['elevation-container', !hasAltitude ? 'h-75' : '']">
+      <div v-if="!hasAltitude">No altitude data</div>
+      <div :ref="name" v-else></div>
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -50,6 +53,7 @@ export default {
       type: String,
       required: true
     },
+    hasAltitude: Boolean,
     graphRecords: {
       type: Array<Record>,
       required: true,
@@ -219,15 +223,15 @@ export default {
         .style('font-size', '0.9em')
         .style('width', '100%').html(`
             <span>↑ Alt. (m)&nbsp;</span>
-            <span>
+            <span class="fw-bold">
                 <i class="fa-solid fa-solid fa-mountain"></i>
                 ${this.summary?.maxAltitude?.toFixed(0)} m&nbsp;
             </span>
-            <span>
+            <span class="fw-bold">
                 <i class="fa-solid fa-arrow-trend-up"></i>
                 ${this.summary?.totalAscent?.toFixed(0)} m&nbsp;
             </span>
-            <span>
+            <span class="fw-bold">
                 <i class="fa-solid fa-arrow-trend-down"></i>
                 ${this.summary?.totalDescent?.toFixed(0)} m&nbsp;
             </span>
@@ -277,7 +281,7 @@ export default {
         .datum(graphRecords)
         .transition()
         .attr('fill', '#222222')
-        .style('opacity', 1)
+        .style('opacity', 0.9)
         .attr('d', area)
 
       const linearGradientId = `linearGradient-${this.name}`
@@ -349,7 +353,7 @@ export default {
         pointer.attr('transform', `translate(${px}, 0)`)
 
         const pointerPercentage = (px - xMin) / (xMax - xMin)
-        const lookupIndex = Math.round(pointerPercentage * this.records.length - 1)
+        const lookupIndex = Math.round(pointerPercentage * (this.records.length - 1))
 
         let nearestRecord: Record = new Record()
         let dx = Number.MAX_VALUE
@@ -405,6 +409,15 @@ export default {
 </script>
 
 <style scoped>
+.title {
+  text-align: left;
+}
+
+.elevation-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .elevation-hover {
   color: var(--color-text);
   flex: 1 0 0%;
@@ -424,6 +437,7 @@ export default {
   .elevation-hover {
     display: flex;
     flex: unset;
+    font-size: 1em;
   }
 
   .elevation-hover > span:nth-child(1) {

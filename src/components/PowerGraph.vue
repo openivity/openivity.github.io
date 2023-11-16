@@ -14,8 +14,8 @@ import AreaGraph from './AreaGraph.vue'
       :graph-records="graphRecords"
       :summary="summary"
       :color="'darkslategray'"
-      :y-label="'Pwr. (watts)'"
-      :unit="'w'"
+      :y-label="'Pwr. (W)'"
+      :unit="'W'"
       :received-record="receivedRecord"
       v-on:hoveredRecord="onHoveredRecord"
     ></AreaGraph>

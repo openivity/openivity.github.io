@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ActivityView from '../views/ActivityView.vue'
-import ActivityViewV0 from '../views/v0/ActivityView.vue'
+import OpenActivityView from '../views/OpenActivityView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,12 +8,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: ActivityView
+      component: OpenActivityView
     },
     {
-      path: '/v0',
-      name: 'v0',
-      component: ActivityViewV0
+      path: '/legacy',
+      name: 'legacy',
+      component: ActivityView
     },
     {
       path: '/activity',

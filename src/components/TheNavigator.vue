@@ -4,13 +4,11 @@
     <div class="navigator-info">
       <div class="time-created" v-if="activityFiles && activityFiles.length != 0">
         Created on:
-        {{ toTimezoneDateString(activityFiles[0]?.fileId?.timeCreated, timezoneOffsetHour) }}
+        {{ toTimezoneDateString(activityFiles[0]?.creator?.timeCreated, timezoneOffsetHour) }}
         {{ GMTString(timezoneOffsetHour) }}
       </div>
       <div class="manufacturer" v-if="activityFiles && activityFiles.length != 0">
-        Device: {{ activityFiles[0]?.fileId?.manufacturer }} ({{
-          activityFiles[0]?.fileId?.product
-        }})
+        Device: {{ activityFiles[0]?.creator?.name }}
       </div>
     </div>
     <div class="navigator-summary analysis">
@@ -168,7 +166,7 @@
 <script lang="ts">
 import { ActivityFile } from '@/spec/activity'
 import { Summary } from '@/spec/summary'
-import { GMTString, toTimezoneDateString, secondsToDHMS } from '@/toolkit/date'
+import { GMTString, secondsToDHMS, toTimezoneDateString } from '@/toolkit/date'
 import { avg, max, sum } from '@/toolkit/number'
 export default {
   props: {
@@ -183,10 +181,8 @@ export default {
           const session = this.activityFiles![i].sessions![j]
 
           summary.sport = session.sport
-          summary.subSport = session.subSport
           summary.totalMovingTime = sum(summary.totalMovingTime, session.totalMovingTime)
           summary.totalElapsedTime = sum(summary.totalElapsedTime, session.totalElapsedTime)
-          summary.totalTimerTime = sum(summary.totalTimerTime, session.totalTimerTime)
           summary.totalDistance = sum(summary.totalDistance, session.totalDistance)
           summary.totalAscent = sum(summary.totalAscent, session.totalAscent)
           summary.totalDescent = sum(summary.totalDescent, session.totalDescent)
@@ -221,7 +217,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .title {
   color: var(--color-title);
   font-weight: bold;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Feature } from 'ol'
 import ElevationGraphPlot from './ElevationGraphPlot.vue'
-import Loading from './Loading.vue'
+import TheLoading from './TheLoading.vue'
 import TheMap from './TheMap.vue'
 import TheNavigator from './TheNavigator.vue'
 import TheNavigatorInput from './TheNavigatorInput.vue'
@@ -10,7 +10,7 @@ import TheNavigatorInput from './TheNavigatorInput.vue'
 <template>
   <div>
     <Transition>
-      <Loading v-show="loading"></Loading>
+      <TheLoading v-show="loading"></TheLoading>
     </Transition>
     <!-- mobile summary -->
     <div
@@ -223,15 +223,7 @@ export default {
       async handler(activityFiles: ActivityFile[]) {
         const tzOffsetHours = new Array<number>()
         for (let i = 0; i < activityFiles.length; i++) {
-          if (!activityFiles[i].activity?.timestamp || !activityFiles[i].activity?.localDateTime)
-            return
-
-          const localDateTime = new Date(activityFiles[i].activity!.localDateTime!)
-          const timestamp = new Date(activityFiles[i].activity!.timestamp!)
-          const tzOffsetMillis = localDateTime.getTime() - timestamp.getTime()
-          const tzOffsetHour = Math.floor(tzOffsetMillis / 1000 / 3600)
-
-          tzOffsetHours.push(tzOffsetHour)
+          tzOffsetHours.push(activityFiles[i].timezone)
         }
 
         this.timezoneOffsetHoursList = tzOffsetHours
