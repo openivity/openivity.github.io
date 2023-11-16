@@ -1,15 +1,32 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<!doctype html>
+<html lang="en" data-bs-theme="auto">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Open Activity</title>
-    <script type="module" crossorigin src="/assets/main-51fe38ff.js"></script>
-    <link rel="stylesheet" href="/assets/index-bc7d6859.css">
+    <script type="module" crossorigin src="/assets/main-e72f92e4.js"></script>
+    <link rel="stylesheet" href="/assets/index-ce01c860.css">
   </head>
   <body>
     <div id="app"></div>
     
   </body>
+  <script>
+    ;(function () {
+      const htmlElement = document.querySelector('html')
+      if (htmlElement.getAttribute('data-bs-theme') === 'auto') {
+        function updateTheme() {
+          document
+            .querySelector('html')
+            .setAttribute(
+              'data-bs-theme',
+              window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+            )
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme)
+        updateTheme()
+      }
+    })()
+  </script>
 </html>
