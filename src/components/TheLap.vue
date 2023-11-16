@@ -82,7 +82,9 @@
           <div class="row pt-1 pb-1">
             <div class="col ps-4 m-0 text-start detail-title">Calories</div>
             <div class="col pe-4 m-0 text-end">
-              <span class="fw-bold pe-1">{{ lap.totalCalories }}</span>
+              <span class="fw-bold pe-1">{{
+                lap.totalCalories ? lap.totalCalories.toLocaleString() : '-'
+              }}</span>
               <span class="detail-unit">Cal</span>
             </div>
           </div>
