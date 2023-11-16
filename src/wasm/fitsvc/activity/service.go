@@ -52,7 +52,7 @@ func decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- DecodeRe
 		decoder.WithIgnoreChecksum(),
 	)
 
-	for {
+	for dec.Next() {
 		_, err := dec.DecodeWithContext(ctx)
 		if err != nil {
 			fmt.Printf("could not decode: %s\n", err)
@@ -62,10 +62,6 @@ func decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- DecodeRe
 
 		resc <- DecodeResult{
 			ActivityFile: lis.ActivityFile(),
-		}
-
-		if !dec.Next() {
-			break
 		}
 	}
 

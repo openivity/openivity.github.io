@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheActivity from '../components/OpenActivity.vue'
+import OpenActivity from '../components/OpenActivity.vue'
 </script>
 
 <template>
   <main>
-    <TheActivity />
+    <OpenActivity />
   </main>
 </template>
