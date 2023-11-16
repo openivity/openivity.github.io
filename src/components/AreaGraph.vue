@@ -4,9 +4,9 @@
       class="line-graph-hover row m-0"
       style="cursor: pointer"
       data-bs-toggle="collapse"
-      v-bind:data-bs-target="`#${name.replace(/\s/g, '') + '-graph'}`"
+      v-bind:data-bs-target="`#${graphContainerName}`"
       aria-expanded="false"
-      v-bind:aria-controls="name.replace(/\s/g, '')"
+      v-bind:aria-controls="graphContainerName"
     >
       <div class="col text-start">
         <h6 class="title">
@@ -25,8 +25,8 @@
         </span>
       </div>
     </div>
-    <div class="collapse show" v-bind:id="name.replace(/\s/g, '') + '-graph'">
-      <div :ref="name"></div>
+    <div class="collapse show" v-bind:id="graphContainerName">
+      <div :ref="graphName"></div>
       <div class="graph-summary pt-1 pb-1">
         <div class="row">
           <span class="col px-0 text-start">
@@ -115,6 +115,14 @@ export default {
       }
     }
   },
+  computed: {
+    graphName(): string {
+      return this.name.toLowerCase().replace(/\s/g, '-') + '-graph'
+    },
+    graphContainerName(): string {
+      return this.graphName + '-container'
+    }
+  },
   methods: {
     prerender() {},
     renderGraph() {
@@ -132,7 +140,7 @@ export default {
       const xTicks = width > 720 ? 10 : 5
       const yTicks = 3
 
-      const container = d3.select(this.$refs[`${this.name}`] as HTMLElement)
+      const container = d3.select(this.$refs[`${this.graphName}`] as HTMLElement)
 
       container
         .select('svg')
