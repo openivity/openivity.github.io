@@ -94,7 +94,10 @@ export default {
     receivedRecord: {
       handler(record: Record) {
         this.recordView = record
-        const pointer = d3.select(this.$refs[`${this.name}`] as HTMLElement).select('g#pointer')
+        const pointer = d3
+          .select(this.$refs[`${this.graphName}`] as HTMLElement)
+          .select('g#pointer')
+
         if (JSON.stringify(record) == JSON.stringify(new Record())) {
           pointer.style('opacity', 0)
           return
