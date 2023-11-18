@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AreaGraph from './AreaGraph.vue'
+import AreaGraph, { Detail } from './AreaGraph.vue'
 </script>
 
 <template>
@@ -8,11 +8,9 @@ import AreaGraph from './AreaGraph.vue'
       :name="'Heart Rate'"
       :icon="'fa-heart-pulse'"
       :record-field="'heartRate'"
-      :avg="summary?.avgHeartRate?.toFixed(0) ?? '0'"
-      :max="summary?.maxHeartRate?.toFixed(0) ?? '0'"
       :records="records"
+      :details="details"
       :graph-records="graphRecords"
-      :summary="summary"
       :color="'red'"
       :y-label="'HR (bpm)'"
       :unit="'bpm'"
@@ -39,8 +37,25 @@ export default {
       default: []
     },
     color: String,
-    summary: Summary,
+    summary: {
+      type: Summary,
+      required: true
+    },
     receivedRecord: Record
+  },
+  computed: {
+    details(): Detail[] {
+      return [
+        new Detail({
+          title: 'Avg Heart Rate',
+          value: this.summary.avgHeartRate?.toFixed(0) ?? '0'
+        }),
+        new Detail({
+          title: 'Max Heart Rate',
+          value: this.summary.maxHeartRate?.toFixed(0) ?? '0'
+        })
+      ]
+    }
   },
   methods: {
     onHoveredRecord(record: Record) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AreaGraph from './AreaGraph.vue'
+import AreaGraph, { Detail } from './AreaGraph.vue'
 </script>
 
 <template>
@@ -8,11 +8,9 @@ import AreaGraph from './AreaGraph.vue'
       :name="'Temperature'"
       :icon="'fa-temperature-low'"
       :record-field="'temperature'"
-      :avg="summary?.avgTemperature?.toFixed(0) ?? '0'"
-      :max="summary?.maxTemperature?.toFixed(0) ?? '0'"
       :records="records"
+      :details="details"
       :graph-records="graphRecords"
-      :summary="summary"
       :color="'midnightblue'"
       :y-label="'Temp (°C)'"
       :unit="'°C'"
@@ -39,8 +37,25 @@ export default {
       default: []
     },
     color: String,
-    summary: Summary,
+    summary: {
+      type: Summary,
+      required: true
+    },
     receivedRecord: Record
+  },
+  computed: {
+    details(): Detail[] {
+      return [
+        new Detail({
+          title: 'Avg Temperature',
+          value: this.summary.avgTemperature?.toFixed(0) ?? '0'
+        }),
+        new Detail({
+          title: 'Max Temperature',
+          value: this.summary.maxTemperature?.toFixed(0) ?? '0'
+        })
+      ]
+    }
   },
   methods: {
     onHoveredRecord(record: Record) {

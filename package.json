@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build-wasm": "cd src\ncd wasm\ncd fitsvc\nmake build",
+    "build-wasm": "cd src\ncd wasm\ncd activity-service\nmake build",
     "dev": "vite --host",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",

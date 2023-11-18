@@ -26,22 +26,27 @@
           }}</span>
           <span>&nbsp;km/h</span>
         </div>
-        <div v-show="hasCadence">
+        <div v-if="hasPace">
+          <span :style="{ width: titleWidth + 'px' }">Pace:</span>
+          <span>{{ popupRecord.pace ? formatPace(popupRecord.pace) : '-' }}</span>
+          <span>&nbsp;/km</span>
+        </div>
+        <div v-if="hasCadence">
           <span :style="{ width: titleWidth + 'px' }">Cadence:</span>
           <span>{{ popupRecord.cadence ? popupRecord.cadence : '-' }}</span>
           <span>&nbsp;rpm</span>
         </div>
-        <div v-show="hasHeartRate">
+        <div v-if="hasHeartRate">
           <span :style="{ width: titleWidth + 'px' }">Heart Rate:</span>
           <span>{{ popupRecord.heartRate ? popupRecord.heartRate : '-' }}</span>
           <span>&nbsp;bpm</span>
         </div>
-        <div v-show="hasPower">
+        <div v-if="hasPower">
           <span :style="{ width: titleWidth + 'px' }">Power:</span>
           <span>{{ popupRecord.power ? popupRecord.power : '-' }}</span>
           <span>&nbsp;watts</span>
         </div>
-        <div v-show="hasTemperature">
+        <div v-if="hasTemperature">
           <span :style="{ width: titleWidth + 'px' }">Temperature:</span>
           <span>{{ popupRecord.temperature ? popupRecord.temperature : '-' }}</span>
           <span>&nbsp;°C</span>
@@ -81,6 +86,7 @@ import 'ol/ol.css'
 
 import { ActivityFile, Record } from '@/spec/activity'
 import { toTimezoneDateString } from '@/toolkit/date'
+import { formatPace } from '@/toolkit/pace'
 import { Feature, MapBrowserEvent, Overlay } from 'ol'
 import OlMap from 'ol/Map'
 import View from 'ol/View'
@@ -108,6 +114,7 @@ export default {
     },
     activityFiles: Array<ActivityFile>,
     receivedRecord: Record,
+    hasPace: Boolean,
     hasCadence: Boolean,
     hasHeartRate: Boolean,
     hasPower: Boolean,
@@ -189,6 +196,7 @@ export default {
   methods: {
     toStringHDMS: toStringHDMS,
     toTimezoneDateString: toTimezoneDateString,
+    formatPace: formatPace,
 
     updateMapSource(features: Feature[]) {
       this.popupOverlay.setPosition(undefined)

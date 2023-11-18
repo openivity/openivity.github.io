@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AreaGraph from './AreaGraph.vue'
+import AreaGraph, { Detail } from './AreaGraph.vue'
 </script>
 
 <template>
@@ -8,11 +8,9 @@ import AreaGraph from './AreaGraph.vue'
       :name="'Power'"
       :icon="'fa-bolt-lightning'"
       :record-field="'power'"
-      :avg="summary?.avgPower?.toFixed(0) ?? '0'"
-      :max="summary?.maxPower?.toFixed(0) ?? '0'"
       :records="records"
+      :details="details"
       :graph-records="graphRecords"
-      :summary="summary"
       :color="'darkslategray'"
       :y-label="'Pwr. (W)'"
       :unit="'W'"
@@ -39,8 +37,25 @@ export default {
       default: []
     },
     color: String,
-    summary: Summary,
+    summary: {
+      type: Summary,
+      required: true
+    },
     receivedRecord: Record
+  },
+  computed: {
+    details(): Detail[] {
+      return [
+        new Detail({
+          title: 'Avg Power',
+          value: this.summary.avgPower?.toFixed(0) ?? '0'
+        }),
+        new Detail({
+          title: 'Max Power',
+          value: this.summary.maxPower?.toFixed(0) ?? '0'
+        })
+      ]
+    }
   },
   methods: {
     onHoveredRecord(record: Record) {
