@@ -1,7 +1,7 @@
 name: Build Test
 on:
-  pull_request_review:
-    types: [submitted]
+  pull_request:
+    types: [opened, reopened]
 permissions:
   contents: write
 jobs:
