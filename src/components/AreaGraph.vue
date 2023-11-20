@@ -396,11 +396,31 @@ export default {
     }
   },
   mounted() {
+    const $el = this.$el as HTMLElement
+
     this.$nextTick(() => {
-      const $el = this.$el as HTMLElement
       this.elemWidth = $el.clientWidth
       requestAnimationFrame(() => this.renderGraph())
     })
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && this.elemWidth == 0) {
+            this.elemWidth = $el.clientWidth
+            this.renderGraph()
+          }
+        })
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.5 // Trigger the callback when 50% of the element is visible);
+      }
+    )
+
+    observer.observe($el)
+
     window.addEventListener('resize', this.onResize)
   },
   unmounted() {

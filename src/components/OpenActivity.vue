@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Summary } from '@/spec/summary'
 import CadenceGraph from '@/components/CadenceGraph.vue'
 import ElevationGraph from '@/components/ElevationGraph.vue'
 import HeartRateGraph from '@/components/HeartRateGraph.vue'
@@ -12,7 +11,8 @@ import TheLoading from '@/components/TheLoading.vue'
 import TheMap from '@/components/TheMap.vue'
 import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
 import TheSession from '@/components/TheSession.vue'
-import TheSummary from '@/components/TheSummary.vue'
+import TheSummary, { MULTIPLE, NONE } from '@/components/TheSummary.vue'
+import { Summary } from '@/spec/summary'
 </script>
 
 <template>
@@ -50,9 +50,11 @@ import TheSummary from '@/components/TheSummary.vue'
             </div>
             <div class="mb-3" v-if="isActivityFileReady">
               <TheSummary
-                :activityFiles="activityFiles"
+                :sessions="sessions"
+                :selected-sessions="selectedSessions"
                 :is-activity-file-ready="isActivityFileReady"
-                v-on:summary="receiveSummary"
+                v-on:summary="onReceiveSummary"
+                v-on:session-selected="onSessionSelected"
               />
             </div>
             <!-- Tab -->
@@ -127,8 +129,8 @@ import TheSummary from '@/components/TheSummary.vue'
                 >
                   <div class="graph" v-if="hasPace">
                     <PaceGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -136,8 +138,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   </div>
                   <div class="graph" v-if="hasSpeed">
                     <SpeedGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -145,8 +147,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   </div>
                   <div class="graph" v-if="hasCadence">
                     <CadenceGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -154,8 +156,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   </div>
                   <div class="graph" v-if="hasHeartRate">
                     <HeartRateGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -163,8 +165,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   </div>
                   <div class="graph" v-if="hasPower">
                     <PowerGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -172,8 +174,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   </div>
                   <div class="graph" v-if="hasTemperature">
                     <TemperatureGraph
-                      :records="combinedRecords"
-                      :graph-records="graphRecords"
+                      :records="selectedRecords"
+                      :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
                       v-on:hoveredRecord="onHoveredRecord"
@@ -186,8 +188,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   role="tabpanel"
                   aria-labelledby="tab2-tab"
                 >
-                  <div v-if="combinedSessions.length > 0">
-                    <TheSession :sessions="combinedSessions" />
+                  <div v-if="selectedSessions.length > 0">
+                    <TheSession :sessions="selectedSessions" />
                   </div>
                 </div>
                 <div
@@ -196,8 +198,8 @@ import TheSummary from '@/components/TheSummary.vue'
                   role="tabpanel"
                   aria-labelledby="tab2-tab"
                 >
-                  <div v-if="combinedLaps.length > 0">
-                    <TheLap :laps="combinedLaps" />
+                  <div v-if="selectedLaps.length > 0">
+                    <TheLap :laps="selectedLaps" />
                   </div>
                 </div>
                 <div
@@ -234,8 +236,8 @@ import TheSummary from '@/components/TheSummary.vue'
           <div class="row">
             <div :class="['col-12', 'map']">
               <TheMap
-                :features="features"
-                :activity-files="activityFiles"
+                :sessions="selectedSessions"
+                :features="selectedFeatures"
                 :hasPace="hasPace"
                 :hasCadence="hasCadence"
                 :hasHeartRate="hasHeartRate"
@@ -251,8 +253,8 @@ import TheSummary from '@/components/TheSummary.vue'
                 :name="'elev'"
                 :has-altitude="hasAltitude"
                 :summary="summary"
-                :records="combinedRecords"
-                :graph-records="graphRecords"
+                :records="selectedRecords"
+                :graph-records="selectedGraphRecords"
                 :received-record="hoveredRecord"
                 v-on:hoveredRecord="onHoveredRecord"
               ></ElevationGraph>
@@ -267,8 +269,7 @@ import TheSummary from '@/components/TheSummary.vue'
 
 <script lang="ts">
 import { ActivityFile, Lap, Record, Session } from '@/spec/activity'
-import * as d3 from 'd3'
-import type { Feature } from 'ol'
+import { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
 
 const isWebAssemblySupported =
@@ -300,69 +301,86 @@ export default {
         type: 'module'
       }),
       decodeBeginTimestamp: 0,
-      activityFiles: new Array<ActivityFile>(),
-      features: new Array<Feature>(),
+
+      activities: new Array<ActivityFile>(),
+      sessions: new Array<Session>(),
+
       combinedRecords: new Array<Record>(),
       combinedSessions: new Array<Session>(),
       combinedLaps: new Array<Lap>(),
-      graphRecords: new Array<Record>(),
+      combinedFeatures: new Array<Feature>(),
+      combinedGraphRecords: new Array<Record>(),
+
+      featureBySession: new Map<number, Feature>(),
+      graphRecordsBySessions: new Map<number, Array<Record>>(),
+
+      sessionSelected: NONE,
+
+      selectedRecords: new Array<Record>(),
+      selectedSessions: new Array<Session>(),
+      selectedLaps: new Array<Lap>(),
+      selectedFeatures: new Array<Feature>(),
+      selectedGraphRecords: new Array<Record>(),
       summary: new Summary(),
       hoveredRecord: new Record()
     }
   },
   computed: {
     isActivityFileReady: function () {
-      return this.activityFiles.length > 0
+      return this.activities.length > 0
     },
     hasPace(): boolean {
-      for (let i = 0; i < this.activityFiles.length; i++) {
-        const act = this.activityFiles[i]
-        for (let j = 0; j < act.sessions.length; j++) {
-          switch (act.sessions[j].sport) {
-            case 'Hiking':
-            case 'Walking':
-            case 'Running':
-              return true
-          }
+      for (let i = 0; i < this.selectedSessions.length; i++) {
+        switch (this.selectedSessions[i].sport) {
+          case 'Hiking':
+          case 'Walking':
+          case 'Running':
+            return true
         }
       }
       return false
     },
     hasAltitude(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].altitude != null) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].altitude != null) return true
       }
       return false
     },
     hasSpeed(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].speed) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].speed) return true
       }
       return false
     },
     hasCadence(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].cadence) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].cadence) return true
       }
       return false
     },
     hasHeartRate(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].heartRate) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].heartRate) return true
       }
       return false
     },
     hasPower(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].power) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].power) return true
       }
       return false
     },
     hasTemperature(): boolean {
-      for (let i = 0; i < this.combinedRecords.length; i++) {
-        if (this.combinedRecords[i].temperature != null) return true
+      for (let i = 0; i < this.selectedRecords.length; i++) {
+        if (this.selectedRecords[i].temperature != null) return true
       }
       return false
+    },
+    creatorName(): string {
+      return this.activities[0].creator.name
+    },
+    timeCreated(): string {
+      return this.activities[0].creator.timeCreated!
     }
   },
   methods: {
@@ -421,10 +439,10 @@ export default {
         })
     },
     decodeWorkerOnMessage(e: MessageEvent) {
-      const result = e.data as Result
+      const result = new Result(e.data)
       if (result.err != null) {
-        console.error(`decode return with err: ${result.err}`)
-        alert(`decode return with err: ${result.err}`)
+        console.error(`Decode: ${result.err}`)
+        alert(`Decode: ${result.err}`)
         this.loading = false
         return
       }
@@ -441,75 +459,104 @@ export default {
         this.scrollTop()
       })
     },
-    async preprocessingResults(activities: ActivityFile[]) {
-      const activityFiles = new Array<ActivityFile>()
+    preprocessingResults(activities: ActivityFile[]) {
+      this.activities = activities
+      this.sessions = activities.flatMap((act) => {
+        act.sessions.forEach((ses) => {
+          ses.creatorName = act.creator.name
+          ses.timeCreated = act.creator.timeCreated
+          ses.timezone = act.timezone
+        })
+        return act.sessions
+      }) // original
 
       let lastDistance = 0
-      for (let i = 0; i < activities.length; i++) {
-        let records = activities[i].records
+      const combinedSessions: Session[] = []
+      const combinedLaps: Lap[] = []
+      const combinedRecords: Record[] = []
+      const combinedFeatures: Feature[] = []
+      this.sessions.forEach((ses, i) => {
+        const clonedSession = { ...ses }
 
-        const filteredRecords: Record[] = []
-        for (let i = 0; i < records.length; i++) {
-          const rec = records[i]
-          if (typeof rec.distance !== 'number') continue
+        clonedSession.records.forEach((rec) => {
+          if (typeof rec.distance !== 'number') return
           rec.distance! += lastDistance
-          filteredRecords.push(rec)
+        })
+
+        for (let i = ses.records.length - 1; i >= 0; i--) {
+          if (ses.records[i].distance) {
+            lastDistance = ses.records[i].distance!
+            break
+          }
         }
 
-        records = filteredRecords
-        lastDistance = d3.max<number>(records.map((d2) => d2.distance!))!
+        combinedSessions.push(clonedSession)
+        combinedLaps.push(...clonedSession.laps)
+        combinedRecords.push(...clonedSession.records)
 
-        activities[i].records = records
+        const feature = this.createFeature(ses, i)
+        if (feature != null) combinedFeatures.push(feature)
+      })
 
-        activityFiles.push(activities[i])
-      }
+      this.combinedSessions = combinedSessions
+      this.combinedLaps = combinedLaps
+      this.combinedRecords = combinedRecords
+      this.combinedFeatures = combinedFeatures
+      this.combinedGraphRecords = this.summarizeRecords(combinedRecords, this.scale(lastDistance))
 
-      this.activityFiles = activityFiles
-      this.features = this.createFeatures(activityFiles)
-      this.combinedRecords = this.activityFiles.flatMap((d) => d.records)
-      this.combinedLaps = this.activityFiles.flatMap((d) => d.laps)
-      this.combinedSessions = this.activityFiles.flatMap((d) => d.sessions)
+      const featureBySession = new Map<number, Feature>()
+      const graphRecordsBySession = new Map<number, Array<Record>>()
+      for (let i = 0; i < this.sessions.length; i++) {
+        const ses = this.sessions[i]
 
-      let totalDistance: number = 0
-      for (let i = this.combinedRecords.length - 1; i >= 0; i--) {
-        if (this.combinedRecords[i].distance) {
-          totalDistance = this.combinedRecords[i].distance!
-          break
+        const feature = this.createFeature(ses, 0)
+        if (feature != null) featureBySession.set(i, feature)
+
+        let lastDistance = 0
+        for (let j = ses.records.length - 1; j >= 0; j--) {
+          if (ses.records[j].distance) {
+            lastDistance = ses.records[j].distance!
+            break
+          }
         }
+
+        const graphRecords = this.summarizeRecords(ses.records, this.scale(lastDistance))
+        graphRecordsBySession.set(i, graphRecords)
       }
 
+      this.featureBySession = featureBySession
+      this.graphRecordsBySessions = graphRecordsBySession
+
+      this.selectSession(NONE)
+
+      setTimeout(() => (this.loading = false), 200)
+    },
+    scale(distance: number): number {
       // NOTE:
       // There is a limit on the amount of data that can be visually displayed in a graph, so will summarize it based on distance.
       // As a cyclist, the longer the distance, the less likely we are to be concerned about smaller distances.
       // If the distance between data exceeds this scale, then no data will be scaled.
-      const scale = totalDistance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
 
-      this.graphRecords = this.summarizeRecords(this.combinedRecords, scale)
-
-      setTimeout(() => (this.loading = false), 200)
+      return distance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
     },
-    createFeatures(activityFiles: ActivityFile[]): Feature[] {
-      const features: Feature[] = []
-      activityFiles.forEach((act, i) => {
-        const coordinates: number[][] = []
-        act.records.forEach((d) => {
-          if (d.positionLong == null || d.positionLat == null) return
-          coordinates.push([d.positionLong!, d.positionLat!])
-        })
-
-        if (coordinates.length == 0) return
-
-        const feature = new GeoJSON().readFeature({
-          id: 'lineString-' + i,
-          type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: coordinates
-          }
-        })
-        features.push(feature)
+    createFeature(session: Session, index: number): Feature | null {
+      const coordinates: number[][] = []
+      session.records.forEach((d) => {
+        if (d.positionLong == null || d.positionLat == null) return
+        coordinates.push([d.positionLong!, d.positionLat!])
       })
-      return features
+
+      if (coordinates.length == 0) return null
+
+      const feature = new GeoJSON().readFeature({
+        id: 'lineString-' + index,
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coordinates
+        }
+      })
+      return feature
     },
     summarizeRecords(records: Record[], distance: number): Record[] {
       let altitudes: number[] = []
@@ -594,20 +641,53 @@ export default {
 
       return summarized
     },
+    selectSession(index: number) {
+      switch (index) {
+        case NONE:
+          this.selectedRecords = []
+          this.selectedSessions = []
+          this.selectedLaps = []
+          this.selectedFeatures = []
+          this.selectedGraphRecords = []
+          break
+        case MULTIPLE:
+          this.selectedRecords = this.combinedRecords
+          this.selectedSessions = this.combinedSessions
+          this.selectedLaps = this.combinedLaps
+          this.selectedFeatures = this.combinedFeatures
+          this.selectedGraphRecords = this.combinedGraphRecords
+          break
+        default: {
+          if (index > this.sessions.length - 1) return
+          this.selectedRecords = this.sessions[index].records
+          this.selectedSessions = [this.sessions[index]]
+          this.selectedLaps = this.sessions[index].laps
+          const feature = this.featureBySession.get(index)
+          this.selectedFeatures = feature ? [feature] : []
+          this.selectedGraphRecords = this.graphRecordsBySessions.get(index) ?? []
+          break
+        }
+      }
+    },
     scrollTop() {
       document.body.scrollTop = 0 // For Safari
       document.documentElement.scrollTop = 0 // For Chrome, Firefox, IE and Opera
     },
-    receiveSummary(summary: Summary) {
+    onReceiveSummary(summary: Summary) {
       this.summary = summary
     },
     onHoveredRecord(record: Record) {
       this.hoveredRecord = new Record(record)
+    },
+    onSessionSelected(sessionSelected: number) {
+      this.sessionSelected = sessionSelected
+      this.selectSession(sessionSelected)
     }
   },
   mounted() {
     document.getElementById('fileInput')?.addEventListener('change', this.fileInputEventListener)
     this.decodeWorker.onmessage = this.decodeWorkerOnMessage
+    this.selectSession(this.sessionSelected)
   }
 }
 </script>

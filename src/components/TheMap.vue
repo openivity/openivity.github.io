@@ -84,7 +84,7 @@ import destinationPointIcon from '@/assets/map/destination-point.svg'
 import startingPointIcon from '@/assets/map/starting-point.svg'
 import 'ol/ol.css'
 
-import { ActivityFile, Record } from '@/spec/activity'
+import { Record, Session } from '@/spec/activity'
 import { toTimezoneDateString } from '@/toolkit/date'
 import { formatPace } from '@/toolkit/pace'
 import { Feature, MapBrowserEvent, Overlay } from 'ol'
@@ -112,7 +112,10 @@ export default {
       type: Array<Feature>,
       required: true
     },
-    activityFiles: Array<ActivityFile>,
+    sessions: {
+      type: Array<Session>,
+      required: true
+    },
     receivedRecord: Record,
     hasPace: Boolean,
     hasCadence: Boolean,
@@ -252,18 +255,18 @@ export default {
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
-      this.popupTimezoneOffsetHours = this.activityFiles![index].timezone
-      this.activityFiles![index].records?.forEach((record) => {
-        if (!record.positionLong || !record.positionLat) return
+      this.popupTimezoneOffsetHours = this.sessions![index].timezone
+      this.sessions[index].records?.forEach((rec: Record) => {
+        if (!rec.positionLong || !rec.positionLat) return
         const euclidean = Math.abs(
           Math.sqrt(
-            Math.pow(record.positionLong - coordinate[0], 2) +
-              Math.pow(record.positionLat - coordinate[1], 2)
+            Math.pow(rec.positionLong - coordinate[0], 2) +
+              Math.pow(rec.positionLat - coordinate[1], 2)
           )
         )
         if (euclidean < nearestEuclidean) {
           nearestEuclidean = euclidean
-          nearestRecord = record
+          nearestRecord = rec
         }
       })
 
@@ -334,18 +337,14 @@ export default {
   },
   mounted() {
     this.popupOverlay = new Overlay({ element: document.getElementById('popup')! })
-    this.map.addOverlay(this.popupOverlay as Overlay)
-
-    this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
     this.map.setTarget(this.$refs.map as HTMLElement)
-
+    this.map.addOverlay(this.popupOverlay as Overlay)
+    this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
     this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
     this.map.addControl(new ScaleLine())
-
     this.map.on('change:size', this.updateExtent)
     this.map.on('pointermove', this.lineStringFeatureListener)
     this.map.on('singleclick', this.lineStringFeatureListener)
-
     this.updateMapSource(this.features)
   },
   unmounted() {

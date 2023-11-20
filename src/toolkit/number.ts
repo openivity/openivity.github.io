@@ -34,7 +34,7 @@ export function sum(...values: (number | null)[]): number | null {
   let valid = 0
   for (let i = 0; i < values.length; i++) {
     const value = values[i]
-    if (!value) continue
+    if (value == null) continue
     sum += value
     valid++
   }

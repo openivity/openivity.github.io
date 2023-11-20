@@ -4,21 +4,27 @@
     <div class="px-3 pt-3 pb-4">
       <div class="time-created pb-2">
         <i class="fa-solid fa-clock"></i>&nbsp;
-        {{ formatCreatedDate(activityFiles![0].creator?.timeCreated!, activityFiles![0].timezone) }}
+        {{ formatCreatedDate(timeCreated!, timezone!) }}
         &nbsp;|
-        {{
-          activityFiles![0].timezone > 0
-            ? '+' + activityFiles![0].timezone
-            : activityFiles![0].timezone
-        }}
+        {{ timezone == 0 ? 'UTC' : timezone > 0 ? '+' + timezone : timezone }}
       </div>
       <div class="row" style="font-size: 1em; color: var(--bs-heading-color)">
-        <div class="col text-start">
-          <span> Sport: {{ summary.sport ?? 'Unknown' }} </span>
+        <div class="col text-start fs-8">
+          <select
+            class="form-select form-select-sm"
+            name="sessions"
+            id="sessions"
+            v-model="sessionSelected"
+          >
+            <option value="-2" v-if="sessions.length == 0">No Session</option>
+            <option value="-1" v-if="sessions.length > 1">Multi-Sessions</option>
+            <option v-for="(session, index) in sessions" v-bind:key="index" :value="index">
+              {{ sessions.length > 1 ? 'S' + (index + 1) : 'Session' }}: {{ session.sport }}
+            </option>
+          </select>
         </div>
-        <div class="col text-end">
-          <i class="fa-solid fa-microchip"></i>
-          {{ activityFiles![0]?.creator?.name }}
+        <div class="col-auto text-end pt-1">
+          <i class="fa-solid fa-microchip pe-1"></i>{{ creatorName }}
         </div>
       </div>
       <div class="row pt-2 text-center">
@@ -82,39 +88,116 @@
 </template>
 
 <script lang="ts">
-import { ActivityFile } from '@/spec/activity'
+import { Session } from '@/spec/activity'
 import { Summary } from '@/spec/summary'
-import {
-  GMTString,
-  secondsToDHMS,
-  toTimezone,
-  toTimezoneDate,
-  toTimezoneDateString
-} from '@/toolkit/date'
+import { GMTString, secondsToDHMS, toTimezone, toTimezoneDateString } from '@/toolkit/date'
 import { avg, max, sum } from '@/toolkit/number'
 import { formatPace } from '@/toolkit/pace'
+
+export const NONE: number = -2
+export const MULTIPLE: number = -1
+
 export default {
   props: {
     isActivityFileReady: Boolean,
-    activityFiles: {
-      type: Array<ActivityFile>,
-      default: []
+    sessions: {
+      type: Array<Session>,
+      required: true
+    },
+    selectedSessions: {
+      type: Array<Session>,
+      required: true
     }
   },
   data() {
     return {
-      summary: new Summary()
+      sessionSelected: NONE
     }
   },
   watch: {
-    activityFiles: {
-      handler() {
-        this.createSumary()
+    sessions: {
+      handler(sessions: Session[]) {
+        this.updateSelectedSession(sessions)
+      }
+    },
+    sessionSelected: {
+      handler(value) {
+        this.$emit('sessionSelected', parseInt(value))
       }
     }
   },
+  computed: {
+    creatorName(): string {
+      if (this.selectedSessions.length > 0) return this.selectedSessions[0].creatorName
+      return 'Unknown'
+    },
+    timeCreated(): string {
+      if (this.selectedSessions.length > 0) return this.selectedSessions[0].timeCreated!
+      return ''
+    },
+    timezone(): number {
+      if (this.selectedSessions.length > 0) return this.selectedSessions[0].timezone
+      return 0
+    },
+    summary(): Summary {
+      const summary = new Summary()
+      let sports: Set<string> = new Set()
+
+      let gapSeconds: number = 0
+      for (let i = 0; i < this.selectedSessions.length; i++) {
+        const session = this.selectedSessions[i]
+        if (i > 0) {
+          const prev = this.selectedSessions[i - 1]
+
+          const prevLastTimestamp = new Date(prev.endTime).getTime()
+          const currentFirstTimestamp = new Date(session.startTime).getTime()
+
+          gapSeconds += (currentFirstTimestamp - prevLastTimestamp) / 1000
+        }
+
+        sports.add(session.sport)
+
+        summary.totalMovingTime = sum(summary.totalMovingTime, session.totalMovingTime)
+
+        summary.totalElapsedTime = sum(summary.totalElapsedTime, session.totalElapsedTime)
+        summary.totalElapsedTime = summary.totalElapsedTime! + gapSeconds
+
+        summary.totalDistance = sum(summary.totalDistance, session.totalDistance)
+        summary.totalAscent = sum(summary.totalAscent, session.totalAscent)
+        summary.totalDescent = sum(summary.totalDescent, session.totalDescent)
+        summary.totalCycles = sum(summary.totalCycles, session.totalCycles)
+        summary.totalCalories = sum(summary.totalCalories, session.totalCalories)
+        summary.avgSpeed = avg(summary.avgSpeed, session.avgSpeed)
+        summary.maxSpeed = max(summary.maxSpeed, session.maxSpeed)
+        summary.avgHeartRate = avg(summary.avgHeartRate, session.avgHeartRate)
+        summary.maxHeartRate = max(summary.maxHeartRate, session.maxHeartRate)
+        summary.avgCadence = avg(summary.avgCadence, session.avgCadence)
+        summary.maxCadence = max(summary.maxCadence, session.maxCadence)
+        summary.avgPower = avg(summary.avgPower, session.avgPower)
+        summary.maxPower = max(summary.maxPower, session.maxPower)
+        summary.avgTemperature = avg(summary.avgTemperature, session.avgTemperature)
+        summary.maxTemperature = max(summary.maxTemperature, session.maxTemperature)
+        summary.avgAltitude = avg(summary.avgAltitude, session.avgAltitude)
+        summary.maxAltitude = max(summary.maxAltitude, session.maxAltitude)
+        summary.avgPace = avg(summary.avgPace, session.avgPace)
+        summary.avgElapsedPace = max(summary.avgElapsedPace, session.avgElapsedPace)
+      }
+
+      summary.sport = Array.from(sports).join(', ')
+
+      this.$emit('summary', summary)
+
+      return summary
+    }
+  },
   methods: {
+    avg: avg,
+    max: max,
+    sum: sum,
+    secondsToDHMS: secondsToDHMS,
     formatPace: formatPace,
+    toTimezoneDateString: toTimezoneDateString,
+    GMTString: GMTString,
     formatCreatedDate(s: string, tz: number): string {
       const d = toTimezone(s, tz)
       return d.setLocale('en-US').toLocaleString({
@@ -129,107 +212,18 @@ export default {
         second: undefined
       })
     },
-    toTimezoneDateString: toTimezoneDateString,
-    GMTString: GMTString,
-    secondsToDHMS: secondsToDHMS,
-    avg: avg,
-    max: max,
-    sum: sum,
-    createSumary() {
-      const activityFiles = this.activityFiles
-      const summary = new Summary()
-      let sports: Set<string> = new Set()
-
-      for (let i = 0; i < activityFiles.length; i++) {
-        let gapSeconds: number = 0
-        if (i > 0) {
-          let lastTimestamp: Date = new Date()
-          const lastTimezone = activityFiles[i - 1].timezone
-          for (let j = activityFiles[i - 1].records.length - 1; j >= 0; j--) {
-            const records = activityFiles[i - 1].records
-            if (records[j].timestamp == null) continue
-            lastTimestamp = toTimezoneDate(records[j].timestamp!, lastTimezone)
-            break
-          }
-
-          let currentTimestamp: Date = lastTimestamp
-          const currentTimezone = activityFiles[i].timezone
-          for (let j = 0; j < activityFiles[i].records.length; j++) {
-            const records = activityFiles[i].records
-            if (records[j].timestamp == null) continue
-            currentTimestamp = toTimezoneDate(records[j].timestamp!, currentTimezone)
-            break
-          }
-
-          gapSeconds = (currentTimestamp!.getTime() - lastTimestamp!.getTime()) / 1000
-        }
-
-        for (let j = 0; j < activityFiles![i].sessions!.length; j++) {
-          const session = activityFiles![i].sessions![j]
-
-          session.sport = session.sport ? session.sport : 'Unknown'
-          sports.add(session.sport)
-
-          summary.totalMovingTime = sum(summary.totalMovingTime, session.totalMovingTime)
-          summary.totalElapsedTime = sum(summary.totalElapsedTime, session.totalElapsedTime)
-          summary.totalElapsedTime = summary.totalElapsedTime! + gapSeconds
-          summary.totalDistance = sum(summary.totalDistance, session.totalDistance)
-          summary.totalAscent = sum(summary.totalAscent, session.totalAscent)
-          summary.totalDescent = sum(summary.totalDescent, session.totalDescent)
-          summary.totalCycles = sum(summary.totalCycles, session.totalCycles)
-          summary.totalCalories = sum(summary.totalCalories, session.totalCalories)
-          summary.avgSpeed = avg(summary.avgSpeed, session.avgSpeed)
-          summary.maxSpeed = max(summary.maxSpeed, session.maxSpeed)
-          summary.avgHeartRate = avg(summary.avgHeartRate, session.avgHeartRate)
-          summary.maxHeartRate = max(summary.maxHeartRate, session.maxHeartRate)
-          summary.avgCadence = avg(summary.avgCadence, session.avgCadence)
-          summary.maxCadence = max(summary.maxCadence, session.maxCadence)
-          summary.avgPower = avg(summary.avgPower, session.avgPower)
-          summary.maxPower = max(summary.maxPower, session.maxPower)
-          summary.avgTemperature = avg(summary.avgTemperature, session.avgTemperature)
-          summary.maxTemperature = max(summary.maxTemperature, session.maxTemperature)
-          summary.avgAltitude = avg(summary.avgAltitude, session.avgAltitude)
-          summary.maxAltitude = max(summary.maxAltitude, session.maxAltitude)
-          summary.avgPace = avg(summary.avgPace, session.avgPace)
-          summary.avgElapsedPace = max(summary.avgElapsedPace, session.avgElapsedPace)
-        }
+    updateSelectedSession(sessions: Session[]) {
+      if (sessions.length == 0) {
+        this.sessionSelected = NONE
+      } else if (sessions.length == 1) {
+        this.sessionSelected = 0 // default
+      } else {
+        this.sessionSelected = MULTIPLE
       }
-
-      summary.sport = Array.from(sports).join(', ')
-
-      let totalAscent: number = 0
-      let totalDescent: number = 0
-      if (!summary.totalAscent) {
-        this.activityFiles.forEach((act) => {
-          let prevAltitude: number | null = null
-          act.records.forEach((rec) => {
-            if (prevAltitude == null) {
-              prevAltitude = rec.altitude
-              return
-            }
-            if (!rec.altitude) return
-
-            const delta = rec.altitude - prevAltitude
-            if (delta > 0) {
-              totalAscent += delta
-            } else {
-              totalDescent += Math.abs(delta)
-            }
-
-            prevAltitude = rec.altitude
-          })
-        })
-      }
-
-      summary.totalAscent = totalAscent
-      summary.totalDescent = totalDescent
-
-      this.$emit('summary', summary)
-      this.summary = summary
     }
   },
   mounted() {
-    this.createSumary()
+    this.updateSelectedSession(this.sessions)
   }
 }
 </script>

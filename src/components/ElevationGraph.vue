@@ -139,7 +139,7 @@ export default {
       const marginTop = 25
       const marginRight = 5
       const marginBottom = 20
-      const marginLeft = 35
+      const marginLeft = 55
 
       const width = this.elemWidth
 

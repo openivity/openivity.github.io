@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Feature } from 'ol'
-import ElevationGraphPlot from '@/components/legacy/ElevationGraphPlot.vue'
 import TheLoading from '@/components/TheLoading.vue'
 import TheMap from '@/components/TheMap.vue'
 import TheNavigator from '@/components/TheNavigator.vue'
 import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
+import ElevationGraphPlot from '@/components/legacy/ElevationGraphPlot.vue'
+import type { Feature } from 'ol'
 </script>
 
 <template>
@@ -31,7 +31,7 @@ import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
       <div class="offcanvas-body">
         <TheNavigatorInput :isWebAssemblySupported="isWebAssemblySupported" id="fileInputMobile">
         </TheNavigatorInput>
-        <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHour="timezoneOffsetHour" />
+        <TheNavigator :activityFiles="activities" :timezoneOffsetHour="timezoneOffsetHour" />
       </div>
     </div>
     <div class="activity container-fluid text-center">
@@ -48,7 +48,7 @@ import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
             <h2 class="title">Open Activity</h2>
           </div>
           <TheNavigatorInput :isWebAssemblySupported="isWebAssemblySupported"> </TheNavigatorInput>
-          <TheNavigator :activityFiles="activityFiles" :timezoneOffsetHour="timezoneOffsetHour" />
+          <TheNavigator :activityFiles="activities" :timezoneOffsetHour="timezoneOffsetHour" />
         </div>
         <!-- map & graph -->
         <div class="col-12 col-md-7 col-xl-9 map-container" v-show="isActivityFileReady">
@@ -56,9 +56,8 @@ import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
             <!-- the map -->
             <div :class="['col-12', 'map']">
               <TheMap
-                :features="features"
-                :activity-files="activityFiles"
-                :timezoneOffsetHoursList="timezoneOffsetHoursList"
+                :sessions="selectedSessions"
+                :features="selectedFeatures"
                 :hasCadence="hasCadence"
                 :hasHeartRate="hasHeartRate"
                 :hasPower="hasPower"
@@ -107,7 +106,7 @@ import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
                   tabindex="0"
                 >
                   <ElevationGraphPlot
-                    :activityFiles="activityFiles"
+                    :activityFiles="activities"
                     :activityTimezoneOffset="timezoneOffsetHoursList"
                     v-on:record="elevationOnRecord"
                   />
@@ -129,7 +128,7 @@ import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
 </template>
 
 <script lang="ts">
-import { ActivityFile, Record } from '@/spec/activity'
+import { ActivityFile, Record, Session } from '@/spec/activity'
 import { GeoJSON } from 'ol/format'
 
 const isWebAssemblySupported =
@@ -140,30 +139,16 @@ if (isWebAssemblySupported == false) {
 }
 
 class Result {
-  err: string
+  err: string | null = null
   took: number
-  decodeResults: Array<DecodeResult>
+  activities: Array<ActivityFile>
 
   constructor(json?: any) {
     const casted = json as Result
 
     this.err = casted?.err
     this.took = casted?.took
-    this.decodeResults = casted?.decodeResults
-  }
-}
-
-class DecodeResult {
-  feature: any
-  activityFile: ActivityFile
-  err: string
-
-  constructor(json?: any) {
-    const casted = json as DecodeResult
-
-    this.feature = casted?.feature
-    this.activityFile = new ActivityFile(casted?.activityFile)
-    this.err = casted?.err
+    this.activities = casted?.activities
   }
 }
 
@@ -174,20 +159,21 @@ export default {
         type: 'module'
       }),
       geojsons: new Array<GeoJSON>(),
-      activityFiles: new Array<ActivityFile>(),
+      activities: new Array<ActivityFile>(),
       timezoneOffsetHour: 0,
       timezoneOffsetHoursList: new Array<Number>(),
       loading: false,
       begin: 0,
-      features: new Array<Feature>()
+      selectedFeatures: new Array<Feature>(),
+      selectedSessions: new Array<Session>()
     }
   },
   computed: {
     isActivityFileReady: function () {
-      return this.activityFiles && this.activityFiles.length > 0
+      return this.activities && this.activities.length > 0
     },
     combinedRecords: function (): Record[] {
-      return this.activityFiles?.flatMap((act) => act.records)
+      return this.activities?.flatMap((act) => act.sessions.flatMap((ses) => ses.records))
     },
     hasCadence(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
@@ -233,23 +219,36 @@ export default {
     }
   },
   methods: {
+    getExtention(s: string): string {
+      if (s == '') return ''
+      const parts = s.split('.')
+      return parts[parts.length - 1].toLocaleLowerCase()
+    },
+    getExtentionIdentifier(ext: string): number {
+      if (ext == 'fit') return 1
+      if (ext == 'gpx') return 2
+      if (ext == 'tcx') return 3
+      return 0
+    },
     createFeatures(activityFiles: ActivityFile[]): Feature[] {
       const features: Feature[] = []
-      activityFiles.forEach((act, i) => {
-        const coordinates: number[][] = []
-        act.records.forEach((d) => {
-          if (d.positionLong == null || d.positionLat == null) return
-          coordinates.push([d.positionLong!, d.positionLat!])
+      activityFiles.forEach((act) => {
+        act.sessions.forEach((ses, i) => {
+          const coordinates: number[][] = []
+          ses.records.forEach((d) => {
+            if (d.positionLong == null || d.positionLat == null) return
+            coordinates.push([d.positionLong!, d.positionLat!])
+          })
+          const feature = new GeoJSON().readFeature({
+            id: 'lineString-' + i,
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: coordinates
+            }
+          })
+          features.push(feature)
         })
-        const feature = new GeoJSON().readFeature({
-          id: 'lineString-' + i,
-          type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: coordinates
-          }
-        })
-        features.push(feature)
       })
       return features
     },
@@ -263,13 +262,21 @@ export default {
           new Promise<Uint8Array>((resolve, reject) => {
             const selectedFile = (fileInput.files as FileList)[i]
             if (!selectedFile) {
+              reject('no file selected')
+              return
+            }
+
+            const ext = this.getExtention(selectedFile.name)
+            const extentionIdentifier = this.getExtentionIdentifier(ext)
+            if (extentionIdentifier == 0) {
+              reject(`file '${selectedFile.name}' (type: ${ext}) is not supported`)
               return
             }
 
             const reader = new FileReader()
             reader.onload = (e: ProgressEvent<FileReader>) => {
               const fileData = e.target!.result as ArrayBuffer
-              resolve(new Uint8Array(fileData))
+              resolve(new Uint8Array([extentionIdentifier, ...new Uint8Array(fileData)]))
             }
             reader.onerror = reject
             reader.readAsArrayBuffer(selectedFile as File)
@@ -285,17 +292,12 @@ export default {
     },
 
     decodeWorkerOnMessage(e: MessageEvent) {
-      const result = e.data as Result
-      if (result.err != '') {
+      const result = new Result(e.data)
+      if (result.err != null) {
         console.error(`decode return with err: ${result.err}`)
         alert(`decode return with err: ${result.err}`)
         this.loading = false
         return
-      }
-
-      const decodeResults = new Array<DecodeResult>()
-      for (let i = 0; i < result.decodeResults.length; i++) {
-        decodeResults[i] = new DecodeResult(result.decodeResults[i])
       }
 
       const totalDuration = new Date().getTime() - this.begin
@@ -305,61 +307,11 @@ export default {
       console.log('Total elapsed:\t\t', totalDuration, 'ms')
       console.groupEnd()
 
-      const activityFileList = new Array<ActivityFile>()
-
-      for (let i = 0; i < decodeResults.length; i++) {
-        let records = decodeResults[i].activityFile.records
-        records = this.smoothingElevation(records, 30)
-        records = this.calculateGrade(records, 100)
-        decodeResults[i].activityFile.records = records
-        activityFileList.push(decodeResults[i].activityFile)
-      }
-
-      this.activityFiles = activityFileList
-      this.features = this.createFeatures(activityFileList)
+      this.activities = result.activities
+      this.selectedSessions = this.activities.flatMap((act) => act.sessions)
+      this.selectedFeatures = this.createFeatures(this.activities)
 
       this.loading = false
-    },
-    calculateGrade(records: Record[], distance: number): Record[] {
-      for (let i = 0; i < records.length - 1; i++) {
-        if (typeof records[i].altitude !== 'number') continue
-
-        let run = 0
-        let rise = 0
-        for (let j = i + 1; j < records.length; j++) {
-          if (typeof records[j].altitude !== 'number') continue
-
-          const d = records[j].distance! - records[i].distance!
-          if (d > distance) break
-          rise = records[j].altitude! - records[i].altitude!
-          run = d
-        }
-
-        records[i].grade = (rise / run) * 100
-      }
-
-      return records
-    },
-    smoothingElevation(records: Record[], distance: number): Record[] {
-      // Simple Moving Average
-      for (let i = 1; i < records.length; i++) {
-        if (records[i].distance! < distance) continue
-        if (typeof records[i].altitude !== 'number') continue
-
-        let sum = 0
-        let counter = 0
-        for (let j = i; j >= 0; j--) {
-          if (typeof records[j].altitude !== 'number') continue
-
-          const d = records[i].distance! - records[j].distance!
-          if (d > distance) break
-          sum += records[j].altitude!
-          counter++
-        }
-
-        records[i].altitude = sum / counter
-      }
-      return records
     },
     elevationOnRecord(record: any) {
       //@ts-ignore

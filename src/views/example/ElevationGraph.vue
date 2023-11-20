@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// import ElevationGraphD3 from '@/components/ElevationGraphD3.vue'
-import ElevationGraphPlot from '@/components/ElevationGraphPlot.vue'
+// import ElevationGraphD3 from '@/components/legacy/ElevationGraphD3.vue'
+import ElevationGraphPlot from '@/components/legacy/ElevationGraphPlot.vue'
 </script>
 
 <template>

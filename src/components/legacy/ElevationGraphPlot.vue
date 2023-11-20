@@ -28,11 +28,11 @@
 
 <script lang="ts">
 import { ActivityFile, Record } from '@/spec/activity'
-import * as Plot from '@observablehq/plot'
-import PlotFigure from './PlotFigure'
-import { DateTime } from 'luxon'
 import { toHuman } from '@/toolkit/date'
 import { distanceToHuman } from '@/toolkit/distance'
+import * as Plot from '@observablehq/plot'
+import { DateTime } from 'luxon'
+import PlotFigure from './PlotFigure'
 
 export default {
   components: {
@@ -62,19 +62,19 @@ export default {
         let lastDistance: Number = 0
 
         activityFiles?.forEach((activityFile: ActivityFile, activityIndex: number) => {
-          if (activityFile.records.length > 0) {
-            activityFile.records.map((d, i) => {
+          activityFile.sessions.forEach((ses) => {
+            ses.records.map((d, i) => {
               d.totalDistance = lastDistance + d.distance
               if (typeof d.altitude === 'number' && d.altitude > this.yMax) this.yMax = d.altitude
               if (typeof d.altitude === 'number' && d.altitude < this.yMin) this.yMin = d.altitude
               d.activityIndex = activityIndex
               d.recordIndex = i
             })
-
-            lastDistance = activityFile.records[activityFile.records.length - 1].totalDistance
-            data = data.concat(activityFile.records)
-          }
+            lastDistance = ses.records[ses.records.length - 1].totalDistance
+            data = data.concat(ses.records)
+          })
         })
+        console.log('data', data.length)
         this.firstData = data[0]
         this.cumulativeData = data
       }
