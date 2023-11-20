@@ -234,7 +234,7 @@ import { Summary } from '@/spec/summary'
           v-if="isActivityFileReady"
         >
           <div class="row">
-            <div :class="['col-12', 'map']">
+            <div class="col-12 map pe-0">
               <TheMap
                 :sessions="selectedSessions"
                 :features="selectedFeatures"
@@ -248,7 +248,7 @@ import { Summary } from '@/spec/summary'
                 ref="theMap"
               />
             </div>
-            <div class="col-12 elevation-section px-4">
+            <div class="col-12 elevation-section">
               <ElevationGraph
                 :name="'elev'"
                 :has-altitude="hasAltitude"
@@ -527,7 +527,7 @@ export default {
       this.featureBySession = featureBySession
       this.graphRecordsBySessions = graphRecordsBySession
 
-      this.selectSession(NONE)
+      this.selectSession(this.sessionSelected)
 
       setTimeout(() => (this.loading = false), 200)
     },
@@ -712,6 +712,7 @@ export default {
 }
 
 .elevation-section {
+  padding-left: 20px;
   height: 27vh;
 }
 
@@ -785,10 +786,6 @@ export default {
   .map-container {
     padding-left: 5px;
     height: 100%;
-  }
-
-  .elevation-section {
-    padding-left: 20px;
   }
 
   .map {

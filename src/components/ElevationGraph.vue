@@ -139,7 +139,7 @@ export default {
       const marginTop = 25
       const marginRight = 5
       const marginBottom = 20
-      const marginLeft = 55
+      const marginLeft = 45
 
       const width = this.elemWidth
 
@@ -187,13 +187,13 @@ export default {
       // Add X & Y Axis
       svg
         .append('g')
-        .style('font-size', '0.9em')
+        .style('font-size', '0.8em')
         .attr('transform', `translate(0,${height - marginBottom})`)
         .call(d3.axisBottom(xScale).ticks(xTicks))
 
       svg
         .append('g')
-        .style('font-size', '0.9em')
+        .style('font-size', '0.8em')
         .attr('transform', `translate(${marginLeft},0)`)
         .call(d3.axisLeft(yScale).ticks(yTicks).tickFormat(d3.format('~s')))
 
@@ -454,11 +454,11 @@ export default {
   }
 
   .elevation-hover > span:nth-child(1) {
-    width: 30% !important;
+    width: 33% !important;
   }
 
   .elevation-hover > span:nth-child(4) {
-    width: 20% !important;
+    width: 17% !important;
   }
 
   .elevation-hover > span {
