@@ -24,7 +24,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        wasmServices: resolve(__dirname, 'src/workers/wasmServices.ts'),
+        wasmServices: resolve(__dirname, 'src/workers/wasm-services.ts'),
         activityService: resolve(__dirname, 'src/workers/activity-service.ts')
       }
     }
