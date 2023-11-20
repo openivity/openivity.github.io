@@ -1,0 +1,36 @@
+name: Build Test
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches:
+      - dev
+permissions:
+  contents: write
+jobs:
+  build-test:
+    concurrency: ci-${{ github.ref }} # Recommended if you intend to make multiple deployments in quick succession.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Set up Go 🔧 # Currently using wasm_exec.js go-version 1.20.8
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.8'
+
+      - name: Set up Node 🔧
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Wasm & Web 🔧
+        run: |
+          npm ci
+          npm run build-wasm
+          npm run build-only
+          cp dist/index.html dist/404.html
