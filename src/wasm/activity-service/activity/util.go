@@ -14,23 +14,26 @@ func IsConsideredMoving(sport string, speed *float64) bool {
 	}
 
 	switch sport {
-	case "Hiking", "Running", "Walking", "Swimming": // slow moving exercise
-		return *speed > 0.2778 // 1km/h ≈ 0.2778 m/s
+	case "Hiking", "Walking", "Swimming": // slow moving exercise
+		return *speed > 0.1388 // = 0.5km/h
+	case "Running":
+		return *speed > 0.7916 // = 2.85 km/h
 	default:
-		return *speed > 1.6
+		return *speed > 1.41 // 5.07 km/h
 	}
 }
 
 func HasPace(sport string) bool {
 	switch sport {
-	case "Hiking", "Walking", "Running":
+	case "Hiking", "Walking", "Running", "Swimming":
 		return true
 	default:
 		return false
 	}
 }
 
-func FormatSport(s string) string {
+// FormatTitle returns init capital for every word. "snow boarding", "snow_boarding", "SNOW_boardinG" -> "Show Boarding".
+func FormatTitle(s string) string {
 	s = strings.Map(func(r rune) rune {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
 			return ' '

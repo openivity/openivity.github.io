@@ -33,16 +33,6 @@ func (r Result) ToMap() map[string]any {
 
 type DecodeResult struct {
 	Err      error
+	Index    int
 	Activity *activity.Activity
-}
-
-func (r *DecodeResult) ToMap() map[string]any {
-	m := map[string]any{
-		"err":          nil,
-		"activityFile": r.Activity.ToMap(),
-	}
-	if r.Err != nil {
-		m["err"] = r.Err.Error()
-	}
-	return m
 }

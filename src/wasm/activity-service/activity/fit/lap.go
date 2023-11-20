@@ -107,27 +107,3 @@ func NewLap(mesg proto.Message) *activity.Lap {
 
 	return lap
 }
-
-func NewLapFromSession(session *activity.Session) *activity.Lap {
-	return &activity.Lap{
-		Timestamp:        session.Timestamp,
-		TotalMovingTime:  session.TotalMovingTime,
-		TotalElapsedTime: session.TotalElapsedTime,
-		TotalDistance:    session.TotalDistance,
-		TotalAscent:      session.TotalAscent,
-		TotalDescent:     session.TotalDescent,
-		TotalCalories:    session.TotalCalories,
-		AvgSpeed:         session.AvgSpeed,
-		MaxSpeed:         session.MaxSpeed,
-		AvgHeartRate:     session.AvgHeartRate,
-		MaxHeartRate:     session.MaxHeartRate,
-		AvgCadence:       session.AvgCadence,
-		MaxCadence:       session.MaxCadence,
-		AvgPower:         session.AvgPower,
-		MaxPower:         session.MaxPower,
-		AvgTemperature:   session.AvgTemperature,
-		MaxTemperature:   session.MaxTemperature,
-		AvgAltitude:      session.AvgAltitude,
-		MaxAltitude:      session.MaxAltitude,
-	}
-}

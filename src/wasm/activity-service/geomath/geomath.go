@@ -1,6 +1,8 @@
 package geomath
 
-import "math"
+import (
+	"math"
+)
 
 // HaversineDistance returns distance meters between two coordinates calculated using Haversine formula.
 // The Haversine formula can result in an error of up to 0.5% since the Earth is not even a sphere — it’s an oblate ellipsoid.

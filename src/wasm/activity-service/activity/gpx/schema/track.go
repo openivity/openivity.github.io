@@ -120,16 +120,18 @@ func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for i := range se.Attr {
 		attr := se.Attr[i]
 
-		// All attrs are float64
-		f, err := strconv.ParseFloat(attr.Value, 64)
-		if err != nil {
-			return err
-		}
-
 		switch attr.Name.Local {
 		case "lat":
+			f, err := strconv.ParseFloat(attr.Value, 64)
+			if err != nil {
+				return err
+			}
 			w.Lat = &f
 		case "lon":
+			f, err := strconv.ParseFloat(attr.Value, 64)
+			if err != nil {
+				return err
+			}
 			w.Lon = &f
 		}
 	}

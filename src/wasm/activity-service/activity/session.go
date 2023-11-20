@@ -1,9 +1,19 @@
 package activity
 
-import "time"
+import (
+	"time"
+
+	"github.com/muktihari/openactivity-fit/accumulator"
+)
+
+const (
+	SportUnknown = "Sport Unknown"
+)
 
 type Session struct {
 	Timestamp        time.Time
+	StartTime        time.Time
+	EndTime          time.Time
 	Sport            string
 	TotalMovingTime  float64
 	TotalElapsedTime float64
@@ -25,6 +35,110 @@ type Session struct {
 	MaxAltitude      *float64
 	AvgPace          *float64
 	AvgElapsedPace   *float64
+
+	Laps    []*Lap
+	Records []*Record
+}
+
+func NewSessionFromLaps(laps []*Lap, sport string) *Session {
+	if len(laps) == 0 {
+		return nil
+	}
+
+	ses := &Session{
+		Timestamp: laps[0].Timestamp,
+		StartTime: laps[0].StartTime,
+		EndTime:   laps[len(laps)-1].EndTime,
+		Sport:     sport,
+	}
+
+	var (
+		totalElapsedTimeAccumu = new(accumulator.Accumulator[float64])
+		totalMovingTimeAccumu  = new(accumulator.Accumulator[float64])
+		totalDistanceAccumu    = new(accumulator.Accumulator[float64])
+		totalAscentAccumu      = new(accumulator.Accumulator[uint16])
+		totalDescentAccumu     = new(accumulator.Accumulator[uint16])
+		speedAvgAccumu         = new(accumulator.Accumulator[float64])
+		speedMaxAccumu         = new(accumulator.Accumulator[float64])
+		altitudeAvgAccumu      = new(accumulator.Accumulator[float64])
+		altitudeMaxAccumu      = new(accumulator.Accumulator[float64])
+		cadenceAvgAccumu       = new(accumulator.Accumulator[uint8])
+		cadenceMaxAccumu       = new(accumulator.Accumulator[uint8])
+		heartRateAvgAccumu     = new(accumulator.Accumulator[uint8])
+		heartRateMaxAccumu     = new(accumulator.Accumulator[uint8])
+		powerAvgAccumu         = new(accumulator.Accumulator[uint16])
+		powerMaxAccumu         = new(accumulator.Accumulator[uint16])
+		temperatureAvgAccumu   = new(accumulator.Accumulator[int8])
+		temperatureMaxAccumu   = new(accumulator.Accumulator[int8])
+	)
+
+	for i := range laps {
+		lap := laps[i]
+
+		totalElapsedTimeAccumu.Collect(&lap.TotalElapsedTime)
+		totalMovingTimeAccumu.Collect(&lap.TotalMovingTime)
+		totalDistanceAccumu.Collect(&lap.TotalDistance)
+		totalAscentAccumu.Collect(&lap.TotalAscent)
+		totalDescentAccumu.Collect(&lap.TotalDescent)
+		speedAvgAccumu.Collect(lap.AvgSpeed)
+		speedMaxAccumu.Collect(lap.MaxSpeed)
+		altitudeAvgAccumu.Collect(lap.AvgAltitude)
+		altitudeMaxAccumu.Collect(lap.MaxAltitude)
+		cadenceAvgAccumu.Collect(lap.AvgCadence)
+		cadenceMaxAccumu.Collect(lap.MaxCadence)
+		heartRateAvgAccumu.Collect(lap.AvgHeartRate)
+		heartRateMaxAccumu.Collect(lap.MaxHeartRate)
+		powerAvgAccumu.Collect(lap.AvgPower)
+		powerMaxAccumu.Collect(lap.MaxPower)
+		temperatureAvgAccumu.Collect(lap.AvgTemperature)
+		temperatureMaxAccumu.Collect(lap.MaxTemperature)
+	}
+
+	if value := totalElapsedTimeAccumu.Sum(); value != nil {
+		ses.TotalElapsedTime = *value
+	}
+	if value := totalMovingTimeAccumu.Sum(); value != nil {
+		ses.TotalMovingTime = *value
+	}
+	if value := totalDistanceAccumu.Max(); value != nil {
+		ses.TotalDistance = *value
+	}
+	if value := totalAscentAccumu.Sum(); value != nil {
+		ses.TotalAscent = *value
+	}
+	if value := totalDescentAccumu.Sum(); value != nil {
+		ses.TotalDescent = *value
+	}
+
+	ses.AvgSpeed = speedAvgAccumu.Avg()
+	ses.MaxSpeed = speedMaxAccumu.Max()
+	ses.AvgAltitude = altitudeAvgAccumu.Avg()
+	ses.MaxAltitude = altitudeMaxAccumu.Max()
+	ses.AvgCadence = cadenceAvgAccumu.Avg()
+	ses.MaxCadence = cadenceMaxAccumu.Max()
+	ses.AvgHeartRate = heartRateAvgAccumu.Avg()
+	ses.MaxHeartRate = heartRateMaxAccumu.Max()
+	ses.AvgPower = powerAvgAccumu.Avg()
+	ses.MaxPower = powerMaxAccumu.Max()
+	ses.AvgTemperature = temperatureAvgAccumu.Avg()
+	ses.MaxTemperature = temperatureMaxAccumu.Max()
+
+	if HasPace(sport) {
+		var (
+			paceAvgAccumu        = new(accumulator.Accumulator[float64])
+			paceAvgElapsedAccumu = new(accumulator.Accumulator[float64])
+		)
+		for i := range laps {
+			lap := laps[i]
+
+			paceAvgAccumu.Collect(lap.AvgPace)
+			paceAvgElapsedAccumu.Collect(lap.AvgElapsedPace)
+		}
+		ses.AvgPace = paceAvgAccumu.Avg()
+		ses.AvgElapsedPace = paceAvgElapsedAccumu.Avg()
+	}
+
+	return ses
 }
 
 func (s *Session) ToMap() map[string]any {
@@ -33,9 +147,16 @@ func (s *Session) ToMap() map[string]any {
 	if s.Timestamp != (time.Time{}) {
 		m["timestamp"] = s.Timestamp.Format(time.RFC3339)
 	}
+	if s.StartTime != (time.Time{}) {
+		m["startTime"] = s.StartTime.Format(time.RFC3339)
+	}
+	if s.EndTime != (time.Time{}) {
+		m["endTime"] = s.EndTime.Format(time.RFC3339)
+	}
 	if s.Sport != "" {
 		m["sport"] = s.Sport
 	}
+
 	m["totalMovingTime"] = s.TotalMovingTime
 	m["totalElapsedTime"] = s.TotalElapsedTime
 	m["totalDistance"] = s.TotalDistance
@@ -84,6 +205,20 @@ func (s *Session) ToMap() map[string]any {
 	}
 	if s.AvgElapsedPace != nil {
 		m["avgElapsedPace"] = *s.AvgElapsedPace
+	}
+	if len(s.Laps) != 0 {
+		laps := make([]any, len(s.Laps))
+		for i := range s.Laps {
+			laps[i] = s.Laps[i].ToMap()
+		}
+		m["laps"] = laps
+	}
+	if len(s.Records) != 0 {
+		records := make([]any, len(s.Records))
+		for i := range s.Records {
+			records[i] = s.Records[i].ToMap()
+		}
+		m["records"] = records
 	}
 
 	return m

@@ -4,8 +4,6 @@ type Activity struct {
 	Creator  Creator
 	Timezone int
 	Sessions []*Session
-	Laps     []*Lap
-	Records  []*Record
 }
 
 func (a *Activity) ToMap() map[string]any {
@@ -20,18 +18,6 @@ func (a *Activity) ToMap() map[string]any {
 		sessions = append(sessions, a.Sessions[i].ToMap())
 	}
 	m["sessions"] = sessions
-
-	laps := make([]any, 0, len(a.Laps))
-	for i := range a.Laps {
-		laps = append(laps, a.Laps[i].ToMap())
-	}
-	m["laps"] = laps
-
-	records := make([]any, 0, len(a.Records))
-	for i := range a.Records {
-		records = append(records, a.Records[i].ToMap())
-	}
-	m["records"] = records
 
 	return m
 }

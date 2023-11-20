@@ -1,6 +1,7 @@
 package preprocessor
 
 import (
+	"math"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/activity"
@@ -106,6 +107,9 @@ func (p *Preprocessor) CalculateGrade(records []*activity.Record) {
 		}
 
 		grade := rise / run * 100
+		if math.IsInf(grade, 0) {
+			continue
+		}
 		rec.Grade = &grade
 	}
 }
