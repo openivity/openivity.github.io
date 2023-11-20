@@ -55,27 +55,24 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	act.Creator.Name = gpx.Creator
 	act.Creator.TimeCreated = gpx.Metadata.Time
 
-	lapCount := 0
-	recordCount := 0
-	for i := range gpx.Tracks {
-		trk := gpx.Tracks[i]
-		lapCount += len(trk.TrackSegments)
-
-		for j := range trk.TrackSegments {
-			trkseg := trk.TrackSegments[j]
-			recordCount += len(trkseg.Trackpoints)
-		}
-	}
-
-	records := make([]*activity.Record, 0, recordCount)
-	laps := make([]*activity.Lap, 0, lapCount)
 	sessions := make([]*activity.Session, 0, len(gpx.Tracks))
 
 	for i := range gpx.Tracks { // Sessions
 		trk := gpx.Tracks[i]
-		sport := activity.FormatSport(trk.Type)
 
-		sessionLaps := make([]*activity.Lap, 0, len(trk.TrackSegments))
+		sport := activity.SportUnknown
+		if trk.Type != "" {
+			sport = activity.FormatTitle(trk.Type)
+		}
+
+		laps := make([]*activity.Lap, 0, len(trk.TrackSegments))
+
+		var recordCount int
+		for i := range trk.TrackSegments {
+			recordCount += len(trk.TrackSegments[i].Trackpoints)
+		}
+		records := make([]*activity.Record, 0, recordCount)
+
 		for j := range trk.TrackSegments { // Laps
 			trkseg := trk.TrackSegments[j]
 
@@ -90,6 +87,10 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 				lapRecords = append(lapRecords, rec)
 			}
 
+			if len(lapRecords) == 0 {
+				continue
+			}
+
 			// Preprocessing...
 			if activity.HasPace(sport) {
 				s.preprocessor.CalculatePace(sport, lapRecords)
@@ -97,19 +98,28 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			s.preprocessor.SmoothingElev(lapRecords)
 			s.preprocessor.CalculateGrade(lapRecords)
 
-			lap := NewLap(lapRecords, sport)
+			lap := activity.NewLapFromRecords(lapRecords, sport)
+			laps = append(laps, lap)
+
 			records = append(records, lapRecords...)
-			sessionLaps = append(sessionLaps, lap)
 		}
 
-		laps = append(laps, sessionLaps...)
-		session := NewSession(sessionLaps, sport)
+		if len(laps) == 0 {
+			continue
+		}
+
+		session := activity.NewSessionFromLaps(laps, sport)
+		session.Records = records
+		session.Laps = laps
+
 		sessions = append(sessions, session)
 	}
 
+	if len(sessions) == 0 {
+		return nil, fmt.Errorf("gpx has no activity data")
+	}
+
 	act.Sessions = sessions
-	act.Laps = laps
-	act.Records = records
 
 	return []activity.Activity{*act}, nil
 }

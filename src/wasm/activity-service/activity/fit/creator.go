@@ -23,7 +23,7 @@ func NewCreator(mesg proto.Message) activity.Creator {
 				continue
 			}
 			m.Manufacturer = &manufacturer
-			m.Name = activity.FormatSport(typeconv.ToUint16[typedef.Manufacturer](field.Value).String())
+			m.Name = activity.FormatTitle(typeconv.ToUint16[typedef.Manufacturer](field.Value).String())
 		case fieldnum.FileIdProduct:
 			product, ok := field.Value.(uint16)
 			if !ok {

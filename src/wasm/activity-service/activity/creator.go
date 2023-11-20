@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const Unknown = "Unknown"
+
 type Creator struct {
 	Name         string
 	Manufacturer *uint16
@@ -15,7 +17,7 @@ func (c *Creator) ToMap() map[string]any {
 	m := map[string]any{}
 
 	if c.Name == "" {
-		c.Name = "Unknown"
+		c.Name = Unknown
 	}
 	m["name"] = c.Name
 	if c.Manufacturer != nil {

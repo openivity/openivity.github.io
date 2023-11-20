@@ -1,29 +1,31 @@
+export const SPORT_UNKNOWN = 'Sport Unknown'
+export const UNKNOWN = 'Unknown'
+
 export class ActivityFile {
   creator: Creator = new Creator()
   timezone: number = 0
-  laps: Lap[] = []
   sessions: Session[] = []
-  records: Record[] = []
 
   constructor(json?: any) {
     const casted = json as ActivityFile
     this.creator = casted?.creator
     this.timezone = casted?.timezone
-    this.laps = casted?.laps
     this.sessions = casted?.sessions
-    this.records = casted?.records
   }
 }
 
 export class Creator {
-  name: string = 'Unknown'
+  name: string = UNKNOWN
   manufacturer: number = 0
   product: number = 0
   timeCreated: string | null = null
 }
 
 export class Session {
-  sport: string | null = null
+  timestamp: string = ''
+  startTime: string = ''
+  endTime: string = ''
+  sport: string = SPORT_UNKNOWN
   totalMovingTime: number | null = null
   totalElapsedTime: number | null = null
   totalDistance: number | null = null
@@ -45,6 +47,14 @@ export class Session {
   maxAltitude: number | null = null
   avgPace: number | null = null
   avgElapsedPace: number | null = null
+
+  timezone: number = 0
+  laps: Lap[] = []
+  records: Record[] = []
+
+  // additional info
+  timeCreated: string | null = null
+  creatorName: string = UNKNOWN
 }
 
 export class Lap {

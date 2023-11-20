@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -53,8 +54,9 @@ func (s *service) Decode(ctx context.Context, rs []io.Reader) Result {
 	rc := make(chan io.Reader, len(rs))
 	resc := make(chan DecodeResult, len(rs))
 
-	for range rs {
-		go s.worker(ctx, rc, resc, &wg)
+	for i := range rs {
+		i := i
+		go s.worker(ctx, rc, resc, &wg, i)
 	}
 
 	for i := range rs {
@@ -67,7 +69,7 @@ func (s *service) Decode(ctx context.Context, rs []io.Reader) Result {
 	go func() {
 		for decodeResult := range resc {
 			if decodeResult.Err != nil {
-				err = decodeResult.Err
+				err = fmt.Errorf("[%d]: %w", decodeResult.Index, decodeResult.Err)
 				cancel()
 				break
 			}
@@ -100,17 +102,17 @@ func (s *service) Decode(ctx context.Context, rs []io.Reader) Result {
 	}
 }
 
-func (s *service) worker(ctx context.Context, rc <-chan io.Reader, resc chan<- DecodeResult, wg *sync.WaitGroup) {
+func (s *service) worker(ctx context.Context, rc <-chan io.Reader, resc chan<- DecodeResult, wg *sync.WaitGroup, index int) {
 	defer wg.Done()
 
 	activities, err := s.decode(ctx, <-rc)
 	if err != nil {
-		resc <- DecodeResult{Err: err}
+		resc <- DecodeResult{Err: err, Index: index}
 		return
 	}
 
 	for i := range activities {
-		resc <- DecodeResult{Activity: &activities[i]}
+		resc <- DecodeResult{Activity: &activities[i], Index: index}
 	}
 }
 

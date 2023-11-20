@@ -19,12 +19,14 @@ func NewSession(mesg proto.Message) *activity.Session {
 		switch field.Num {
 		case fieldnum.SessionTimestamp:
 			ses.Timestamp = datetime.ToTime(field.Value)
+		case fieldnum.SessionStartTime:
+			ses.StartTime = datetime.ToTime(field.Value)
 		case fieldnum.SessionSport:
 			sport, ok := field.Value.(uint8)
 			if !ok || sport == basetype.EnumInvalid {
 				continue
 			}
-			ses.Sport = activity.FormatSport(typedef.Sport(sport).String())
+			ses.Sport = activity.FormatTitle(typedef.Sport(sport).String())
 		case fieldnum.SessionTotalMovingTime:
 			totalMovingTime, ok := field.Value.(uint32)
 			if !ok || totalMovingTime == basetype.Uint32Invalid {
