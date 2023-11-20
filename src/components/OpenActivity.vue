@@ -235,7 +235,7 @@ import TheSummary from '@/components/TheSummary.vue'
                 ref="theMap"
               />
             </div>
-            <div class="col-12 elevation-section">
+            <div class="col-12 elevation-section px-4">
               <ElevationGraph
                 :name="'elev'"
                 :has-altitude="hasAltitude"

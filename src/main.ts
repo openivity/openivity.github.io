@@ -1,4 +1,3 @@
-// import './assets/bootstrap.scss'
 import './assets/fontawesome/css/brands.min.css'
 import './assets/fontawesome/css/fontawesome.min.css'
 import './assets/fontawesome/css/solid.min.css'

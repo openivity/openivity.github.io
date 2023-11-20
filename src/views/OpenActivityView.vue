@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OpenActivity from '../components/OpenActivity.vue'
+import OpenActivity from '@/components/OpenActivity.vue'
 </script>
 
 <template>
