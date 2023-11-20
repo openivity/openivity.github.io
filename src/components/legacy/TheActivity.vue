@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Feature } from 'ol'
-import ElevationGraphPlot from './ElevationGraphPlot.vue'
-import TheLoading from './TheLoading.vue'
-import TheMap from './TheMap.vue'
-import TheNavigator from './TheNavigator.vue'
-import TheNavigatorInput from './TheNavigatorInput.vue'
+import ElevationGraphPlot from '@/components/legacy/ElevationGraphPlot.vue'
+import TheLoading from '@/components/TheLoading.vue'
+import TheMap from '@/components/TheMap.vue'
+import TheNavigator from '@/components/TheNavigator.vue'
+import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
 </script>
 
 <template>

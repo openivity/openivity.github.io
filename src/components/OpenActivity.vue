@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { Summary } from '@/spec/summary'
-import CadenceGraph from './CadenceGraph.vue'
-import ElevationGraph from './ElevationGraph.vue'
-import HeartRateGraph from './HeartRateGraph.vue'
-import PaceGraph from './PaceGraph.vue'
-import PowerGraph from './PowerGraph.vue'
-import SpeedGraph from './SpeedGraph.vue'
-import TemperatureGraph from './TemperatureGraph.vue'
-import TheLap from './TheLap.vue'
-import TheLoading from './TheLoading.vue'
-import TheMap from './TheMap.vue'
-import TheNavigatorInput from './TheNavigatorInput.vue'
-import TheSession from './TheSession.vue'
-import TheSummary from './TheSummary.vue'
+import CadenceGraph from '@/components/CadenceGraph.vue'
+import ElevationGraph from '@/components/ElevationGraph.vue'
+import HeartRateGraph from '@/components/HeartRateGraph.vue'
+import PaceGraph from '@/components/PaceGraph.vue'
+import PowerGraph from '@/components/PowerGraph.vue'
+import SpeedGraph from '@/components/SpeedGraph.vue'
+import TemperatureGraph from '@/components/TemperatureGraph.vue'
+import TheLap from '@/components/TheLap.vue'
+import TheLoading from '@/components/TheLoading.vue'
+import TheMap from '@/components/TheMap.vue'
+import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
+import TheSession from '@/components/TheSession.vue'
+import TheSummary from '@/components/TheSummary.vue'
 </script>
 
 <template>
@@ -246,7 +246,7 @@ import TheSummary from './TheSummary.vue'
                 ref="theMap"
               />
             </div>
-            <div class="col-12 elevation-section">
+            <div class="col-12 elevation-section px-4">
               <ElevationGraph
                 :name="'elev'"
                 :has-altitude="hasAltitude"

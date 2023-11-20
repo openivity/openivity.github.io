@@ -1,3 +1,4 @@
+/* Global variable (before bootstrap set) */
 :root {
   --palm-springs-splash: #218c74;
   --medium-sea-green: #41b883;
@@ -59,16 +60,13 @@
   }
 }
 
+/* Bootstrap here */
 @import './bootstrap.scss';
 
-// *,
-// *::before,
-// *::after {
-//   box-sizing: border-box;
-//   margin: 0;
-//   font-weight: normal;
-// }
+/* scrollbar */
+@import './scrollbar.scss';
 
+/* Global overrides */
 body {
   color: var(--color-text);
   background: var(--color-background);
@@ -95,47 +93,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-// For finding overflow element
-// * {
-//     outline: 1px solid #f00 !important;
-// }
-
 @media (pointer: coarse) {
-    body {
-        font-size: 13px;
-    }
+  body {
+    font-size: 13px;
+  }
 }
-
-// // Additional global css
-// #app {
-//   /* max-width: 1280px; */
-//   margin: 0 auto;
-
-//   font-weight: normal;
-// }
-
-// a,
-// .green {
-//   text-decoration: none;
-//   color: hsla(160, 100%, 37%, 1);
-//   transition: 0.4s;
-// }
-
-// @media (hover: hover) {
-//   a:hover {
-//     background-color: hsla(160, 100%, 37%, 0.2);
-//   }
-// }
-
-// @media (min-width: 1024px) {
-//   body {
-//     display: flex;
-//     place-items: center;
-//   }
-
-//   #app {
-//     display: grid;
-//     grid-template-columns: 1fr 1fr;
-//     padding: 0;
-//   }
-// }

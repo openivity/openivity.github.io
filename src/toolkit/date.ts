@@ -1,4 +1,4 @@
-import { DateTime, Duration, type ToHumanDurationOptions } from 'luxon'
+import { DateTime, Duration, type ToHumanDurationOptions, type DurationLikeObject, type DurationUnit } from 'luxon'
 
 export function toTimezone(s: string, timezoneOffsetHours: number = 0): DateTime {
   let d = DateTime.fromISO(s)
@@ -58,19 +58,23 @@ export function secondsToDHMS(seconds: number): string {
   ).padStart(2, '0')}`
 }
 
+/**
+ * Returns a string representation using Luxon Duration (e.g., 1 day, 5 hr, 6 min)
+ * Zero value will be omitted (except seconds).
+ */
 export function toHuman(
   dur: Duration,
-  smallestUnit = 'seconds',
+  smallestUnit: DurationUnit = 'seconds',
   opts?: ToHumanDurationOptions
 ): string {
-  const units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds']
+  const units: DurationUnit[] = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds']
   const smallestIdx = units.indexOf(smallestUnit)
   const entries = Object.entries(
     dur
       .shiftTo(...units)
       .normalize()
       .toObject()
-  ).filter(([_unit, amount], idx) => amount > 0 && idx <= smallestIdx)
+  ).filter(([, amount], idx) => amount > 0 && idx <= smallestIdx)
   const dur2 = Duration.fromObject(
     entries.length === 0 ? { [smallestUnit]: 0 } : Object.fromEntries(entries)
   )
