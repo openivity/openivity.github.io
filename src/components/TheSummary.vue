@@ -41,7 +41,7 @@
         <div class="col px-0">
           <div>
             <div class="summary-title">Elevation Gain</div>
-            <div class="summary-value fs-6">{{ summary.totalAscent ?? '-' }} m</div>
+            <div class="summary-value fs-6">{{ summary.totalAscent?.toFixed(0) ?? '-' }} m</div>
           </div>
         </div>
       </div>
@@ -55,7 +55,13 @@
           </div>
         </div>
         <div class="col px-0">
-          <div>
+          <div v-if="summary.sport == 'Running'">
+            <div class="summary-title">Avg Pace</div>
+            <div class="summary-value fs-6 lr-border">
+              {{ summary.avgPace ? formatPace(summary.avgPace) : '-:-' }} /km
+            </div>
+          </div>
+          <div v-else>
             <div class="summary-title">Avg Speed</div>
             <div class="summary-value fs-6 lr-border">
               {{ summary.avgSpeed ? ((summary.avgSpeed * 3600) / 1000).toFixed(2) : '-' }} km/h
@@ -86,6 +92,7 @@ import {
   toTimezoneDateString
 } from '@/toolkit/date'
 import { avg, max, sum } from '@/toolkit/number'
+import { formatPace } from '@/toolkit/pace'
 export default {
   props: {
     isActivityFileReady: Boolean,
@@ -94,27 +101,61 @@ export default {
       default: []
     }
   },
-  computed: {
-    summary(): Summary {
+  data() {
+    return {
+      summary: new Summary()
+    }
+  },
+  watch: {
+    activityFiles: {
+      handler() {
+        this.createSumary()
+      }
+    }
+  },
+  methods: {
+    formatPace: formatPace,
+    formatCreatedDate(s: string, tz: number): string {
+      const d = toTimezone(s, tz)
+      return d.setLocale('en-US').toLocaleString({
+        localeMatcher: 'best fit',
+        weekday: undefined,
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        hour12: true,
+        minute: '2-digit',
+        second: undefined
+      })
+    },
+    toTimezoneDateString: toTimezoneDateString,
+    GMTString: GMTString,
+    secondsToDHMS: secondsToDHMS,
+    avg: avg,
+    max: max,
+    sum: sum,
+    createSumary() {
+      const activityFiles = this.activityFiles
       const summary = new Summary()
       let sports: Set<string> = new Set()
 
-      for (let i = 0; i < this.activityFiles.length; i++) {
+      for (let i = 0; i < activityFiles.length; i++) {
         let gapSeconds: number = 0
         if (i > 0) {
           let lastTimestamp: Date = new Date()
-          const lastTimezone = this.activityFiles[i - 1].timezone
-          for (let j = this.activityFiles[i - 1].records.length - 1; j >= 0; j--) {
-            const records = this.activityFiles[i - 1].records
+          const lastTimezone = activityFiles[i - 1].timezone
+          for (let j = activityFiles[i - 1].records.length - 1; j >= 0; j--) {
+            const records = activityFiles[i - 1].records
             if (records[j].timestamp == null) continue
             lastTimestamp = toTimezoneDate(records[j].timestamp!, lastTimezone)
             break
           }
 
           let currentTimestamp: Date = lastTimestamp
-          const currentTimezone = this.activityFiles[i].timezone
-          for (let j = 0; j < this.activityFiles[i].records.length; j++) {
-            const records = this.activityFiles[i].records
+          const currentTimezone = activityFiles[i].timezone
+          for (let j = 0; j < activityFiles[i].records.length; j++) {
+            const records = activityFiles[i].records
             if (records[j].timestamp == null) continue
             currentTimestamp = toTimezoneDate(records[j].timestamp!, currentTimezone)
             break
@@ -123,8 +164,8 @@ export default {
           gapSeconds = (currentTimestamp!.getTime() - lastTimestamp!.getTime()) / 1000
         }
 
-        for (let j = 0; j < this.activityFiles![i].sessions!.length; j++) {
-          const session = this.activityFiles![i].sessions![j]
+        for (let j = 0; j < activityFiles![i].sessions!.length; j++) {
+          const session = activityFiles![i].sessions![j]
 
           session.sport = session.sport ? session.sport : 'Unknown'
           sports.add(session.sport)
@@ -149,36 +190,46 @@ export default {
           summary.maxTemperature = max(summary.maxTemperature, session.maxTemperature)
           summary.avgAltitude = avg(summary.avgAltitude, session.avgAltitude)
           summary.maxAltitude = max(summary.maxAltitude, session.maxAltitude)
+          summary.avgPace = avg(summary.avgPace, session.avgPace)
+          summary.avgElapsedPace = max(summary.avgElapsedPace, session.avgElapsedPace)
         }
       }
 
       summary.sport = Array.from(sports).join(', ')
 
+      let totalAscent: number = 0
+      let totalDescent: number = 0
+      if (!summary.totalAscent) {
+        this.activityFiles.forEach((act) => {
+          let prevAltitude: number | null = null
+          act.records.forEach((rec) => {
+            if (prevAltitude == null) {
+              prevAltitude = rec.altitude
+              return
+            }
+            if (!rec.altitude) return
+
+            const delta = rec.altitude - prevAltitude
+            if (delta > 0) {
+              totalAscent += delta
+            } else {
+              totalDescent += Math.abs(delta)
+            }
+
+            prevAltitude = rec.altitude
+          })
+        })
+      }
+
+      summary.totalAscent = totalAscent
+      summary.totalDescent = totalDescent
+
       this.$emit('summary', summary)
-      return summary
+      this.summary = summary
     }
   },
-  methods: {
-    formatCreatedDate(s: string, tz: number): string {
-      const d = toTimezone(s, tz)
-      return d.setLocale('en-US').toLocaleString({
-        localeMatcher: 'best fit',
-        weekday: undefined,
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        hour12: true,
-        minute: '2-digit',
-        second: undefined
-      })
-    },
-    toTimezoneDateString: toTimezoneDateString,
-    GMTString: GMTString,
-    secondsToDHMS: secondsToDHMS,
-    avg: avg,
-    max: max,
-    sum: sum
+  mounted() {
+    this.createSumary()
   }
 }
 </script>

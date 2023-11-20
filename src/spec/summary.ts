@@ -21,4 +21,6 @@ export class Summary {
   maxTemperature: number | null = null
   avgAltitude: number | null = null
   maxAltitude: number | null = null
+  avgPace: number | null = null
+  avgElapsedPace: number | null = null
 }

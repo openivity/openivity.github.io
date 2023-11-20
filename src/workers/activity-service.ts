@@ -1,7 +1,7 @@
-import { fitsvc } from '@/workers/fitsvc'
+import { activityService } from '@/workers/wasm-services'
 
 onmessage = async (e) => {
-  await fitsvc
+  await activityService
   // @ts-ignore
   const result = decode(e.data)
   postMessage(result)

@@ -3,6 +3,7 @@ import { Summary } from '@/spec/summary'
 import CadenceGraph from './CadenceGraph.vue'
 import ElevationGraph from './ElevationGraph.vue'
 import HeartRateGraph from './HeartRateGraph.vue'
+import PaceGraph from './PaceGraph.vue'
 import PowerGraph from './PowerGraph.vue'
 import SpeedGraph from './SpeedGraph.vue'
 import TemperatureGraph from './TemperatureGraph.vue'
@@ -124,6 +125,15 @@ import TheSummary from './TheSummary.vue'
                   role="tabpanel"
                   aria-labelledby="tab1-tab"
                 >
+                  <div class="graph" v-if="hasPace">
+                    <PaceGraph
+                      :records="combinedRecords"
+                      :graph-records="graphRecords"
+                      :summary="summary"
+                      :received-record="hoveredRecord"
+                      v-on:hoveredRecord="onHoveredRecord"
+                    ></PaceGraph>
+                  </div>
                   <div class="graph" v-if="hasSpeed">
                     <SpeedGraph
                       :records="combinedRecords"
@@ -226,6 +236,7 @@ import TheSummary from './TheSummary.vue'
               <TheMap
                 :features="features"
                 :activity-files="activityFiles"
+                :hasPace="hasPace"
                 :hasCadence="hasCadence"
                 :hasHeartRate="hasHeartRate"
                 :hasPower="hasPower"
@@ -268,28 +279,16 @@ if (isWebAssemblySupported == false) {
 }
 
 class Result {
-  err: string
+  err: string | null = null
   took: number
-  decodeResults: Array<DecodeResult>
+  activities: Array<ActivityFile>
 
   constructor(json?: any) {
     const casted = json as Result
 
     this.err = casted?.err
     this.took = casted?.took
-    this.decodeResults = casted?.decodeResults
-  }
-}
-
-class DecodeResult {
-  activityFile: ActivityFile
-  err: string
-
-  constructor(json?: any) {
-    const casted = json as DecodeResult
-
-    this.activityFile = new ActivityFile(casted?.activityFile)
-    this.err = casted?.err
+    this.activities = casted?.activities
   }
 }
 
@@ -297,7 +296,7 @@ export default {
   data() {
     return {
       loading: false,
-      decodeWorker: new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
+      decodeWorker: new Worker(new URL('@/workers/activity-service.ts', import.meta.url), {
         type: 'module'
       }),
       decodeBeginTimestamp: 0,
@@ -314,6 +313,20 @@ export default {
   computed: {
     isActivityFileReady: function () {
       return this.activityFiles.length > 0
+    },
+    hasPace(): boolean {
+      for (let i = 0; i < this.activityFiles.length; i++) {
+        const act = this.activityFiles[i]
+        for (let j = 0; j < act.sessions.length; j++) {
+          switch (act.sessions[j].sport) {
+            case 'Hiking':
+            case 'Walking':
+            case 'Running':
+              return true
+          }
+        }
+      }
+      return false
     },
     hasAltitude(): boolean {
       for (let i = 0; i < this.combinedRecords.length; i++) {
@@ -353,6 +366,17 @@ export default {
     }
   },
   methods: {
+    getExtention(s: string): string {
+      if (s == '') return ''
+      const parts = s.split('.')
+      return parts[parts.length - 1].toLocaleLowerCase()
+    },
+    getExtentionIdentifier(ext: string): number {
+      if (ext == 'fit') return 1
+      if (ext == 'gpx') return 2
+      if (ext == 'tcx') return 3
+      return 0
+    },
     fileInputEventListener(e: Event) {
       const fileInput = e.target as HTMLInputElement
       if (!fileInput.files) return
@@ -363,13 +387,21 @@ export default {
           new Promise<Uint8Array>((resolve, reject) => {
             const selectedFile = (fileInput.files as FileList)[i]
             if (!selectedFile) {
+              reject('no file selected')
+              return
+            }
+
+            const ext = this.getExtention(selectedFile.name)
+            const extentionIdentifier = this.getExtentionIdentifier(ext)
+            if (extentionIdentifier == 0) {
+              reject(`file '${selectedFile.name}' (type: ${ext}) is not supported`)
               return
             }
 
             const reader = new FileReader()
             reader.onload = (e: ProgressEvent<FileReader>) => {
               const fileData = e.target!.result as ArrayBuffer
-              resolve(new Uint8Array(fileData))
+              resolve(new Uint8Array([extentionIdentifier, ...new Uint8Array(fileData)]))
             }
             reader.onerror = reject
             reader.readAsArrayBuffer(selectedFile as File)
@@ -377,15 +409,20 @@ export default {
         )
       }
 
-      Promise.all(promisers).then((arr) => {
-        this.decodeBeginTimestamp = new Date().getTime()
-        this.loading = true
-        this.decodeWorker.postMessage(arr)
-      })
+      Promise.all(promisers)
+        .then((arr) => {
+          this.decodeBeginTimestamp = new Date().getTime()
+          this.loading = true
+          this.decodeWorker.postMessage(arr)
+        })
+        .catch((e: string) => {
+          console.log(e)
+          alert(e)
+        })
     },
     decodeWorkerOnMessage(e: MessageEvent) {
       const result = e.data as Result
-      if (result.err != '') {
+      if (result.err != null) {
         console.error(`decode return with err: ${result.err}`)
         alert(`decode return with err: ${result.err}`)
         this.loading = false
@@ -400,18 +437,16 @@ export default {
       console.groupEnd()
 
       requestAnimationFrame(() => {
-        this.preprocessingResults(result.decodeResults)
+        this.preprocessingResults(result.activities)
         this.scrollTop()
       })
     },
-    async preprocessingResults(decodeResults: DecodeResult[]) {
+    async preprocessingResults(activities: ActivityFile[]) {
       const activityFiles = new Array<ActivityFile>()
 
-      const begin = new Date()
-
       let lastDistance = 0
-      for (let i = 0; i < decodeResults.length; i++) {
-        let records = decodeResults[i].activityFile.records
+      for (let i = 0; i < activities.length; i++) {
+        let records = activities[i].records
 
         const filteredRecords: Record[] = []
         for (let i = 0; i < records.length; i++) {
@@ -422,36 +457,36 @@ export default {
         }
 
         records = filteredRecords
-        lastDistance = d3.max(records.map((d2) => d2.distance!))!
+        lastDistance = d3.max<number>(records.map((d2) => d2.distance!))!
 
-        records = this.smoothingElevation(records, 30)
-        records = this.calculateGrade(records, 100)
+        activities[i].records = records
 
-        decodeResults[i].activityFile.records = records
-
-        activityFiles.push(decodeResults[i].activityFile)
+        activityFiles.push(activities[i])
       }
 
       this.activityFiles = activityFiles
       this.features = this.createFeatures(activityFiles)
       this.combinedRecords = this.activityFiles.flatMap((d) => d.records)
-      this.createLapsIfNotExist(activityFiles)
       this.combinedLaps = this.activityFiles.flatMap((d) => d.laps)
       this.combinedSessions = this.activityFiles.flatMap((d) => d.sessions)
-      this.graphRecords = this.summarizeRecords(this.combinedRecords, 100)
+
+      let totalDistance: number = 0
+      for (let i = this.combinedRecords.length - 1; i >= 0; i--) {
+        if (this.combinedRecords[i].distance) {
+          totalDistance = this.combinedRecords[i].distance!
+          break
+        }
+      }
+
+      // NOTE:
+      // There is a limit on the amount of data that can be visually displayed in a graph, so will summarize it based on distance.
+      // As a cyclist, the longer the distance, the less likely we are to be concerned about smaller distances.
+      // If the distance between data exceeds this scale, then no data will be scaled.
+      const scale = totalDistance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
+
+      this.graphRecords = this.summarizeRecords(this.combinedRecords, scale)
 
       setTimeout(() => (this.loading = false), 200)
-
-      const elapsed = new Date().getTime() - begin.getTime()
-      console.debug('Preprocessing Results:\t\t', elapsed, 'ms')
-    },
-    createLapsIfNotExist(activityFiles: ActivityFile[]) {
-      activityFiles.forEach((d) => {
-        if (d.laps.length > 0) return
-        const laps: Lap[] = []
-        d.sessions.forEach((ses) => laps.push(new Lap(ses)))
-        d.laps = laps
-      })
     },
     createFeatures(activityFiles: ActivityFile[]): Feature[] {
       const features: Feature[] = []
@@ -476,50 +511,7 @@ export default {
       })
       return features
     },
-    smoothingElevation(records: Record[], distance: number): Record[] {
-      // Simple Moving Average
-      for (let i = 1; i < records.length; i++) {
-        if (records[i].distance! < distance) continue
-        if (typeof records[i].altitude !== 'number') continue
-
-        let sum = 0
-        let counter = 0
-        for (let j = i; j >= 0; j--) {
-          if (typeof records[j].altitude !== 'number') continue
-
-          const d = records[i].distance! - records[j].distance!
-          if (d > distance) break
-          sum += records[j].altitude!
-          counter++
-        }
-
-        records[i].altitude = sum / counter
-      }
-      return records
-    },
-    calculateGrade(records: Record[], distance: number): Record[] {
-      for (let i = 0; i < records.length - 1; i++) {
-        if (typeof records[i].altitude !== 'number') continue
-
-        let run = 0
-        let rise = 0
-        for (let j = i + 1; j < records.length; j++) {
-          if (typeof records[j].altitude !== 'number') continue
-
-          const d = records[j].distance! - records[i].distance!
-          if (d > distance) break
-          rise = records[j].altitude! - records[i].altitude!
-          run = d
-        }
-
-        records[i].grade = (rise / run) * 100
-      }
-
-      return records
-    },
     summarizeRecords(records: Record[], distance: number): Record[] {
-      if (records.length < 1000) return records
-
       let altitudes: number[] = []
       let cadences: number[] = []
       let heartRates: number[] = []
@@ -527,17 +519,19 @@ export default {
       let powers: number[] = []
       let temps: number[] = []
       let grades: number[] = []
+      let paces: number[] = []
 
       const summarized: Record[] = []
       let cur = 0
       for (let i = 0; i < records.length; i++) {
         const d = records[i].distance! - records[cur].distance!
+
         if (d > distance) {
           let record = new Record({
-            timestamp: records[i].timestamp,
-            distance: records[i].distance,
-            positionLat: records[i].positionLat,
-            positionLong: records[i].positionLong
+            timestamp: records[cur].timestamp,
+            distance: records[cur].distance,
+            positionLat: records[cur].positionLat,
+            positionLong: records[cur].positionLong
           })
 
           if (altitudes.length > 0)
@@ -552,9 +546,10 @@ export default {
             record.power = powers.reduce((sum, val) => sum + val, 0) / powers.length
           if (speeds.length > 0)
             record.speed = speeds.reduce((sum, val) => sum + val, 0) / speeds.length
-
           if (temps.length > 0)
             record.temperature = temps.reduce((sum, val) => sum + val, 0) / temps.length
+          if (paces.length > 0)
+            record.pace = paces.reduce((sum, val) => sum + val, 0) / paces.length
 
           summarized.push(record)
 
@@ -566,8 +561,9 @@ export default {
           powers = []
           temps = []
           grades = []
+          paces = []
 
-          cur = i + 1
+          cur = i
         }
 
         if (records[i].altitude) {
@@ -590,6 +586,9 @@ export default {
         }
         if (records[i].grade) {
           grades.push(records[i].grade!)
+        }
+        if (records[i].pace) {
+          paces.push(records[i].pace!)
         }
       }
 
