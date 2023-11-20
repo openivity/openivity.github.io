@@ -1,9 +1,7 @@
 name: Build Test
 on:
-  pull_request:
-    types: [opened, reopened]
-    branches:
-      - dev
+  pull_request_review:
+    types: [submitted]
 permissions:
   contents: write
 jobs:
