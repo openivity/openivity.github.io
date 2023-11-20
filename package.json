@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "build-wasm": "cd src\ncd wasm\ncd activity-service\nmake build",
+    "build-only": "vite build",
     "dev": "vite --host",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
-    "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore --ignore-path .eslintignore",
     "format": "prettier --write src/",
