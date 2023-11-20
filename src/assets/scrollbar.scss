@@ -1,17 +1,19 @@
 // global scrollbar style
 ::-webkit-scrollbar-track {
-  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.1);
+//   -webkit-box-shadow: inset 0 0 6px rgba(190, 190, 190, 0.3);
   background-color: var(--color-background);
-  //   border-radius: 10px;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 0.45rem;
+  margin-left: 10px;
+  margin-right: 10px;
   background-color: var(--color-background);
 }
 
 ::-webkit-scrollbar-thumb {
-//   border-radius: 10px;
-  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.1);
-  background-color: var(--color-title);
+  border-radius: 5px;
+//   -webkit-box-shadow: inset 0 0 6px rgba(190, 190, 190, 0.3);
+  background-color: rgba(190, 190, 190, 0.7);
 }

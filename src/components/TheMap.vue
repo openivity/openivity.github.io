@@ -88,6 +88,7 @@ import { Record, Session } from '@/spec/activity'
 import { toTimezoneDateString } from '@/toolkit/date'
 import { formatPace } from '@/toolkit/pace'
 import { Feature, MapBrowserEvent, Overlay } from 'ol'
+import type { FeatureLike } from 'ol/Feature'
 import OlMap from 'ol/Map'
 import View from 'ol/View'
 import { FullScreen, ScaleLine, ZoomToExtent, defaults as defaultControls } from 'ol/control.js'
@@ -131,6 +132,12 @@ export default {
       popupActivityIndex: 0,
       popupTimezoneOffsetHours: 0,
       popupOverlay: new Overlay({}),
+      startingPointStyle: new Style({
+        image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
+      }),
+      destinationPointStyle: new Style({
+        image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
+      }),
       vec: new VectorImageLayer({
         source: new VectorSource({
           features: []
@@ -218,46 +225,50 @@ export default {
       view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
 
       const startingPoints = new Array<Feature>()
-      const destinationPoints = new Array<Feature>()
-      for (let i = 0; i < features.length; i++) {
-        const startingPoint = new Feature(
-          new Point((features[i]?.getGeometry() as SimpleGeometry).getFirstCoordinate())
-        )
-        startingPoint.setStyle(
-          new Style({
-            image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
-          })
-        )
-        startingPoint.setId('startingPoint-' + i)
-        startingPoints.push(startingPoint)
 
-        const destinationPoint = new Feature(
-          new Point((features[i]?.getGeometry() as SimpleGeometry).getLastCoordinate())
-        )
-        destinationPoint.setStyle(
-          new Style({
-            image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
-          })
-        )
-        destinationPoint.setId('destinationPoint-' + i)
-        destinationPoints.push(destinationPoint)
+      let lastSessionIndex = -1
+      const destinationPointById = new Map<string, Feature>()
+      for (let i = 0; i < features.length; i++) {
+        const [, sessionIndexStr] = (features[i].getId() as string).split('-')
+        const sessionIndex = parseInt(sessionIndexStr)
+
+        const geometry = features[i]?.getGeometry() as SimpleGeometry
+        if (lastSessionIndex != sessionIndex) {
+          const startingPoint = new Feature(new Point(geometry.getFirstCoordinate()))
+          startingPoint.setStyle(this.startingPointStyle as Style)
+          startingPoint.setId(`startingPoint-${sessionIndex}`)
+          startingPoints.push(startingPoint)
+        }
+
+        lastSessionIndex = sessionIndex
+
+        const destinationPoint = new Feature(new Point(geometry.getLastCoordinate()))
+        destinationPoint.setStyle(this.destinationPointStyle as Style)
+        destinationPoint.setId(`destinationPoint-${sessionIndex}`)
+        destinationPointById.set(`destinationPoint-${sessionIndex}`, destinationPoint)
       }
 
       source.addFeatures(startingPoints)
-      source.addFeatures(destinationPoints)
+      source.addFeatures(Array.from(destinationPointById, ([, feature]) => feature))
 
       this.zoomToExtent = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
     },
 
     findNearestRecord(featureId: string, coordinate: Coordinate): Record {
-      const index = Number(featureId.split('-')[1])
-      this.popupActivityIndex = index
+      const [, sessionIndexStr, startIndexStr, endIndexStr] = featureId.split('-')
+      const sessionIndex = parseInt(sessionIndexStr)
+      const startIndex = parseInt(startIndexStr)
+      const endIndex = parseInt(endIndexStr)
+
+      this.popupActivityIndex = sessionIndex
       let nearestRecord: Record = new Record()
       let nearestEuclidean: number = Number.MAX_VALUE
 
-      this.popupTimezoneOffsetHours = this.sessions![index].timezone
-      this.sessions[index].records?.forEach((rec: Record) => {
-        if (!rec.positionLong || !rec.positionLat) return
+      this.popupTimezoneOffsetHours = this.sessions[sessionIndex].timezone
+
+      for (let i = startIndex; i <= endIndex; i++) {
+        const rec = this.sessions[sessionIndex].records[i]
+        if (!rec.positionLong || !rec.positionLat) continue
         const euclidean = Math.abs(
           Math.sqrt(
             Math.pow(rec.positionLong - coordinate[0], 2) +
@@ -268,7 +279,7 @@ export default {
           nearestEuclidean = euclidean
           nearestRecord = rec
         }
-      })
+      }
 
       return nearestRecord
     },
@@ -282,20 +293,23 @@ export default {
       }
       if (this.popupFreeze == true && this.popupOverlay.getPosition() != undefined) return
 
-      this.map.forEachFeatureAtPixel(
-        e.pixel,
-        (feature) => {
-          if (!(feature.getGeometry() instanceof LineString)) return
+      const features = this.map.getFeaturesAtPixel(e.pixel, { hitTolerance: 10 })
+      let feature: FeatureLike | null = null
+      for (let i = 0; i < features.length; i++) {
+        if (features[i].getGeometry() instanceof LineString) {
+          feature = features[i]
+          break
+        }
+      }
 
-          this.hoveredRecord = this.findNearestRecord(feature.getId() as string, e.coordinate)
-          this.popupOverlay.setPosition([
-            this.hoveredRecord.positionLong,
-            this.hoveredRecord.positionLat
-          ] as Coordinate)
-          this.popupFreeze = e.type == 'singleclick'
-        },
-        { hitTolerance: 10 }
-      )
+      if (feature == null) return
+
+      this.hoveredRecord = this.findNearestRecord(feature.getId() as string, e.coordinate)
+      this.popupOverlay.setPosition([
+        this.hoveredRecord.positionLong,
+        this.hoveredRecord.positionLat
+      ] as Coordinate)
+      this.popupFreeze = e.type == 'singleclick'
     },
 
     showPopUpRecord(record: Record) {

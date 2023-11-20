@@ -311,7 +311,7 @@ export default {
       combinedFeatures: new Array<Feature>(),
       combinedGraphRecords: new Array<Record>(),
 
-      featureBySession: new Map<number, Feature>(),
+      featuresBySession: new Map<number, Feature[]>(),
       graphRecordsBySessions: new Map<number, Array<Record>>(),
 
       sessionSelected: NONE,
@@ -494,8 +494,8 @@ export default {
         combinedLaps.push(...clonedSession.laps)
         combinedRecords.push(...clonedSession.records)
 
-        const feature = this.createFeature(ses, i)
-        if (feature != null) combinedFeatures.push(feature)
+        const features = this.createFeatures(ses, i)
+        combinedFeatures.push(...features)
       })
 
       this.combinedSessions = combinedSessions
@@ -504,13 +504,13 @@ export default {
       this.combinedFeatures = combinedFeatures
       this.combinedGraphRecords = this.summarizeRecords(combinedRecords, this.scale(lastDistance))
 
-      const featureBySession = new Map<number, Feature>()
+      const featuresBySession = new Map<number, Feature[]>()
       const graphRecordsBySession = new Map<number, Array<Record>>()
       for (let i = 0; i < this.sessions.length; i++) {
         const ses = this.sessions[i]
 
-        const feature = this.createFeature(ses, 0)
-        if (feature != null) featureBySession.set(i, feature)
+        const features = this.createFeatures(ses, 0)
+        featuresBySession.set(i, features)
 
         let lastDistance = 0
         for (let j = ses.records.length - 1; j >= 0; j--) {
@@ -524,7 +524,7 @@ export default {
         graphRecordsBySession.set(i, graphRecords)
       }
 
-      this.featureBySession = featureBySession
+      this.featuresBySession = featuresBySession
       this.graphRecordsBySessions = graphRecordsBySession
 
       this.selectSession(this.sessionSelected)
@@ -539,24 +539,41 @@ export default {
 
       return distance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
     },
-    createFeature(session: Session, index: number): Feature | null {
-      const coordinates: number[][] = []
-      session.records.forEach((d) => {
-        if (d.positionLong == null || d.positionLat == null) return
-        coordinates.push([d.positionLong!, d.positionLat!])
-      })
+    createFeatures(session: Session, sessionIndex: number): Feature[] {
+      // Clustering per 10% data, so we have 10 features per session.
+      // If we have 30k records, we only need to lookup the nearest coordinate record in 3k records.
+      const clusterSize = Math.round(session.records.length * (10 / 100))
 
-      if (coordinates.length == 0) return null
+      const features: Feature[] = []
+      let counter = 0
+      let startIndex = 0
+      let endIndex = 0
+      let coordinates: number[][] = []
+      for (let i = 0; i < session.records.length; i++) {
+        const rec = session.records[i]
+        if (counter == clusterSize || i == session.records.length - 1) {
+          endIndex = i
+          const feature = new GeoJSON().readFeature({
+            id: `lineString-${sessionIndex}-${startIndex}-${endIndex}`,
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: coordinates
+            }
+          })
+          features.push(feature)
 
-      const feature = new GeoJSON().readFeature({
-        id: 'lineString-' + index,
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: coordinates
+          startIndex = i + 1
+          coordinates = []
+          counter = 0
         }
-      })
-      return feature
+
+        if (rec.positionLong == null || rec.positionLat == null) continue
+        coordinates.push([rec.positionLong!, rec.positionLat!])
+        counter++
+      }
+
+      return features
     },
     summarizeRecords(records: Record[], distance: number): Record[] {
       let altitudes: number[] = []
@@ -662,8 +679,7 @@ export default {
           this.selectedRecords = this.sessions[index].records
           this.selectedSessions = [this.sessions[index]]
           this.selectedLaps = this.sessions[index].laps
-          const feature = this.featureBySession.get(index)
-          this.selectedFeatures = feature ? [feature] : []
+          this.selectedFeatures = this.featuresBySession.get(index) ?? []
           this.selectedGraphRecords = this.graphRecordsBySessions.get(index) ?? []
           break
         }
