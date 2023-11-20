@@ -170,7 +170,7 @@ class DecodeResult {
 export default {
   data() {
     return {
-      decodeWorker: new Worker(new URL('@/workers/fitsvc-decode.ts', import.meta.url), {
+      decodeWorker: new Worker(new URL('@/workers/activity-service.ts', import.meta.url), {
         type: 'module'
       }),
       geojsons: new Array<GeoJSON>(),

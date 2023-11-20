@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AreaGraph from './AreaGraph.vue'
+import AreaGraph, { Detail } from './AreaGraph.vue'
 </script>
 
 <template>
@@ -8,11 +8,9 @@ import AreaGraph from './AreaGraph.vue'
       :name="'Cadence'"
       :icon="'fa-rotate'"
       :record-field="'cadence'"
-      :avg="summary?.avgCadence?.toFixed(0) ?? '0'"
-      :max="summary?.maxCadence?.toFixed(0) ?? '0'"
       :records="records"
+      :details="details"
       :graph-records="graphRecords"
-      :summary="summary"
       :color="'darkslateblue'"
       :y-label="'Cad. (rpm)'"
       :unit="'rpm'"
@@ -39,8 +37,25 @@ export default {
       default: []
     },
     color: String,
-    summary: Summary,
+    summary: {
+      type: Summary,
+      required: true
+    },
     receivedRecord: Record
+  },
+  computed: {
+    details(): Detail[] {
+      return [
+        new Detail({
+          title: 'Avg Cadence',
+          value: this.summary.avgCadence?.toFixed(0) ?? '0'
+        }),
+        new Detail({
+          title: 'Max Cadence',
+          value: this.summary.maxCadence?.toFixed(0) ?? '0'
+        })
+      ]
+    }
   },
   methods: {
     onHoveredRecord(record: Record) {

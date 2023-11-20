@@ -1,0 +1,130 @@
+package schema
+
+import (
+	"encoding/xml"
+	"fmt"
+	"strings"
+)
+
+const (
+	xmlns       = "http://www.topografix.com/GPX/1/1"
+	xmlnsxsi    = "http://www.w3.org/2001/XMLSchema-instance"
+	xmlnsgpxtpx = "http://www.garmin.com/xmlschemas/TrackPointExtension/v1"
+	xmlnsgpxx   = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+	Version     = "1.1"
+)
+
+var schemaLocations = [...]string{
+	"http://www.topografix.com/GPX/1/1",
+	"http://www.topografix.com/GPX/1/1/gpx.xsd",
+	"http://www.garmin.com/xmlschemas/GpxExtensions/v3",
+	"http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd",
+	"http://www.garmin.com/xmlschemas/TrackPointExtension/v1",
+	"http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd",
+}
+
+// GPX is GPX schema (simplified).
+//
+// Note: Please define xml.Unmarshaler for each struct involved to avoid reflection as much as we can.
+type GPX struct {
+	XMLName xml.Name `xml:"gpx"`
+	Creator string   `xml:"creator,attr"`
+	Version string   `xml:"version,attr"`
+
+	Metadata Metadata `xml:"metadata,omitempty"`
+	Tracks   []Track  `xml:"trk,omitempty"`
+}
+
+var _ xml.Unmarshaler = &GPX{}
+
+func (g *GPX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	for i := range se.Attr {
+		attr := se.Attr[i]
+
+		switch attr.Name.Local {
+		case "creator":
+			g.Creator = attr.Value
+		case "version":
+			g.Version = attr.Value
+		}
+	}
+
+	for {
+		token, err := dec.Token()
+		if err != nil {
+			return err
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			switch elem.Name.Local {
+			case "metadata":
+				var metadata Metadata
+				if err := metadata.UnmarshalXML(dec, elem); err != nil {
+					return err
+				}
+				g.Metadata = metadata
+			case "trk":
+				var track Track
+				if err := track.UnmarshalXML(dec, elem); err != nil {
+					return err
+				}
+				g.Tracks = append(g.Tracks, track)
+			}
+
+		case xml.EndElement:
+			if elem == se.End() {
+				return nil
+			}
+		}
+	}
+}
+
+func (g *GPX) Validate() error {
+	if g == nil {
+		return fmt.Errorf("%T is nil", g)
+	}
+	for i, track := range g.Tracks {
+		if err := track.Validate(); err != nil {
+			return fmt.Errorf("tracks[%d]: %w", i, err)
+		}
+	}
+	if g.Creator == "" {
+		return fmt.Errorf("creator is required but provided empty")
+	}
+	return nil
+}
+
+var _ xml.Marshaler = GPX{}
+
+func (g GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	version := g.Version
+	if version == "" {
+		version = Version
+	}
+	se.Name = xml.Name{Local: "gpx"}
+	se.Attr = []xml.Attr{
+		{Name: xml.Name{Local: "creator"}, Value: g.Creator},
+		{Name: xml.Name{Local: "version"}, Value: version},
+		{Name: xml.Name{Local: "xmlns"}, Value: xmlns},
+		{Name: xml.Name{Local: "xmlns:xsi"}, Value: xmlnsxsi},
+		{Name: xml.Name{Local: "xsi:schemaLocation"}, Value: strings.Join(schemaLocations[:], " ")},
+		{Name: xml.Name{Local: "xmlns:gpxtpx"}, Value: xmlnsgpxtpx},
+		{Name: xml.Name{Local: "xmlns:gpxx"}, Value: xmlnsgpxx},
+	}
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+	if err := enc.EncodeElement(g.Metadata, xml.StartElement{Name: xml.Name{Local: "metadata"}}); err != nil {
+		return err
+	}
+	if err := enc.EncodeElement(g.Tracks, xml.StartElement{Name: xml.Name{Local: "trk"}}); err != nil {
+		return err
+	}
+	if err := enc.EncodeToken(se.End()); err != nil {
+		return err
+	}
+
+	return nil
+}

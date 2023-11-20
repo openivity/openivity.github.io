@@ -43,6 +43,8 @@ export class Session {
   maxTemperature: number | null = null
   avgAltitude: number | null = null
   maxAltitude: number | null = null
+  avgPace: number | null = null
+  avgElapsedPace: number | null = null
 }
 
 export class Lap {
@@ -61,25 +63,8 @@ export class Lap {
   maxCadence: number | null = null
   avgPower: number | null = null
   maxPower: number | null = null
-
-  constructor(data?: any) {
-    const casted = data as Lap
-    this.timestamp = casted?.timestamp
-    this.totalMovingTime = casted?.totalMovingTime
-    this.totalElapsedTime = casted?.totalElapsedTime
-    this.totalDistance = casted?.totalDistance
-    this.totalAscent = casted?.totalAscent
-    this.totalDescent = casted?.totalDescent
-    this.totalCalories = casted?.totalCalories
-    this.avgSpeed = casted?.avgSpeed
-    this.maxSpeed = casted?.maxSpeed
-    this.avgHeartRate = casted?.avgHeartRate ? casted?.avgHeartRate : null
-    this.maxHeartRate = casted?.maxHeartRate ? casted?.maxHeartRate : null
-    this.avgCadence = casted?.avgCadence
-    this.maxCadence = casted?.maxCadence
-    this.avgPower = casted?.avgPower ? casted?.avgPower : null
-    this.maxPower = casted?.maxPower ? casted?.maxPower : null
-  }
+  avgPace: number | null = null
+  avgElapsedPace: number | null = null
 }
 
 export class Record {
@@ -94,6 +79,7 @@ export class Record {
   power: number | null = null
   temperature: number | null = null
   grade: number = 0
+  pace: number | null = null
 
   constructor(data?: any) {
     const casted = data as Record
@@ -108,5 +94,6 @@ export class Record {
     this.power = casted?.power
     this.temperature = casted?.temperature
     this.grade = casted?.grade
+    this.pace = casted?.pace
   }
 }

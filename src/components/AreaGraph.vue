@@ -19,7 +19,7 @@
       <div class="col text-end">
         <span>
           <span class="pe-1 fs-6">
-            {{ scaleUnit(recordView[recordField as keyof Record] as number)?.toFixed(2) ?? '0.00' }}
+            {{ formatUnit(scaleUnit(recordView[recordField as keyof Record] as number)) }}
           </span>
           <span>{{ unit }}</span>
         </span>
@@ -28,21 +28,12 @@
     <div class="collapse show" v-bind:id="graphContainerName">
       <div :ref="graphName"></div>
       <div class="graph-summary pt-1 pb-1">
-        <div class="row">
+        <div class="row" v-for="(detail, index) in details" v-bind:key="index">
           <span class="col px-0 text-start">
-            <span style="font-size: 0.9em">Average {{ name }}</span>
+            <span style="font-size: 0.9em">{{ detail.title }}</span>
           </span>
           <span class="col px-0 text-end">
-            <span class="fs-6 pe-1">{{ avg }}</span>
-            <span style="font-size: 0.9em">{{ unit }}</span>
-          </span>
-        </div>
-        <div class="row">
-          <span class="col px-0 text-start">
-            <span style="font-size: 0.9em">Max {{ name }}</span>
-          </span>
-          <span class="col px-0 text-end">
-            <span class="fs-6 pe-1">{{ max }}</span>
+            <span class="fs-6 pe-1">{{ detail.value }}</span>
             <span style="font-size: 0.9em">{{ unit }}</span>
           </span>
         </div>
@@ -52,8 +43,19 @@
 </template>
 <script lang="ts">
 import { Record } from '@/spec/activity'
-import { Summary } from '@/spec/summary'
+import { formatPace } from '@/toolkit/pace'
 import * as d3 from 'd3'
+
+export class Detail {
+  title: string = ''
+  value: string = ''
+
+  constructor(data?: any) {
+    const casted = data as Detail
+    this.title = casted?.title
+    this.value = casted?.value
+  }
+}
 
 export default {
   props: {
@@ -77,10 +79,8 @@ export default {
     unit: { type: String, required: true },
     color: { type: String, required: true },
     pointerColor: { type: String, default: '#78e08f' },
-    summary: Summary,
     receivedRecord: Record,
-    avg: String,
-    max: String
+    details: Array<Detail>
   },
   data() {
     return {
@@ -127,7 +127,16 @@ export default {
     }
   },
   methods: {
-    prerender() {},
+    formatLabel(value: number | { valueOf(): number }): string {
+      const val = typeof value === 'number' ? value : value.valueOf()
+      if (this.name == 'Pace') {
+        return formatPace(val)
+      }
+      if (this.name == 'Speed') {
+        value = (val * 3600) / 1000
+      }
+      return d3.format('~s')(val)
+    },
     renderGraph() {
       const graphRecords = this.graphRecords
       if (graphRecords.length == 0) return
@@ -135,7 +144,7 @@ export default {
       const marginTop = 25
       const marginRight = 10
       const marginBottom = 25
-      const marginLeft = 35
+      const marginLeft = 45
 
       const width = this.elemWidth
       const height = 230 - marginBottom
@@ -175,29 +184,31 @@ export default {
         .rangeRound([height - marginBottom, marginTop])
         .nice()
 
+      const yExtent = d3.extent(
+        graphRecords,
+        (d) => this.scaleUnit(d[this.recordField as keyof Record] as number) ?? 0
+      ) as number[]
+
       const yScale = d3
         .scaleLinear()
-        .domain(
-          d3.extent(
-            graphRecords,
-            (d) => this.scaleUnit(d[this.recordField as keyof Record] as number) ?? 0
-          ) as Number[]
-        )
+        .domain(yExtent)
         .rangeRound([height - marginBottom, marginTop])
         .nice()
+
+      if (this.name == 'Pace') yScale.domain([yExtent[1], yExtent[0]])
 
       // Add X & Y Axis
       svg
         .append('g')
-        .style('font-size', '0.9em')
+        .style('font-size', '0.8em')
         .attr('transform', `translate(0,${height - marginBottom})`)
         .call(d3.axisBottom(xScale).ticks(xTicks))
 
       svg
         .append('g')
-        .style('font-size', '0.9em')
+        .style('font-size', '0.8em')
         .attr('transform', `translate(${marginLeft},0)`)
-        .call(d3.axisLeft(yScale).ticks(yTicks).tickFormat(d3.format('~s')))
+        .call(d3.axisLeft(yScale).ticks(yTicks).tickFormat(this.formatLabel))
 
       // Add X-Y Axis Label
       svg
@@ -271,7 +282,13 @@ export default {
         .curve(d3.curveBasis)
         .x((d: Record) => xScale(d.distance! / 1000) as number)
         .y0(yScale(d3.min(yScale.domain())!))
-        .y1((d) => yScale(this.scaleUnit(d[this.recordField as keyof Record] as number) ?? 0))
+        .y1((d): number => {
+          let value = d[this.recordField as keyof Record]
+          value = value != null ? value : yScale.domain()[0]
+          return yScale(this.scaleUnit(value as number) as number)
+        })
+
+      if (this.name == 'Pace') area.y0(yScale(d3.max(yScale.domain())!))
 
       svg
         .append('g')
@@ -349,6 +366,12 @@ export default {
         this.hoveredRecord = new Record()
         pointer.style('opacity', 0)
       })
+    },
+    formatUnit(value: number | null): string {
+      if (this.recordField === 'pace') {
+        return value ? formatPace(value) : '-:-'
+      }
+      return value ? value.toFixed(2) : '0.00'
     },
     scaleUnit(value: number): number | null {
       if (this.recordField === 'speed') {

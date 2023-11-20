@@ -1,20 +1,21 @@
 <script setup lang="ts">
+import { formatPace } from '@/toolkit/pace'
 import AreaGraph, { Detail } from './AreaGraph.vue'
 </script>
 
 <template>
   <div class="col-12 h-100 pt-2">
     <AreaGraph
-      :name="'Speed'"
-      :icon="'fa-gauge-high'"
-      :record-field="'speed'"
+      :name="'Pace'"
+      :icon="'fa-clock-rotate-left'"
+      :record-field="'pace'"
       :records="records"
       :details="details"
       :graph-records="graphRecords"
-      :color="'lightgreen'"
-      :pointer-color="'#7f8c8d'"
-      :y-label="'Spd. (km/h)'"
-      :unit="'km/h'"
+      :summary="summary"
+      :color="'dodgerblue'"
+      :y-label="'Pace (duration/km)'"
+      :unit="'/km'"
       :received-record="receivedRecord"
       v-on:hoveredRecord="onHoveredRecord"
     ></AreaGraph>
@@ -48,16 +49,12 @@ export default {
     details(): Detail[] {
       return [
         new Detail({
-          title: 'Avg Speed',
-          value: this.summary?.avgSpeed
-            ? ((this.summary?.avgSpeed! * 3600) / 1000).toFixed(2)
-            : '0.00'
+          title: 'Avg Pace',
+          value: this.summary.avgPace ? formatPace(this.summary.avgPace) : '-:-'
         }),
         new Detail({
-          title: 'Max Speed',
-          value: this.summary?.maxSpeed
-            ? ((this.summary?.maxSpeed! * 3600) / 1000).toFixed(2)
-            : '0.00'
+          title: 'Avg Elapsed Pace',
+          value: this.summary.avgElapsedPace ? formatPace(this.summary.avgElapsedPace) : '-:-'
         })
       ]
     }

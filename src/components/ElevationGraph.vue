@@ -300,7 +300,7 @@ export default {
         .data(graphRecords)
         .join('stop')
         .attr('offset', (d) => xScale(d.distance! / 1000) / width)
-        .attr('stop-color', (d) => this.color(d.grade))
+        .attr('stop-color', (d) => this.color(d.grade ?? 0))
 
       // Add Line
       const line = d3

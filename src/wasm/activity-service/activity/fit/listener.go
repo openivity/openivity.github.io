@@ -1,21 +1,22 @@
-package activity
+package fit
 
 import (
 	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
+	"github.com/muktihari/openactivity-fit/activity"
 )
 
 type Listener struct {
 	mesgc        chan proto.Message
 	done         chan struct{}
-	activityFile *ActivityFile
+	activityFile *activity.Activity
 }
 
 func NewListener() *Listener {
 	l := &Listener{
 		mesgc:        make(chan proto.Message, 1000),
 		done:         make(chan struct{}),
-		activityFile: &ActivityFile{},
+		activityFile: &activity.Activity{},
 	}
 	go l.loop()
 	return l
@@ -35,7 +36,7 @@ func (l *Listener) loop() {
 		case mesgnum.Record:
 			record := NewRecord(mesg)
 			l.activityFile.Records = append(l.activityFile.Records, record)
-			if record["positionLong"] == nil || record["positionLat"] == nil {
+			if record.PositionLat == nil || record.PositionLong == nil {
 				continue
 			}
 		}
@@ -45,14 +46,14 @@ func (l *Listener) loop() {
 
 func (l *Listener) OnMesg(mesg proto.Message) { l.mesgc <- mesg }
 
-func (l *Listener) ActivityFile() *ActivityFile {
+func (l *Listener) Activity() *activity.Activity {
 	l.WaitAndClose()
 
 	activityFile := *l.activityFile
 
 	l.mesgc = make(chan proto.Message, 1000)
 	l.done = make(chan struct{})
-	l.activityFile = &ActivityFile{}
+	l.activityFile = &activity.Activity{}
 
 	go l.loop()
 

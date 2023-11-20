@@ -6,7 +6,7 @@
         class="form-control form-control-sm"
         type="file"
         :id="id ?? 'fileInput'"
-        accept=".fit"
+        accept=".fit,.gpx"
         multiple
         v-bind:disabled="!isWebAssemblySupported"
       />
