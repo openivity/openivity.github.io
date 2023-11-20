@@ -229,8 +229,7 @@ export default {
       let lastSessionIndex = -1
       const destinationPointById = new Map<string, Feature>()
       for (let i = 0; i < features.length; i++) {
-        const [, sessionIndexStr] = (features[i].getId() as string).split('-')
-        const sessionIndex = parseInt(sessionIndexStr)
+        const [, sessionIndex] = (features[i].getId() as string).split('-').map((v) => parseInt(v))
 
         const geometry = features[i]?.getGeometry() as SimpleGeometry
         if (lastSessionIndex != sessionIndex) {
@@ -255,10 +254,7 @@ export default {
     },
 
     findNearestRecord(featureId: string, coordinate: Coordinate): Record {
-      const [, sessionIndexStr, startIndexStr, endIndexStr] = featureId.split('-')
-      const sessionIndex = parseInt(sessionIndexStr)
-      const startIndex = parseInt(startIndexStr)
-      const endIndex = parseInt(endIndexStr)
+      const [, sessionIndex, startIndex, endIndex] = featureId.split('-').map((v) => parseInt(v))
 
       this.popupActivityIndex = sessionIndex
       let nearestRecord: Record = new Record()
