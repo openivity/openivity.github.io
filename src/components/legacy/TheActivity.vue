@@ -233,21 +233,36 @@ export default {
     createFeatures(activityFiles: ActivityFile[]): Feature[] {
       const features: Feature[] = []
       activityFiles.forEach((act) => {
-        act.sessions.forEach((ses, i) => {
-          const coordinates: number[][] = []
-          ses.records.forEach((d) => {
-            if (d.positionLong == null || d.positionLat == null) return
-            coordinates.push([d.positionLong!, d.positionLat!])
-          })
-          const feature = new GeoJSON().readFeature({
-            id: 'lineString-' + i,
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: coordinates
+        act.sessions.forEach((session, sessionIndex) => {
+          const clusterSize = Math.round(session.records.length * (10 / 100)) // 10%
+
+          let counter = 0
+          let startIndex = 0
+          let endIndex = 0
+          let coordinates: number[][] = []
+          for (let i = 0; i < session.records.length; i++) {
+            const rec = session.records[i]
+            if (counter == clusterSize || i == session.records.length - 1) {
+              endIndex = i
+              const feature = new GeoJSON().readFeature({
+                id: `lineString-${sessionIndex}-${startIndex}-${endIndex}`,
+                type: 'Feature',
+                geometry: {
+                  type: 'LineString',
+                  coordinates: coordinates
+                }
+              })
+              features.push(feature)
+
+              startIndex = i + 1
+              coordinates = []
+              counter = 0
             }
-          })
-          features.push(feature)
+
+            if (rec.positionLong == null || rec.positionLat == null) continue
+            coordinates.push([rec.positionLong!, rec.positionLat!])
+            counter++
+          }
         })
       })
       return features
