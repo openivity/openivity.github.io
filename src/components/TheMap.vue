@@ -76,7 +76,7 @@
         </div>
       </div>
     </div>
-    <div class="options position-absolute d-inline-flex">
+    <div class="options position-absolute d-inline-flex d-none">
       <div class="form-control-sm">
         <select
           class="custom-select custom-select-sm"
@@ -190,7 +190,7 @@ export default {
       pointer: new Feature(),
       debug: false,
       /** @type {'standard' | 'kdtree'} */
-      searchMethod: 'standard',
+      searchMethod: 'kdtree',
       sessionTimestamp: '',
       kdIndexTimestamp: '',
       kdIndexToRecord: [] as String[],
@@ -395,6 +395,7 @@ export default {
       if (feature == null) return
 
       this.hoveredRecord = (() => {
+        // By default, it will using standard UNTIL kdtree indexed
         if (this.searchMethod == 'kdtree' && this.kdIndexed) {
           return this.getClosestPoint_KDtree(e.coordinate)
         }
