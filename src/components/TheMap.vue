@@ -188,7 +188,7 @@ export default {
       }),
       zoomToExtent: new ZoomToExtent(),
       pointer: new Feature(),
-      debug: true,
+      debug: false,
       /** @type {'standard' | 'kdtree'} */
       searchMethod: 'kdtree',
       sessionTimestamp: '',
