@@ -82,10 +82,11 @@
           class="custom-select custom-select-sm"
           aria-label="Hover Method"
           v-model="searchMethod"
-          :disabled="kdIndexing"
+          :disabled="kdIndexing || quadtreeIndexing"
         >
           <option value="standard" selected>Standard</option>
           <option value="kdtree">KD Tree</option>
+          <option value="d3-quadtree">d3-quadtree</option>
         </select>
       </div>
       <div class="form-control-sm form-check">
@@ -121,6 +122,7 @@ import { Icon, Stroke, Style } from 'ol/style'
 import KDBush from 'kdbush'
 import { around } from 'geokdbush-tk'
 import { DateTime } from 'luxon'
+import { quadtree } from 'd3-quadtree'
 
 const maximizeIcon = document.createElement('i')
 const minimizeIcon = document.createElement('i')
@@ -189,13 +191,17 @@ export default {
       zoomToExtent: new ZoomToExtent(),
       pointer: new Feature(),
       debug: false,
-      /** @type {'standard' | 'kdtree'} */
+      /** @type {'standard' | 'kdtree', 'd3-quadtree'} */
       searchMethod: 'kdtree',
       sessionTimestamp: '',
       kdIndexTimestamp: '',
       kdIndexToRecord: [] as String[],
       kdIndex: new KDBush(0),
-      kdIndexing: false
+      kdIndexing: false,
+
+      quadtreeTimestamp: '',
+      quadtreeRecords: quadtree([] as Record[]),
+      quadtreeIndexing: false
     }
   },
   watch: {
@@ -203,6 +209,8 @@ export default {
       handler(value: string) {
         if (value == 'kdtree' && !this.kdIndexed) {
           this.indexing_KDtree(this.sessions)
+        } else if (value == 'd3-quadtree' && !this.quadtreeIndexed) {
+          this.createQuadtree(this.sessions)
         }
       }
     },
@@ -220,6 +228,8 @@ export default {
         this.sessionTimestamp = DateTime.now().toString()
         if (this.searchMethod == 'kdtree' && !this.kdIndexed) {
           this.indexing_KDtree(this.sessions)
+        } else if (this.searchMethod == 'd3-quadtree' && !this.quadtreeIndexed) {
+          this.createQuadtree(this.sessions)
         }
       }
     },
@@ -373,7 +383,59 @@ export default {
       if (debug) console.timeEnd('KDTree')
       return new Record()
     },
+    haversineDistance([lon1, lat1]: number[], [lon2, lat2]: number[]) {
+      function toRadians(degrees: number) {
+        return (degrees * Math.PI) / 180
+      }
+      let R = 6371e3 // Earth's radius in metres
+      let φ1 = toRadians(lat1)
+      let φ2 = toRadians(lat2)
+      let Δφ = toRadians(lat2 - lat1)
+      let Δλ = toRadians(lon2 - lon1)
 
+      let a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+      return R * c
+    },
+    createQuadtree(sessions: Array<Session>) {
+      const debug = this.debug
+      if (debug) console.time('d3-quadtree Indexing')
+      this.quadtreeIndexing = true
+
+      const records = [] as Record[]
+      sessions.forEach((e) => {
+        records.push(...e.records)
+      })
+      console.log(records)
+      this.quadtreeRecords = quadtree(
+        records,
+        (d) => d.positionLong ?? 0,
+        (d) => d.positionLat ?? 0
+      )
+
+      console.log(this.quadtreeRecords)
+
+      this.quadtreeTimestamp = this.sessionTimestamp
+      this.quadtreeIndexing = false
+      if (debug) console.timeEnd('d3-quadtree Indexing')
+    },
+    getNearestPoint_Quadtree(coordinate: Coordinate): Record {
+      const debug = this.debug
+      if (debug) console.time('d3-quadtree')
+
+      let record = new Record()
+      const nearestRecord = this.quadtreeRecords.find(coordinate[0], coordinate[1], 1000)
+      // console.log(coordinate, nearestRecord)
+      if (nearestRecord) {
+        record = nearestRecord
+      }
+
+      if (debug) console.timeEnd('d3-quadtree')
+      return record
+    },
     lineStringFeatureListener(e: MapBrowserEvent<any>) {
       if (e.type == 'singleclick')
         this.popupFreeze = !this.popupFreeze && this.popupOverlay.getPosition() != undefined
@@ -398,6 +460,8 @@ export default {
         // By default, it will using standard UNTIL kdtree indexed
         if (this.searchMethod == 'kdtree' && this.kdIndexed) {
           return this.getClosestPoint_KDtree(e.coordinate)
+        } else if (this.searchMethod == 'd3-quadtree' && this.quadtreeIndexed) {
+          return this.getNearestPoint_Quadtree(e.coordinate)
         }
         return this.findNearestRecord(feature.getId() as string, e.coordinate)
       })()
@@ -446,6 +510,9 @@ export default {
     },
     kdIndexed(): Boolean {
       return this.kdIndexTimestamp != '' && this.kdIndexTimestamp == this.sessionTimestamp
+    },
+    quadtreeIndexed(): Boolean {
+      return this.quadtreeTimestamp != '' && this.quadtreeTimestamp == this.sessionTimestamp
     }
   },
   mounted() {
