@@ -1,5 +1,5 @@
 <template>
-  <div class="map-container w-100 h-100">
+  <div class="map-container position-relative w-100 h-100">
     <div v-if="features?.length == 0">No map data</div>
     <div v-else class="map" ref="map"></div>
     <div id="popup" class="ol-popup">
@@ -76,6 +76,23 @@
         </div>
       </div>
     </div>
+    <div class="options position-absolute d-inline-flex">
+      <div class="form-control-sm">
+        <select
+          class="custom-select custom-select-sm"
+          aria-label="Hover Method"
+          v-model="searchMethod"
+          :disabled="kdIndexing"
+        >
+          <option value="standard" selected>Standard</option>
+          <option value="kdtree">KD Tree</option>
+        </select>
+      </div>
+      <div class="form-control-sm form-check">
+        <input class="form-check-input" type="checkbox" v-model="debug" id="flexCheckDefault" />
+        <label class="form-check-label" for="flexCheckDefault"> Debug </label>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -101,6 +118,9 @@ import VectorImageLayer from 'ol/layer/VectorImage'
 import OSM from 'ol/source/OSM'
 import VectorSource from 'ol/source/Vector'
 import { Icon, Stroke, Style } from 'ol/style'
+import KDBush from 'kdbush'
+import { around } from 'geokdbush-tk'
+import { DateTime } from 'luxon'
 
 const maximizeIcon = document.createElement('i')
 const minimizeIcon = document.createElement('i')
@@ -167,16 +187,40 @@ export default {
         })
       }),
       zoomToExtent: new ZoomToExtent(),
-      pointer: new Feature()
+      pointer: new Feature(),
+      debug: false,
+      /** @type {'standard' | 'kdtree'} */
+      searchMethod: 'standard',
+      sessionTimestamp: '',
+      kdIndexTimestamp: '',
+      kdIndexToRecord: [] as String[],
+      kdIndex: new KDBush(0),
+      kdIndexing: false
     }
   },
   watch: {
+    searchMethod: {
+      handler(value: string) {
+        if (value == 'kdtree' && !this.kdIndexed) {
+          this.indexing_KDtree(this.sessions)
+        }
+      }
+    },
+
     features: {
       handler(features: Array<Feature>) {
         this.$nextTick(() => {
           this.map.setTarget(this.$refs.map as HTMLElement)
           requestAnimationFrame(() => this.updateMapSource(features))
         })
+      }
+    },
+    sessions: {
+      handler() {
+        this.sessionTimestamp = DateTime.now().toString()
+        if (this.searchMethod == 'kdtree' && !this.kdIndexed) {
+          this.indexing_KDtree(this.sessions)
+        }
       }
     },
     zoomToExtent: {
@@ -252,8 +296,10 @@ export default {
 
       this.zoomToExtent = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
     },
-
     findNearestRecord(featureId: string, coordinate: Coordinate): Record {
+      const debug = this.debug
+      if (debug) console.time('Standard')
+
       const [, sessionIndex, startIndex, endIndex] = featureId.split('-').map((v) => parseInt(v))
 
       this.popupActivityIndex = sessionIndex
@@ -276,8 +322,56 @@ export default {
           nearestRecord = rec
         }
       }
-
+      // console.log(coordinate, nearestRecord)
+      if (debug) console.timeEnd('Standard')
       return nearestRecord
+    },
+    // Start Indexing & Transform points to KDBush (1 time only)
+    async indexing_KDtree(sessions: Array<Session>) {
+      const debug = this.debug
+      if (debug) console.time('KDtree Indexing')
+
+      this.kdIndexing = true
+      let totalRecords = 0
+      sessions.forEach((ses) => {
+        totalRecords += ses.records.length
+      })
+      this.kdIndexToRecord = [] as String[]
+      this.kdIndex = new KDBush(totalRecords)
+      sessions.forEach((d, sessionIndex) =>
+        d.records.forEach((r, recordIndex) => {
+          if (r.positionLat != null && r.positionLong != null) {
+            this.kdIndexToRecord[
+              this.kdIndex.add(r.positionLong, r.positionLat)
+            ] = `${sessionIndex}-${recordIndex}`
+          } else {
+            this.kdIndexToRecord[this.kdIndex.add(0, 0)] = `${sessionIndex}-${recordIndex}`
+          }
+        })
+      )
+      this.kdIndex.finish()
+      this.kdIndexTimestamp = this.sessionTimestamp
+      this.kdIndexing = false
+      if (debug) console.timeEnd('KDtree Indexing')
+    },
+    getClosestPoint_KDtree(coordinate: Coordinate): Record {
+      const debug = this.debug
+      if (debug) console.time('KDTree')
+
+      const nearestIndex = around(this.kdIndex, coordinate[0], coordinate[1], 1)
+      if (nearestIndex.length > 0) {
+        const [sessionIndex, recordIndex] = this.kdIndexToRecord[
+          nearestIndex[nearestIndex.length - 1]
+        ]
+          .split('-')
+          .map((v) => parseInt(v))
+
+        // console.log(coordinate, this.sessions[sessionIndex].records[recordIndex])
+        if (debug) console.timeEnd('KDTree')
+        return this.sessions[sessionIndex].records[recordIndex]
+      }
+      if (debug) console.timeEnd('KDTree')
+      return new Record()
     },
 
     lineStringFeatureListener(e: MapBrowserEvent<any>) {
@@ -300,7 +394,12 @@ export default {
 
       if (feature == null) return
 
-      this.hoveredRecord = this.findNearestRecord(feature.getId() as string, e.coordinate)
+      this.hoveredRecord = (() => {
+        if (this.searchMethod == 'kdtree' && this.kdIndexed) {
+          return this.getClosestPoint_KDtree(e.coordinate)
+        }
+        return this.findNearestRecord(feature.getId() as string, e.coordinate)
+      })()
       this.popupOverlay.setPosition([
         this.hoveredRecord.positionLong,
         this.hoveredRecord.positionLat
@@ -343,6 +442,9 @@ export default {
         maxWidth = Math.max(maxWidth, width)
       })
       return maxWidth
+    },
+    kdIndexed(): Boolean {
+      return this.kdIndexTimestamp != '' && this.kdIndexTimestamp == this.sessionTimestamp
     }
   },
   mounted() {
@@ -370,7 +472,7 @@ export default {
   position: relative !important;
 }
 </style>
-<style scoped>
+<style scoped lang="scss">
 .map-container {
   display: flex;
   align-items: center;
@@ -381,6 +483,16 @@ export default {
   width: 100%;
   height: 100%;
   /* border: 0.5px solid black; */
+}
+.options {
+  background-color: var(--ol-background-color);
+  top: 8px !important;
+  left: 35px !important;
+  .form-check {
+    // background-color: var(--ol-background-color);
+    color: #333;
+    font-weight: bold;
+  }
 }
 .ol-popup {
   position: absolute;
