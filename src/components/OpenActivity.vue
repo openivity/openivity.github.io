@@ -236,7 +236,8 @@ import { Summary } from '@/spec/summary'
           <div class="row">
             <div class="col-12 map pe-0">
               <TheMap
-                :sessions="selectedSessions"
+                :sessions="sessions"
+                :selected-sessions="selectedSessions"
                 :features="selectedFeatures"
                 :hasPace="hasPace"
                 :hasCadence="hasCadence"
@@ -271,6 +272,7 @@ import { Summary } from '@/spec/summary'
 import { ActivityFile, Lap, Record, Session } from '@/spec/activity'
 import { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
+import { shallowRef } from 'vue'
 
 const isWebAssemblySupported =
   typeof WebAssembly === 'object' && typeof WebAssembly.instantiateStreaming === 'function'
@@ -293,6 +295,22 @@ class Result {
   }
 }
 
+// shallowRef
+const sessions = shallowRef(new Array<Session>())
+const activities = shallowRef(new Array<ActivityFile>())
+const combinedRecords = shallowRef(new Array<Record>())
+const combinedSessions = shallowRef(new Array<Session>())
+const combinedLaps = shallowRef(new Array<Lap>())
+const combinedFeatures = shallowRef(new Array<Feature>())
+const combinedGraphRecords = shallowRef(new Array<Record>())
+const featureBySession = shallowRef(new Map<number, Feature>())
+const graphRecordsBySession = shallowRef(new Map<number, Array<Record>>())
+const selectedRecords = shallowRef(new Array<Record>())
+const selectedSessions = shallowRef(new Array<Session>())
+const selectedLaps = shallowRef(new Array<Lap>())
+const selectedFeatures = shallowRef(new Array<Feature>())
+const selectedGraphRecords = shallowRef(new Array<Record>())
+
 export default {
   data() {
     return {
@@ -301,86 +319,62 @@ export default {
         type: 'module'
       }),
       decodeBeginTimestamp: 0,
-
-      activities: new Array<ActivityFile>(),
-      sessions: new Array<Session>(),
-
-      combinedRecords: new Array<Record>(),
-      combinedSessions: new Array<Session>(),
-      combinedLaps: new Array<Lap>(),
-      combinedFeatures: new Array<Feature>(),
-      combinedGraphRecords: new Array<Record>(),
-
-      featuresBySession: new Map<number, Feature[]>(),
-      graphRecordsBySessions: new Map<number, Array<Record>>(),
-
       sessionSelected: NONE,
-
-      selectedRecords: new Array<Record>(),
-      selectedSessions: new Array<Session>(),
-      selectedLaps: new Array<Lap>(),
-      selectedFeatures: new Array<Feature>(),
-      selectedGraphRecords: new Array<Record>(),
       summary: new Summary(),
       hoveredRecord: new Record()
     }
   },
   computed: {
     isActivityFileReady: function () {
-      return this.activities.length > 0
+      return activities.value.length > 0
     },
     hasPace(): boolean {
-      for (let i = 0; i < this.selectedSessions.length; i++) {
-        switch (this.selectedSessions[i].sport) {
+      for (let i = 0; i < selectedSessions.value.length; i++) {
+        switch (selectedSessions.value[i].sport) {
           case 'Hiking':
           case 'Walking':
           case 'Running':
+          case 'Swimming':
             return true
         }
       }
       return false
     },
     hasAltitude(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].altitude != null) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].altitude != null) return true
       }
       return false
     },
     hasSpeed(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].speed) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].speed) return true
       }
       return false
     },
     hasCadence(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].cadence) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].cadence) return true
       }
       return false
     },
     hasHeartRate(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].heartRate) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].heartRate) return true
       }
       return false
     },
     hasPower(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].power) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].power) return true
       }
       return false
     },
     hasTemperature(): boolean {
-      for (let i = 0; i < this.selectedRecords.length; i++) {
-        if (this.selectedRecords[i].temperature != null) return true
+      for (let i = 0; i < selectedRecords.value.length; i++) {
+        if (selectedRecords.value[i].temperature != null) return true
       }
       return false
-    },
-    creatorName(): string {
-      return this.activities[0].creator.name
-    },
-    timeCreated(): string {
-      return this.activities[0].creator.timeCreated!
     }
   },
   methods: {
@@ -455,81 +449,72 @@ export default {
       console.groupEnd()
 
       requestAnimationFrame(() => {
-        this.preprocessingResults(result.activities)
+        this.preprocessing(result)
         this.scrollTop()
       })
     },
-    preprocessingResults(activities: ActivityFile[]) {
-      this.activities = activities
-      this.sessions = activities.flatMap((act) => {
-        act.sessions.forEach((ses) => {
+    preprocessing(result: Result) {
+      console.time('Preprocessing')
+
+      activities.value = result.activities
+
+      combinedSessions.value = [] // clone of sessions (record's distance will be accumulated)
+      sessions.value = activities.value.flatMap((act) => {
+        for (let i = 0; i < act.sessions.length; i++) {
+          const ses = act.sessions[i]
           ses.creatorName = act.creator.name
           ses.timeCreated = act.creator.timeCreated
           ses.timezone = act.timezone
-        })
-        return act.sessions
-      }) // original
 
-      let lastDistance = 0
-      const combinedSessions: Session[] = []
-      const combinedLaps: Lap[] = []
-      const combinedRecords: Record[] = []
-      const combinedFeatures: Feature[] = []
-      this.sessions.forEach((ses, i) => {
-        const clonedSession = { ...ses }
-
-        clonedSession.records.forEach((rec) => {
-          if (typeof rec.distance !== 'number') return
-          rec.distance! += lastDistance
-        })
-
-        for (let i = ses.records.length - 1; i >= 0; i--) {
-          if (ses.records[i].distance) {
-            lastDistance = ses.records[i].distance!
-            break
+          const clonedSes = { ...ses }
+          clonedSes.records = []
+          for (let j = 0; j < ses.records.length; j++) {
+            clonedSes.records.push({ ...ses.records[j] })
           }
+          combinedSessions.value.push(clonedSes)
         }
-
-        combinedSessions.push(clonedSession)
-        combinedLaps.push(...clonedSession.laps)
-        combinedRecords.push(...clonedSession.records)
-
-        const features = this.createFeatures(ses, i)
-        combinedFeatures.push(...features)
+        return act.sessions
       })
 
-      this.combinedSessions = combinedSessions
-      this.combinedLaps = combinedLaps
-      this.combinedRecords = combinedRecords
-      this.combinedFeatures = combinedFeatures
-      this.combinedGraphRecords = this.summarizeRecords(combinedRecords, this.scale(lastDistance))
+      let prevSessionlastDistance = 0
+      let lastDistance = 0
 
-      const featuresBySession = new Map<number, Feature[]>()
-      const graphRecordsBySession = new Map<number, Array<Record>>()
-      for (let i = 0; i < this.sessions.length; i++) {
-        const ses = this.sessions[i]
+      combinedLaps.value = []
+      combinedRecords.value = []
+      combinedFeatures.value = []
+      combinedGraphRecords.value = []
+      featureBySession.value.clear()
+      graphRecordsBySession.value.clear()
 
-        const features = this.createFeatures(ses, 0)
-        featuresBySession.set(i, features)
-
-        let lastDistance = 0
-        for (let j = ses.records.length - 1; j >= 0; j--) {
-          if (ses.records[j].distance) {
-            lastDistance = ses.records[j].distance!
-            break
-          }
+      for (let i = 0; i < combinedSessions.value.length; i++) {
+        const ses = combinedSessions.value[i]
+        for (let j = 0; j < ses.records.length; j++) {
+          if (ses.records[i].distance == null) continue
+          ses.records[j].distance! += prevSessionlastDistance
+          lastDistance = ses.records[j].distance!
         }
+        prevSessionlastDistance = lastDistance
 
-        const graphRecords = this.summarizeRecords(ses.records, this.scale(lastDistance))
-        graphRecordsBySession.set(i, graphRecords)
+        combinedLaps.value.push(...ses.laps)
+        combinedRecords.value.push(...ses.records)
+
+        const feature = this.createFeature(ses, i)
+        if (feature != null) {
+          combinedFeatures.value.push(feature)
+          featureBySession.value.set(i, feature)
+        }
       }
 
-      this.featuresBySession = featuresBySession
-      this.graphRecordsBySessions = graphRecordsBySession
+      combinedGraphRecords.value = this.summarizeRecords(
+        combinedRecords.value,
+        this.scale(lastDistance)
+      )
 
-      this.selectSession(this.sessionSelected)
+      const n = sessions.value.length
+      this.selectSession(n == 0 ? NONE : n == 1 ? 0 : MULTIPLE)
 
       setTimeout(() => (this.loading = false), 200)
+      console.timeEnd('Preprocessing')
     },
     scale(distance: number): number {
       // NOTE:
@@ -539,41 +524,25 @@ export default {
 
       return distance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
     },
-    createFeatures(session: Session, sessionIndex: number): Feature[] {
-      // Clustering per 10% data, so we have 10 features per session.
-      // If we have 30k records, we only need to lookup the nearest coordinate record in 3k records.
-      const clusterSize = Math.round(session.records.length * (10 / 100))
-
-      const features: Feature[] = []
-      let counter = 0
-      let startIndex = 0
-      let endIndex = 0
+    createFeature(session: Session, sessionIndex: number): Feature | null {
       let coordinates: number[][] = []
       for (let i = 0; i < session.records.length; i++) {
         const rec = session.records[i]
-        if (counter == clusterSize || i == session.records.length - 1) {
-          endIndex = i
-          const feature = new GeoJSON().readFeature({
-            id: `lineString-${sessionIndex}-${startIndex}-${endIndex}`,
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: coordinates
-            }
-          })
-          features.push(feature)
-
-          startIndex = i + 1
-          coordinates = []
-          counter = 0
-        }
 
         if (rec.positionLong == null || rec.positionLat == null) continue
         coordinates.push([rec.positionLong!, rec.positionLat!])
-        counter++
       }
 
-      return features
+      if (coordinates.length == 0) return null
+
+      return new GeoJSON().readFeature({
+        id: `lineString-${sessionIndex}`,
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coordinates
+        }
+      })
     },
     summarizeRecords(records: Record[], distance: number): Record[] {
       let altitudes: number[] = []
@@ -661,26 +630,41 @@ export default {
     selectSession(index: number) {
       switch (index) {
         case NONE:
-          this.selectedRecords = []
-          this.selectedSessions = []
-          this.selectedLaps = []
-          this.selectedFeatures = []
-          this.selectedGraphRecords = []
+          selectedRecords.value = []
+          selectedSessions.value = []
+          selectedLaps.value = []
+          selectedFeatures.value = []
+          selectedGraphRecords.value = []
           break
         case MULTIPLE:
-          this.selectedRecords = this.combinedRecords
-          this.selectedSessions = this.combinedSessions
-          this.selectedLaps = this.combinedLaps
-          this.selectedFeatures = this.combinedFeatures
-          this.selectedGraphRecords = this.combinedGraphRecords
+          selectedRecords.value = combinedRecords.value
+          selectedSessions.value = combinedSessions.value
+          selectedLaps.value = combinedLaps.value
+          selectedFeatures.value = combinedFeatures.value
+          selectedGraphRecords.value = combinedGraphRecords.value
           break
         default: {
-          if (index > this.sessions.length - 1) return
-          this.selectedRecords = this.sessions[index].records
-          this.selectedSessions = [this.sessions[index]]
-          this.selectedLaps = this.sessions[index].laps
-          this.selectedFeatures = this.featuresBySession.get(index) ?? []
-          this.selectedGraphRecords = this.graphRecordsBySessions.get(index) ?? []
+          if (index > sessions.value.length - 1) return
+          selectedRecords.value = sessions.value[index].records
+          selectedSessions.value = [sessions.value[index]]
+          selectedLaps.value = sessions.value[index].laps
+          const feature = featureBySession.value.get(index)
+          selectedFeatures.value = feature ? [feature] : []
+
+          if (graphRecordsBySession.value.get(index) == undefined) {
+            let lastDistance = 0
+            const ses = sessions.value[index]
+            for (let j = ses.records.length - 1; j >= 0; j--) {
+              if (ses.records[j].distance) {
+                lastDistance = ses.records[j].distance!
+                break
+              }
+            }
+            const graphRecords = this.summarizeRecords(ses.records, this.scale(lastDistance))
+            graphRecordsBySession.value.set(index, graphRecords)
+          }
+
+          selectedGraphRecords.value = graphRecordsBySession.value.get(index) as []
           break
         }
       }

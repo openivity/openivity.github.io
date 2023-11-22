@@ -33,6 +33,7 @@
     "@rushstack/eslint-patch": "^1.3.3",
     "@tsconfig/node18": "^18.2.2",
     "@types/bootstrap": "^5.2.9",
+    "@types/geokdbush": "^1.1.5",
     "@types/jsdom": "^21.1.2",
     "@types/luxon": "^3.3.2",
     "@types/node": "^20.6.3",
