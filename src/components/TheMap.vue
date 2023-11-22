@@ -26,27 +26,27 @@
           }}</span>
           <span>&nbsp;km/h</span>
         </div>
-        <div v-if="hasPace">
+        <div v-show="hasPace">
           <span :style="{ width: titleWidth + 'px' }">Pace:</span>
           <span>{{ popupRecord.pace ? formatPace(popupRecord.pace) : '-' }}</span>
           <span>&nbsp;/km</span>
         </div>
-        <div v-if="hasCadence">
+        <div v-show="hasCadence">
           <span :style="{ width: titleWidth + 'px' }">Cadence:</span>
           <span>{{ popupRecord.cadence ? popupRecord.cadence : '-' }}</span>
           <span>&nbsp;rpm</span>
         </div>
-        <div v-if="hasHeartRate">
+        <div v-show="hasHeartRate">
           <span :style="{ width: titleWidth + 'px' }">Heart Rate:</span>
           <span>{{ popupRecord.heartRate ? popupRecord.heartRate : '-' }}</span>
           <span>&nbsp;bpm</span>
         </div>
-        <div v-if="hasPower">
+        <div v-show="hasPower">
           <span :style="{ width: titleWidth + 'px' }">Power:</span>
           <span>{{ popupRecord.power ? popupRecord.power : '-' }}</span>
           <span>&nbsp;watts</span>
         </div>
-        <div v-if="hasTemperature">
+        <div v-show="hasTemperature">
           <span :style="{ width: titleWidth + 'px' }">Temperature:</span>
           <span>{{ popupRecord.temperature ? popupRecord.temperature : '-' }}</span>
           <span>&nbsp;°C</span>
@@ -77,17 +77,6 @@
       </div>
     </div>
     <div class="options position-absolute d-inline-flex d-none">
-      <div class="form-control-sm">
-        <select
-          class="custom-select custom-select-sm"
-          aria-label="Hover Method"
-          v-model="searchMethod"
-          :disabled="kdIndexing"
-        >
-          <option value="standard" selected>Standard</option>
-          <option value="kdtree">KD Tree</option>
-        </select>
-      </div>
       <div class="form-control-sm form-check">
         <input class="form-check-input" type="checkbox" v-model="debug" id="flexCheckDefault" />
         <label class="form-check-label" for="flexCheckDefault"> Debug </label>
@@ -104,28 +93,55 @@ import 'ol/ol.css'
 import { Record, Session } from '@/spec/activity'
 import { toTimezoneDateString } from '@/toolkit/date'
 import { formatPace } from '@/toolkit/pace'
+import { around } from 'geokdbush-tk'
+import KDBush from 'kdbush'
 import { Feature, MapBrowserEvent, Overlay } from 'ol'
-import type { FeatureLike } from 'ol/Feature'
 import OlMap from 'ol/Map'
 import View from 'ol/View'
 import { FullScreen, ScaleLine, ZoomToExtent, defaults as defaultControls } from 'ol/control.js'
 import type { Coordinate } from 'ol/coordinate'
 import { toStringHDMS } from 'ol/coordinate.js'
 import { isEmpty } from 'ol/extent'
-import { Geometry, LineString, Point, SimpleGeometry } from 'ol/geom'
+import { LineString, Point, SimpleGeometry } from 'ol/geom'
 import TileLayer from 'ol/layer/Tile'
 import VectorImageLayer from 'ol/layer/VectorImage'
 import OSM from 'ol/source/OSM'
 import VectorSource from 'ol/source/Vector'
 import { Icon, Stroke, Style } from 'ol/style'
-import KDBush from 'kdbush'
-import { around } from 'geokdbush-tk'
-import { DateTime } from 'luxon'
+import { shallowRef } from 'vue'
 
-const maximizeIcon = document.createElement('i')
-const minimizeIcon = document.createElement('i')
-maximizeIcon.setAttribute('class', 'fa-solid fa-expand')
-minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
+// shallowRef
+const kdbush = shallowRef(new KDBush(0))
+const kdbushIndexToRecordMapping = shallowRef([] as String[])
+
+// do not require reactivity
+const emptyRecord = new Record()
+
+let map: OlMap
+const tileLayer = new TileLayer({ source: new OSM() })
+const vectorLayer = new VectorImageLayer({
+  source: new VectorSource({ features: [] }),
+  visible: true,
+  style: new Style({
+    stroke: new Stroke({ color: '#34495e', width: 4 })
+  })
+})
+const view = new View({
+  center: [0, 0],
+  zoom: 1,
+  enableRotation: false,
+  projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
+})
+
+const newIcon = (src: string): Icon => {
+  return new Icon({ crossOrigin: 'anonymous', src: src, scale: 1 })
+}
+
+const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
+const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
+
+let popupOverlay = new Overlay({})
+let zoomToExtent = new ZoomToExtent()
 
 export default {
   props: {
@@ -137,6 +153,11 @@ export default {
       type: Array<Session>,
       required: true
     },
+    selectedSessions: {
+      type: Array<Session>,
+      required: true
+    },
+
     receivedRecord: Record,
     hasPace: Boolean,
     hasCadence: Boolean,
@@ -149,94 +170,32 @@ export default {
       popupFreeze: new Boolean(),
       popupRecord: new Record(),
       hoveredRecord: new Record(),
-      popupActivityIndex: 0,
       popupTimezoneOffsetHours: 0,
-      popupOverlay: new Overlay({}),
-      startingPointStyle: new Style({
-        image: new Icon({ crossOrigin: 'anonymous', src: startingPointIcon, scale: 1 })
-      }),
-      destinationPointStyle: new Style({
-        image: new Icon({ crossOrigin: 'anonymous', src: destinationPointIcon, scale: 1 })
-      }),
-      vec: new VectorImageLayer({
-        source: new VectorSource({
-          features: []
-        }),
-        visible: true,
-        style: new Style({
-          stroke: new Stroke({
-            // color: [232, 65, 24, 1.0],
-            // color: [60, 99, 130, 1],
-            color: '#34495e',
-            width: 4
-          })
-        })
-      }),
-      map: new OlMap({
-        controls: defaultControls(),
-        layers: [
-          new TileLayer({
-            source: new OSM()
-          })
-        ],
-        view: new View({
-          center: [0, 0],
-          zoom: 1,
-          enableRotation: false,
-          projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
-        })
-      }),
-      zoomToExtent: new ZoomToExtent(),
-      pointer: new Feature(),
-      debug: false,
-      /** @type {'standard' | 'kdtree'} */
-      searchMethod: 'kdtree',
-      sessionTimestamp: '',
-      kdIndexTimestamp: '',
-      kdIndexToRecord: [] as String[],
-      kdIndex: new KDBush(0),
-      kdIndexing: false
+      debug: false
     }
   },
   watch: {
-    searchMethod: {
-      handler(value: string) {
-        if (value == 'kdtree' && !this.kdIndexed) {
-          this.indexing_KDtree(this.sessions)
-        }
-      }
-    },
-
     features: {
       handler(features: Array<Feature>) {
         this.$nextTick(() => {
-          this.map.setTarget(this.$refs.map as HTMLElement)
+          map.setTarget(this.$refs.map as HTMLElement)
           requestAnimationFrame(() => this.updateMapSource(features))
         })
       }
     },
     sessions: {
       handler() {
-        this.sessionTimestamp = DateTime.now().toString()
-        if (this.searchMethod == 'kdtree' && !this.kdIndexed) {
-          this.indexing_KDtree(this.sessions)
-        }
-      }
-    },
-    zoomToExtent: {
-      handler(newValue: ZoomToExtent, oldValue: ZoomToExtent) {
-        this.map.removeControl(oldValue)
-        this.map.addControl(newValue)
+        this.kdbushIndexing(this.sessions)
       }
     },
     receivedRecord: {
       handler(record: Record) {
         this.popupRecord = record
         if (JSON.stringify(record) == JSON.stringify(new Record())) {
-          this.popupOverlay.setPosition(undefined)
+          popupOverlay.setPosition(undefined)
           return
         }
-        this.popupOverlay.setPosition([record.positionLong!, record.positionLat!])
+        popupOverlay.setPosition([record.positionLong!, record.positionLat!])
       }
     },
     hoveredRecord: {
@@ -253,155 +212,92 @@ export default {
     formatPace: formatPace,
 
     updateMapSource(features: Feature[]) {
-      this.popupOverlay.setPosition(undefined)
-
-      const view = this.map.getView()
-      const source = this.vec.getSource()!
-
+      popupOverlay.setPosition(undefined)
+      const source = vectorLayer.getSource()!
+      source.clear()
       if (features.length == 0) {
-        source.clear()
         return
       }
 
-      source.clear()
       source.addFeatures(features)
 
-      view.fit(source.getExtent(), { padding: [50, 50, 50, 50] })
-
-      const startingPoints = new Array<Feature>()
-
-      let lastSessionIndex = -1
-      const destinationPointById = new Map<string, Feature>()
+      const pointFeatures = new Array<Feature>()
       for (let i = 0; i < features.length; i++) {
+        const geometry = features[i]?.getGeometry() as SimpleGeometry
         const [, sessionIndex] = (features[i].getId() as string).split('-').map((v) => parseInt(v))
 
-        const geometry = features[i]?.getGeometry() as SimpleGeometry
-        if (lastSessionIndex != sessionIndex) {
-          const startingPoint = new Feature(new Point(geometry.getFirstCoordinate()))
-          startingPoint.setStyle(this.startingPointStyle as Style)
-          startingPoint.setId(`startingPoint-${sessionIndex}`)
-          startingPoints.push(startingPoint)
-        }
-
-        lastSessionIndex = sessionIndex
+        const startingPoint = new Feature(new Point(geometry.getFirstCoordinate()))
+        startingPoint.setStyle(startingPointStyle as Style)
+        startingPoint.setId(`startingPoint-${sessionIndex}`)
+        pointFeatures.push(startingPoint)
 
         const destinationPoint = new Feature(new Point(geometry.getLastCoordinate()))
-        destinationPoint.setStyle(this.destinationPointStyle as Style)
+        destinationPoint.setStyle(destinationPointStyle as Style)
         destinationPoint.setId(`destinationPoint-${sessionIndex}`)
-        destinationPointById.set(`destinationPoint-${sessionIndex}`, destinationPoint)
+        pointFeatures.push(destinationPoint)
       }
 
-      source.addFeatures(startingPoints)
-      source.addFeatures(Array.from(destinationPointById, ([, feature]) => feature))
-
-      this.zoomToExtent = new ZoomToExtent({ extent: view.getViewStateAndExtent().extent })
+      source.addFeatures(pointFeatures)
+      this.updateExtent()
     },
-    findNearestRecord(featureId: string, coordinate: Coordinate): Record {
-      const debug = this.debug
-      if (debug) console.time('Standard')
+    async kdbushIndexing(sessions: Array<Session>) {
+      console.time('KDtree Indexing')
 
-      const [, sessionIndex, startIndex, endIndex] = featureId.split('-').map((v) => parseInt(v))
+      let totalRecords = 0
+      for (let i = 0; i < sessions.length; i++) {
+        totalRecords += sessions[i].records.length
+      }
 
-      this.popupActivityIndex = sessionIndex
-      let nearestRecord: Record = new Record()
-      let nearestEuclidean: number = Number.MAX_VALUE
-
-      this.popupTimezoneOffsetHours = this.sessions[sessionIndex].timezone
-
-      for (let i = startIndex; i <= endIndex; i++) {
-        const rec = this.sessions[sessionIndex].records[i]
-        if (!rec.positionLong || !rec.positionLat) continue
-        const euclidean = Math.abs(
-          Math.sqrt(
-            Math.pow(rec.positionLong - coordinate[0], 2) +
-              Math.pow(rec.positionLat - coordinate[1], 2)
-          )
-        )
-        if (euclidean < nearestEuclidean) {
-          nearestEuclidean = euclidean
-          nearestRecord = rec
+      kdbush.value = new KDBush(totalRecords)
+      kdbushIndexToRecordMapping.value = []
+      for (let i = 0; i < sessions.length; i++) {
+        const records = sessions[i].records
+        for (let j = 0; j < records.length; j++) {
+          const rec = records[j]
+          if (rec.positionLat == null || rec.positionLong == null) {
+            kdbush.value.add(0, 0) // only to increment index to match kdbush's size.
+            continue
+          }
+          const index = kdbush.value.add(rec.positionLong, rec.positionLat)
+          kdbushIndexToRecordMapping.value[index] = `${i}-${j}`
         }
       }
-      // console.log(coordinate, nearestRecord)
-      if (debug) console.timeEnd('Standard')
-      return nearestRecord
+      kdbush.value.finish()
+      console.timeEnd('KDtree Indexing')
     },
-    // Start Indexing & Transform points to KDBush (1 time only)
-    async indexing_KDtree(sessions: Array<Session>) {
-      const debug = this.debug
-      if (debug) console.time('KDtree Indexing')
+    findNearestRecord(coordinate: Coordinate): Record {
+      const nearestIndex = around(kdbush.value, coordinate[0], coordinate[1], 1)
+      if (nearestIndex.length == 0) return emptyRecord
 
-      this.kdIndexing = true
-      let totalRecords = 0
-      sessions.forEach((ses) => {
-        totalRecords += ses.records.length
-      })
-      this.kdIndexToRecord = [] as String[]
-      this.kdIndex = new KDBush(totalRecords)
-      sessions.forEach((d, sessionIndex) =>
-        d.records.forEach((r, recordIndex) => {
-          if (r.positionLat != null && r.positionLong != null) {
-            this.kdIndexToRecord[
-              this.kdIndex.add(r.positionLong, r.positionLat)
-            ] = `${sessionIndex}-${recordIndex}`
-          } else {
-            this.kdIndexToRecord[this.kdIndex.add(0, 0)] = `${sessionIndex}-${recordIndex}`
-          }
-        })
-      )
-      this.kdIndex.finish()
-      this.kdIndexTimestamp = this.sessionTimestamp
-      this.kdIndexing = false
-      if (debug) console.timeEnd('KDtree Indexing')
-    },
-    getClosestPoint_KDtree(coordinate: Coordinate): Record {
-      const debug = this.debug
-      if (debug) console.time('KDTree')
+      const [sessionIndex, recordIndex] = kdbushIndexToRecordMapping.value[nearestIndex[0]]
+        .split('-')
+        .map((v) => parseInt(v))
 
-      const nearestIndex = around(this.kdIndex, coordinate[0], coordinate[1], 1)
-      if (nearestIndex.length > 0) {
-        const [sessionIndex, recordIndex] = this.kdIndexToRecord[
-          nearestIndex[nearestIndex.length - 1]
-        ]
-          .split('-')
-          .map((v) => parseInt(v))
-
-        // console.log(coordinate, this.sessions[sessionIndex].records[recordIndex])
-        if (debug) console.timeEnd('KDTree')
-        return this.sessions[sessionIndex].records[recordIndex]
-      }
-      if (debug) console.timeEnd('KDTree')
-      return new Record()
+      if (this.selectedSessions.length == 1) return this.selectedSessions[0].records[recordIndex]
+      return this.selectedSessions[sessionIndex].records[recordIndex]
     },
 
     lineStringFeatureListener(e: MapBrowserEvent<any>) {
+      if (!this.isIndexed) return
+
       if (e.type == 'singleclick')
-        this.popupFreeze = !this.popupFreeze && this.popupOverlay.getPosition() != undefined
-      if (!this.popupFreeze) {
-        this.hoveredRecord = new Record()
-        this.popupOverlay.setPosition(undefined)
-      }
-      if (this.popupFreeze == true && this.popupOverlay.getPosition() != undefined) return
+        this.popupFreeze = !this.popupFreeze && popupOverlay.getPosition() != undefined
+      if (this.popupFreeze == true && popupOverlay.getPosition() != undefined) return
 
-      const features = this.map.getFeaturesAtPixel(e.pixel, { hitTolerance: 10 })
-      let feature: FeatureLike | null = null
-      for (let i = 0; i < features.length; i++) {
-        if (features[i].getGeometry() instanceof LineString) {
-          feature = features[i]
-          break
-        }
+      const features = map.getFeaturesAtPixel(e.pixel, { hitTolerance: 10 })
+      const feature = features.find((feature) => feature.getGeometry() instanceof LineString)
+
+      if (!feature) {
+        this.hoveredRecord = emptyRecord
+        popupOverlay.setPosition(undefined)
+        return
       }
 
-      if (feature == null) return
+      if (this.debug) console.time('KDTree')
+      this.hoveredRecord = this.findNearestRecord(e.coordinate)
+      if (this.debug) console.timeEnd('KDTree')
 
-      this.hoveredRecord = (() => {
-        // By default, it will using standard UNTIL kdtree indexed
-        if (this.searchMethod == 'kdtree' && this.kdIndexed) {
-          return this.getClosestPoint_KDtree(e.coordinate)
-        }
-        return this.findNearestRecord(feature.getId() as string, e.coordinate)
-      })()
-      this.popupOverlay.setPosition([
+      popupOverlay.setPosition([
         this.hoveredRecord.positionLong,
         this.hoveredRecord.positionLat
       ] as Coordinate)
@@ -409,11 +305,11 @@ export default {
     },
 
     showPopUpRecord(record: Record) {
-      this.popupOverlay.setPosition(undefined)
+      popupOverlay.setPosition(undefined)
       if (!record) return
 
       this.popupRecord = record
-      this.popupOverlay.setPosition([
+      popupOverlay.setPosition([
         this.popupRecord.positionLong,
         this.popupRecord.positionLat
       ] as Coordinate)
@@ -422,12 +318,13 @@ export default {
 
     updateExtent() {
       this.$nextTick(() => {
-        const extent = this.vec.getSource()!.getExtent()
+        const extent = vectorLayer.getSource()!.getExtent()
         if (isEmpty(extent)) return
-        this.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
-        this.zoomToExtent = new ZoomToExtent({
-          extent: this.map.getView().getViewStateAndExtent().extent
-        })
+        map.getView().fit(extent, { padding: [50, 50, 50, 50] })
+
+        map.removeControl(zoomToExtent)
+        zoomToExtent = new ZoomToExtent({ extent: map.getView().getViewStateAndExtent().extent })
+        map.addControl(zoomToExtent)
       })
     }
   },
@@ -444,26 +341,41 @@ export default {
       })
       return maxWidth
     },
-    kdIndexed(): Boolean {
-      return this.kdIndexTimestamp != '' && this.kdIndexTimestamp == this.sessionTimestamp
+    isIndexed(): Boolean {
+      return kdbush.value._finished
     }
   },
   mounted() {
-    this.popupOverlay = new Overlay({ element: document.getElementById('popup')! })
-    this.map.setTarget(this.$refs.map as HTMLElement)
-    this.map.addOverlay(this.popupOverlay as Overlay)
-    this.map.addLayer(this.vec as VectorImageLayer<VectorSource<Geometry>>)
-    this.map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
-    this.map.addControl(new ScaleLine())
-    this.map.on('change:size', this.updateExtent)
-    this.map.on('pointermove', this.lineStringFeatureListener)
-    this.map.on('singleclick', this.lineStringFeatureListener)
+    const maximizeIcon = document.createElement('i')
+    maximizeIcon.setAttribute('class', 'fa-solid fa-expand')
+
+    const minimizeIcon = document.createElement('i')
+    minimizeIcon.setAttribute('class', 'fa-solid fa-compress')
+
+    popupOverlay.setElement(document.getElementById('popup')!)
+
+    map = new OlMap({
+      overlays: [popupOverlay],
+      controls: defaultControls(),
+      layers: [tileLayer, vectorLayer],
+      view: view
+    })
+
+    map.setTarget(this.$refs.map as HTMLElement)
+
+    map.addControl(new FullScreen({ label: maximizeIcon, labelActive: minimizeIcon }))
+    map.addControl(new ScaleLine())
+
+    map.on('change:size', this.updateExtent)
+    map.on('pointermove', this.lineStringFeatureListener)
+    map.on('singleclick', this.lineStringFeatureListener)
+
     this.updateMapSource(this.features)
+
+    this.kdbushIndexing(this.sessions)
   },
   unmounted() {
-    this.map.un('change:size', this.updateExtent)
-    this.map.un('pointermove', this.lineStringFeatureListener)
-    this.map.un('singleclick', this.lineStringFeatureListener)
+    map.dispose()
   }
 }
 </script>
