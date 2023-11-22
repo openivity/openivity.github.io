@@ -144,13 +144,13 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 func (s *Session) ToMap() map[string]any {
 	m := map[string]any{}
 
-	if s.Timestamp != (time.Time{}) {
+	if !s.Timestamp.IsZero() {
 		m["timestamp"] = s.Timestamp.Format(time.RFC3339)
 	}
-	if s.StartTime != (time.Time{}) {
+	if !s.StartTime.IsZero() {
 		m["startTime"] = s.StartTime.Format(time.RFC3339)
 	}
-	if s.EndTime != (time.Time{}) {
+	if !s.EndTime.IsZero() {
 		m["endTime"] = s.EndTime.Format(time.RFC3339)
 	}
 	if s.Sport != "" {

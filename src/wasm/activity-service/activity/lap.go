@@ -150,13 +150,13 @@ func NewLapFromSession(session *Session) *Lap {
 func (l *Lap) ToMap() map[string]any {
 	m := map[string]any{}
 
-	if l.Timestamp != (time.Time{}) {
+	if !l.Timestamp.IsZero() {
 		m["timestamp"] = l.Timestamp.Format(time.RFC3339)
 	}
-	if l.StartTime != (time.Time{}) {
+	if !l.StartTime.IsZero() {
 		m["startTime"] = l.StartTime.Format(time.RFC3339)
 	}
-	if l.EndTime != (time.Time{}) {
+	if !l.EndTime.IsZero() {
 		m["endTime"] = l.EndTime.Format(time.RFC3339)
 	}
 

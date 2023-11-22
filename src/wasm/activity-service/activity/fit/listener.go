@@ -144,7 +144,7 @@ func isBelongToSession(timestamp, sessionStartTime, sessionEndTime time.Time) bo
 	if timestamp.Equal(sessionStartTime) {
 		return true
 	}
-	if sessionEndTime == (time.Time{}) && timestamp.After(sessionStartTime) { // Last Session has no EndTime
+	if sessionEndTime.IsZero() && timestamp.After(sessionStartTime) { // Last Session has no EndTime
 		return true
 	} else if timestamp.After(sessionStartTime) && timestamp.Before(sessionEndTime) {
 		return true
