@@ -22,11 +22,11 @@ func NewRecord(trkpt *schema.Waypoint, prevRec *activity.Record) *activity.Recor
 	var pointDistance float64 // distance between two coordinates
 	ext := trkpt.TrackPointExtension
 	if ext != nil {
-		if prevRec != nil && prevRec.Distance != nil && ext.Distance != nil {
-			pointDistance = *ext.Distance - *prevRec.Distance
-		}
 		if ext.Distance != nil {
 			rec.Distance = ext.Distance
+			if prevRec != nil && prevRec.Distance != nil {
+				pointDistance = *ext.Distance - *prevRec.Distance
+			}
 		}
 		rec.Cadence = ext.Cadence
 		rec.HeartRate = ext.HeartRate
@@ -54,7 +54,7 @@ func NewRecord(trkpt *schema.Waypoint, prevRec *activity.Record) *activity.Recor
 		rec.Distance = kit.Ptr(prevDist + pointDistance)
 	}
 
-	if prevRec != nil && pointDistance > 0 {
+	if pointDistance != 0 {
 		elapsed := rec.Timestamp.Sub(prevRec.Timestamp).Seconds()
 		if elapsed > 0 {
 			speed := pointDistance / elapsed

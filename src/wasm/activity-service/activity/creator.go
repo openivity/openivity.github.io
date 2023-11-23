@@ -26,7 +26,7 @@ func (c *Creator) ToMap() map[string]any {
 	if c.Product != nil {
 		m["product"] = *c.Product
 	}
-	if c.TimeCreated != (time.Time{}) {
+	if !c.TimeCreated.IsZero() {
 		m["timeCreated"] = c.TimeCreated.Format(time.RFC3339)
 	}
 

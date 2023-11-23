@@ -22,7 +22,7 @@ type Record struct {
 func (r *Record) ToMap() map[string]any {
 	m := map[string]any{}
 
-	if r.Timestamp != (time.Time{}) {
+	if !r.Timestamp.IsZero() {
 		m["timestamp"] = r.Timestamp.Format(time.RFC3339)
 	}
 	if r.PositionLat != nil {

@@ -269,7 +269,7 @@ import { Summary } from '@/spec/summary'
 </template>
 
 <script lang="ts">
-import { ActivityFile, Lap, Record, Session } from '@/spec/activity'
+import { ActivityFile, Lap, Record, SPORT_UNKNOWN, Session } from '@/spec/activity'
 import { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
 import { shallowRef } from 'vue'
@@ -335,6 +335,8 @@ export default {
           case 'Walking':
           case 'Running':
           case 'Swimming':
+          case 'Other':
+          case SPORT_UNKNOWN:
             return true
         }
       }

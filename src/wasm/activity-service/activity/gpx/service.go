@@ -113,6 +113,10 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		session.Laps = laps
 
 		sessions = append(sessions, session)
+
+		if act.Creator.TimeCreated.IsZero() {
+			act.Creator.TimeCreated = session.StartTime
+		}
 	}
 
 	if len(sessions) == 0 {

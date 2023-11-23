@@ -2,7 +2,6 @@ package preprocessor
 
 import (
 	"math"
-	"time"
 
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/kit"
@@ -120,8 +119,8 @@ func (p *Preprocessor) CalculatePace(sport string, records []*activity.Record) {
 		rec := records[i]
 		prev := records[i-1]
 
-		if rec.Distance == nil || rec.Timestamp == (time.Time{}) ||
-			prev.Distance == nil || prev.Timestamp == (time.Time{}) {
+		if rec.Distance == nil || rec.Timestamp.IsZero() ||
+			prev.Distance == nil || prev.Timestamp.IsZero() {
 			continue
 		}
 
