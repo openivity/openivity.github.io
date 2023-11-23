@@ -65,13 +65,15 @@ export default {
       default: []
     },
     summary: Summary,
-    receivedRecord: Record
+    receivedRecord: Record,
+    receivedRecordFreeze: Boolean
   },
   data() {
     return {
       begin: new Date(),
       elapsed: 0, // ms
       hoveredRecord: new Record(),
+      hoveredRecordFreeze: new Boolean(false),
       recordView: new Record(),
       elemWidth: 0,
       xScale: d3.scaleLinear(),
@@ -97,7 +99,7 @@ export default {
             'darkred',
             'darkred'
           ])
-        )
+        ),
     }
   },
   watch: {
@@ -120,10 +122,20 @@ export default {
         pointer.attr('transform', `translate(${this.xScale(record.distance! / 1000)}, 0)`)
       }
     },
+    receivedRecordFreeze: {
+      handler(freeze: Boolean) {
+        this.hoveredRecordFreeze = freeze
+      }
+    },
     hoveredRecord: {
       handler(record: Record) {
         this.recordView = record
         this.$emit('hoveredRecord', record)
+      }
+    },
+    hoveredRecordFreeze: {
+      handler(freeze: Boolean) {
+        this.$emit('hoveredRecordFreeze', freeze)
       }
     }
   },
@@ -339,6 +351,10 @@ export default {
 
       // Add Events
       const pointerListener = (e: Event) => {
+        if (e.type == 'pointerdown')
+          this.hoveredRecordFreeze = !this.hoveredRecordFreeze && this.hoveredRecord != new Record()
+        if (this.hoveredRecordFreeze == true && this.hoveredRecord != new Record()) return
+
         const [px] = d3.pointer(e)
         const [xMin, xMax] = xScale.range()
 
@@ -383,11 +399,14 @@ export default {
         }
 
         this.hoveredRecord = nearestRecord
+        this.hoveredRecordFreeze = this.hoveredRecordFreeze && e.type == 'pointerdown'
       }
 
       svg.on('pointerdown', pointerListener)
       svg.on('pointermove', pointerListener, { passive: true })
       svg.on('mouseleave', () => {
+        if (this.hoveredRecordFreeze) return
+
         this.hoveredRecord = new Record()
         pointer.style('opacity', 0)
       })

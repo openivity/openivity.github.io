@@ -16,7 +16,9 @@ import AreaGraph, { Detail } from './AreaGraph.vue'
       :y-label="'Spd. (km/h)'"
       :unit="'km/h'"
       :received-record="receivedRecord"
+      :received-record-freeze="receivedRecordFreeze"
       v-on:hoveredRecord="onHoveredRecord"
+      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
     ></AreaGraph>
   </div>
 </template>
@@ -42,7 +44,8 @@ export default {
       type: Summary,
       required: true
     },
-    receivedRecord: Record
+    receivedRecord: Record,
+    receivedRecordFreeze: Boolean,
   },
   computed: {
     details(): Detail[] {
@@ -65,6 +68,9 @@ export default {
   methods: {
     onHoveredRecord(record: Record) {
       this.$emit('hoveredRecord', record)
+    },
+    onHoveredRecordFreeze(freeze: Boolean) {
+      this.$emit('hoveredRecordFreeze', freeze)
     }
   }
 }

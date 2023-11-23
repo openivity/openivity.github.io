@@ -133,7 +133,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></PaceGraph>
                   </div>
                   <div class="graph" v-if="hasSpeed">
@@ -142,7 +144,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></SpeedGraph>
                   </div>
                   <div class="graph" v-if="hasCadence">
@@ -151,7 +155,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></CadenceGraph>
                   </div>
                   <div class="graph" v-if="hasHeartRate">
@@ -160,7 +166,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></HeartRateGraph>
                   </div>
                   <div class="graph" v-if="hasPower">
@@ -169,7 +177,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></PowerGraph>
                   </div>
                   <div class="graph" v-if="hasTemperature">
@@ -178,7 +188,9 @@ import { Summary } from '@/spec/summary'
                       :graph-records="selectedGraphRecords"
                       :summary="summary"
                       :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
                       v-on:hoveredRecord="onHoveredRecord"
+                      v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                     ></TemperatureGraph>
                   </div>
                 </div>
@@ -245,7 +257,9 @@ import { Summary } from '@/spec/summary'
                 :hasPower="hasPower"
                 :hasTemperature="hasTemperature"
                 :received-record="hoveredRecord"
+                :received-record-freeze="hoveredRecordFreeze"
                 v-on:hoveredRecord="onHoveredRecord"
+                v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
                 ref="theMap"
               />
             </div>
@@ -257,7 +271,9 @@ import { Summary } from '@/spec/summary'
                 :records="selectedRecords"
                 :graph-records="selectedGraphRecords"
                 :received-record="hoveredRecord"
+                :received-record-freeze="hoveredRecordFreeze"
                 v-on:hoveredRecord="onHoveredRecord"
+                v-on:hoveredRecordFreeze="onHoveredRecordFreeze"
               ></ElevationGraph>
             </div>
           </div>
@@ -321,7 +337,8 @@ export default {
       decodeBeginTimestamp: 0,
       sessionSelected: NONE,
       summary: new Summary(),
-      hoveredRecord: new Record()
+      hoveredRecord: new Record(),
+      hoveredRecordFreeze: new Boolean()
     }
   },
   computed: {
@@ -680,6 +697,9 @@ export default {
     },
     onHoveredRecord(record: Record) {
       this.hoveredRecord = new Record(record)
+    },
+    onHoveredRecordFreeze(freeze: Boolean) {
+      this.hoveredRecordFreeze = freeze
     },
     onSessionSelected(sessionSelected: number) {
       this.sessionSelected = sessionSelected
