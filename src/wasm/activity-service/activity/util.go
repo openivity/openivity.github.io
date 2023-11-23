@@ -8,17 +8,26 @@ import (
 	"golang.org/x/text/language"
 )
 
+const (
+	SportGeneric    = "Generic"
+	SportHiking     = "Hiking"
+	SportWalking    = "Walking"
+	SportRunning    = "Running"
+	SportSwimming   = "Swimming"
+	SportTransition = "Transition" // Multisport transition
+)
+
 func IsConsideredMoving(sport string, speed *float64) bool {
 	if speed == nil {
 		return false
 	}
 
 	switch sport {
-	case "Other", SportUnknown:
+	case SportGeneric:
 		fallthrough // Since we don't know the specific sport, let's assume the slowest possible speed as our tolerance.
-	case "Hiking", "Walking", "Swimming": // slow moving exercise
+	case SportHiking, SportWalking, SportSwimming, SportTransition: // slow moving exercise
 		return *speed > 0.1388 // = 0.5km/h
-	case "Running":
+	case SportRunning:
 		return *speed > 0.7916 // = 2.85 km/h
 	default:
 		return *speed > 1.41 // 5.07 km/h
@@ -27,11 +36,11 @@ func IsConsideredMoving(sport string, speed *float64) bool {
 
 func HasPace(sport string) bool {
 	switch sport {
-	case "Hiking", "Walking", "Running", "Swimming":
-		return true
-	case "Other", SportUnknown:
+	case SportGeneric:
 		// Since we don't know the specific sport, let's calculate the pace for now and allow the user to decide for themselves.
 		// It's better to provide additional information than to have none. (TBD)
+		fallthrough
+	case SportHiking, SportWalking, SportRunning, SportSwimming, SportTransition:
 		return true
 	default:
 		return false

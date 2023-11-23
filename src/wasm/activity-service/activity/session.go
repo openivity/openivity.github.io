@@ -6,10 +6,6 @@ import (
 	"github.com/muktihari/openactivity-fit/accumulator"
 )
 
-const (
-	SportUnknown = "Sport Unknown"
-)
-
 type Session struct {
 	Timestamp        time.Time
 	StartTime        time.Time

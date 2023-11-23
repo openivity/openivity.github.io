@@ -1,4 +1,4 @@
-export const SPORT_UNKNOWN = 'Sport Unknown'
+export const SPORT_GENERIC = 'Generic'
 export const UNKNOWN = 'Unknown'
 
 export class ActivityFile {
@@ -25,7 +25,7 @@ export class Session {
   timestamp: string = ''
   startTime: string = ''
   endTime: string = ''
-  sport: string = SPORT_UNKNOWN
+  sport: string = SPORT_GENERIC
   totalMovingTime: number | null = null
   totalElapsedTime: number | null = null
   totalDistance: number | null = null

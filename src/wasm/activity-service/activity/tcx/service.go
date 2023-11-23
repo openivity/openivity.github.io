@@ -68,6 +68,9 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		}
 
 		sport := activity.FormatTitle(a.Activity.Sport)
+		if sport == "" || sport == "Other" {
+			sport = activity.SportGeneric
+		}
 
 		laps := make([]*activity.Lap, 0, len(a.Activity.Laps))
 
