@@ -119,13 +119,15 @@ const emptyRecord = new Record()
 
 let map: OlMap
 const tileLayer = new TileLayer({ source: new OSM() })
-const vectorLayer = new VectorImageLayer({
+const routeVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] }),
   visible: true,
-  style: new Style({
-    stroke: new Stroke({ color: '#34495e', width: 4 })
-  })
+  style: [
+    new Style({ stroke: new Stroke({ color: 'white', width: 8 }), zIndex: -1 }), // outliner
+    new Style({ stroke: new Stroke({ color: '#34495e', width: 4 }) })
+  ]
 })
+
 const view = new View({
   center: [0, 0],
   zoom: 1,
@@ -213,8 +215,9 @@ export default {
 
     updateMapSource(features: Feature[]) {
       popupOverlay.setPosition(undefined)
-      const source = vectorLayer.getSource()!
+      const source = routeVecLayer.getSource()!
       source.clear()
+
       if (features.length == 0) {
         return
       }
@@ -318,7 +321,7 @@ export default {
 
     updateExtent() {
       this.$nextTick(() => {
-        const extent = vectorLayer.getSource()!.getExtent()
+        const extent = routeVecLayer.getSource()!.getExtent()
         if (isEmpty(extent)) return
         map.getView().fit(extent, { padding: [50, 50, 50, 50] })
 
@@ -357,7 +360,7 @@ export default {
     map = new OlMap({
       overlays: [popupOverlay],
       controls: defaultControls(),
-      layers: [tileLayer, vectorLayer],
+      layers: [tileLayer, routeVecLayer],
       view: view
     })
 
