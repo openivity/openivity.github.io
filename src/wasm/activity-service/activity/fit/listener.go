@@ -68,16 +68,16 @@ func (l *Listener) Activity() *activity.Activity {
 	//    ref: https://developer.garmin.com/fit/file-types/activity
 	if len(l.sessions) == 0 {
 		if len(l.laps) == 0 {
-			lap := activity.NewLapFromRecords(l.records, activity.SportUnknown)
+			lap := activity.NewLapFromRecords(l.records, activity.SportGeneric)
 			if lap != nil {
 				l.laps = append(l.laps, lap)
 			}
-			ses := activity.NewSessionFromLaps(l.laps, activity.SportUnknown)
+			ses := activity.NewSessionFromLaps(l.laps, activity.SportGeneric)
 			if ses != nil {
 				l.sessions = append(l.sessions, ses)
 			}
 		} else {
-			ses := activity.NewSessionFromLaps(l.laps, activity.SportUnknown)
+			ses := activity.NewSessionFromLaps(l.laps, activity.SportGeneric)
 			if ses != nil {
 				l.sessions = append(l.sessions, ses)
 			}

@@ -60,9 +60,9 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	for i := range gpx.Tracks { // Sessions
 		trk := gpx.Tracks[i]
 
-		sport := activity.SportUnknown
-		if trk.Type != "" {
-			sport = activity.FormatTitle(trk.Type)
+		sport := activity.FormatTitle(trk.Type)
+		if sport == "" || sport == "Other" {
+			sport = activity.SportGeneric
 		}
 
 		laps := make([]*activity.Lap, 0, len(trk.TrackSegments))

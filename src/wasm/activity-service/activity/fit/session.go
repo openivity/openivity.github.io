@@ -149,5 +149,9 @@ func NewSession(mesg proto.Message) *activity.Session {
 		}
 	}
 
+	if ses.Sport == activity.FormatTitle(typedef.SportAll.String()) {
+		ses.Sport = activity.SportGeneric
+	}
+
 	return ses
 }
