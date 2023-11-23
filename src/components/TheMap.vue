@@ -3,7 +3,7 @@
     <div v-if="features?.length == 0">No map data</div>
     <div v-else class="map" ref="map"></div>
     <div id="popup" class="ol-popup">
-      <div class="popup-content">
+      <div class="popup-content" v-if="isIndexed">
         <div>
           <span :style="{ width: titleWidth + 'px' }">Time:</span>
           <span>
@@ -73,6 +73,14 @@
                 : '-'
             }}
           </span>
+        </div>
+      </div>
+      <div class="popup-content" v-else>
+        <div class="d-flex justify-content-center">
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="sr-only">Indexing...</span>
+          </div>
+          <div class="px-1">Indexing...</div>
         </div>
       </div>
     </div>
@@ -278,7 +286,6 @@ export default {
     },
 
     lineStringFeatureListener(e: MapBrowserEvent<any>) {
-      if (!this.isIndexed) return
 
       if (e.type == 'singleclick')
         this.popupFreeze = !this.popupFreeze && popupOverlay.getPosition() != undefined
@@ -290,6 +297,12 @@ export default {
       if (!feature) {
         this.hoveredRecord = emptyRecord
         popupOverlay.setPosition(undefined)
+        return
+      }
+
+      if (!this.isIndexed) {
+        popupOverlay.setPosition(e.coordinate)
+        this.popupFreeze = false
         return
       }
 
