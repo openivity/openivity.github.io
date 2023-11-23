@@ -111,6 +111,12 @@ export default {
     receivedRecordFreeze: {
       handler(freeze: Boolean) {
         this.hoveredRecordFreeze = freeze
+        if (!freeze) {
+          const pointer = d3
+            .select(this.$refs[`${this.graphName}`] as HTMLElement)
+            .select('g#pointer')
+          pointer.style('opacity', 0)
+        }
       }
     },
     hoveredRecord: {
@@ -331,9 +337,8 @@ export default {
 
       // Add Events
       const pointerListener = (e: Event) => {
-        if (e.type == 'pointerdown')
-          this.hoveredRecordFreeze = !this.hoveredRecordFreeze && this.hoveredRecord != new Record()
-        if (this.hoveredRecordFreeze == true && this.hoveredRecord != new Record()) return
+        if (e.type == 'pointerdown' && this.hoveredRecordFreeze) this.hoveredRecordFreeze = false
+        if (this.hoveredRecordFreeze == true) return
 
         const [px] = d3.pointer(e)
         const [xMin, xMax] = xScale.range()
@@ -374,10 +379,11 @@ export default {
         }
 
         this.hoveredRecord = nearestRecord
-        this.hoveredRecordFreeze = this.hoveredRecordFreeze && e.type == 'pointerdown'
+        this.hoveredRecordFreeze = e.type == 'pointerup'
       }
 
       svg.on('pointerdown', pointerListener)
+      svg.on('pointerup', pointerListener)
       svg.on('pointermove', pointerListener, { passive: true })
       svg.on('mouseleave', () => {
         if (this.hoveredRecordFreeze) return
