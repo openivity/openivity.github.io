@@ -169,6 +169,7 @@ export default {
     },
 
     receivedRecord: Record,
+    receivedRecordFreeze: Boolean,
     hasPace: Boolean,
     hasCadence: Boolean,
     hasHeartRate: Boolean,
@@ -208,12 +209,22 @@ export default {
         popupOverlay.setPosition([record.positionLong!, record.positionLat!])
       }
     },
+    receivedRecordFreeze: {
+      handler(freeze: Boolean) {
+        this.popupFreeze = freeze
+      }
+    },
     hoveredRecord: {
       handler(record: Record) {
         this.popupRecord = record
         this.$emit('hoveredRecord', record)
       }
-    }
+    },
+    popupFreeze: {
+      handler(freeze: Boolean) {
+        this.$emit('hoveredRecordFreeze', freeze)
+      }
+    },
   },
   expose: ['showPopUpRecord'],
   methods: {
@@ -289,7 +300,6 @@ export default {
     },
 
     lineStringFeatureListener(e: MapBrowserEvent<any>) {
-
       if (e.type == 'singleclick')
         this.popupFreeze = !this.popupFreeze && popupOverlay.getPosition() != undefined
       if (this.popupFreeze == true && popupOverlay.getPosition() != undefined) return

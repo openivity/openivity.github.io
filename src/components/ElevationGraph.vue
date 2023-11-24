@@ -65,13 +65,15 @@ export default {
       default: []
     },
     summary: Summary,
-    receivedRecord: Record
+    receivedRecord: Record,
+    receivedRecordFreeze: Boolean
   },
   data() {
     return {
       begin: new Date(),
       elapsed: 0, // ms
       hoveredRecord: new Record(),
+      hoveredRecordFreeze: new Boolean(),
       recordView: new Record(),
       elemWidth: 0,
       xScale: d3.scaleLinear(),
@@ -120,10 +122,26 @@ export default {
         pointer.attr('transform', `translate(${this.xScale(record.distance! / 1000)}, 0)`)
       }
     },
+    receivedRecordFreeze: {
+      handler(freeze: Boolean) {
+        this.hoveredRecordFreeze = freeze
+        if (!freeze) {
+          const pointer = d3
+            .select(this.$refs[`${this.name}`] as HTMLElement)
+            .select('g#pointer')
+          pointer.style('opacity', 0)
+        }
+      }
+    },
     hoveredRecord: {
       handler(record: Record) {
         this.recordView = record
         this.$emit('hoveredRecord', record)
+      }
+    },
+    hoveredRecordFreeze: {
+      handler(freeze: Boolean) {
+        this.$emit('hoveredRecordFreeze', freeze)
       }
     }
   },
@@ -339,6 +357,9 @@ export default {
 
       // Add Events
       const pointerListener = (e: Event) => {
+        if (e.type == 'pointerdown' && this.hoveredRecordFreeze) this.hoveredRecordFreeze = false
+        if (this.hoveredRecordFreeze == true) return
+
         const [px] = d3.pointer(e)
         const [xMin, xMax] = xScale.range()
 
@@ -381,13 +402,16 @@ export default {
           }
           //   console.debug(`look backward for ${counter} records`)
         }
-
         this.hoveredRecord = nearestRecord
+        this.hoveredRecordFreeze = e.type == 'pointerup'
       }
 
       svg.on('pointerdown', pointerListener)
+      svg.on('pointerup', pointerListener)
       svg.on('pointermove', pointerListener, { passive: true })
       svg.on('mouseleave', () => {
+        if (this.hoveredRecordFreeze) return
+
         this.hoveredRecord = new Record()
         pointer.style('opacity', 0)
       })
