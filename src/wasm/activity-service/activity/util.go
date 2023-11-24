@@ -65,13 +65,10 @@ func isBelong(timestamp, startTime, endTime time.Time) bool {
 		return true
 	}
 	if endTime.IsZero() { // Last Lap or Session has no EndTime
-		if timestamp.After(startTime) {
-			return true
-		}
-	} else {
-		if timestamp.After(startTime) || timestamp.Equal(endTime) {
-			return true
-		}
+		return timestamp.After(startTime)
 	}
-	return false
+	if timestamp.Equal(endTime) {
+		return true
+	}
+	return timestamp.After(startTime) && timestamp.Before(endTime)
 }
