@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/muktihari/openactivity-fit/accumulator"
+	"github.com/muktihari/openactivity-fit/kit"
 )
 
 type Session struct {
@@ -218,4 +219,69 @@ func (s *Session) ToMap() map[string]any {
 	}
 
 	return m
+}
+
+func (s *Session) IsBelongToThisSession(t time.Time) bool {
+	return isBelong(t, s.StartTime, s.EndTime)
+}
+
+// PutLaps puts given laps into session and return any remaining laps that doesn't belong to this session.
+func (s *Session) PutLaps(laps ...*Lap) (remainings []*Lap) {
+	remainings = make([]*Lap, 0, len(laps))
+	for j := range laps {
+		lap := laps[j]
+		if s.IsBelongToThisSession(lap.StartTime) {
+			s.Laps = append(s.Laps, lap)
+		} else {
+			remainings = append(remainings, lap)
+		}
+	}
+	return remainings
+}
+
+// PutRecords puts given records into session and return any remaining records that doesn't belong to this session.
+func (s *Session) PutRecords(records ...*Record) (remainings []*Record) {
+	remainings = make([]*Record, 0, len(records))
+	for j := range records {
+		rec := records[j]
+		if s.IsBelongToThisSession(rec.Timestamp) {
+			s.Records = append(s.Records, rec)
+		} else {
+			remainings = append(remainings, rec)
+		}
+	}
+	return remainings
+}
+
+// CombineSession combines sesssion's values into targetSession.
+// Every zero value in targetSession will be replaced with the corresponding value in session.
+func CombineSession(targetSession, session *Session) {
+	if targetSession == nil || session == nil {
+		return
+	}
+
+	if targetSession.EndTime.IsZero() {
+		targetSession.EndTime = session.EndTime
+	}
+
+	targetSession.TotalElapsedTime = kit.PickNonZeroValue(targetSession.TotalElapsedTime, session.TotalElapsedTime)
+	targetSession.TotalMovingTime = kit.PickNonZeroValue(targetSession.TotalMovingTime, session.TotalMovingTime)
+	targetSession.TotalDistance = kit.PickNonZeroValue(targetSession.TotalDistance, session.TotalDistance)
+	targetSession.TotalCalories = kit.PickNonZeroValue(targetSession.TotalCalories, session.TotalCalories)
+	targetSession.TotalAscent = kit.PickNonZeroValue(targetSession.TotalAscent, session.TotalAscent)
+	targetSession.TotalDescent = kit.PickNonZeroValue(targetSession.TotalDescent, session.TotalDescent)
+	targetSession.AvgSpeed = kit.PickNonZeroValuePtr(targetSession.AvgSpeed, session.AvgSpeed)
+	targetSession.MaxSpeed = kit.PickNonZeroValuePtr(targetSession.MaxSpeed, session.MaxSpeed)
+	targetSession.AvgHeartRate = kit.PickNonZeroValuePtr(targetSession.AvgHeartRate, session.AvgHeartRate)
+	targetSession.MaxHeartRate = kit.PickNonZeroValuePtr(targetSession.MaxHeartRate, session.MaxHeartRate)
+	targetSession.AvgCadence = kit.PickNonZeroValuePtr(targetSession.AvgCadence, session.AvgCadence)
+	targetSession.MaxCadence = kit.PickNonZeroValuePtr(targetSession.MaxCadence, session.MaxCadence)
+	targetSession.AvgPower = kit.PickNonZeroValuePtr(targetSession.AvgPower, session.AvgPower)
+	targetSession.MaxPower = kit.PickNonZeroValuePtr(targetSession.MaxPower, session.MaxPower)
+	targetSession.AvgTemperature = kit.PickNonZeroValuePtr(targetSession.AvgTemperature, session.AvgTemperature)
+	targetSession.MaxTemperature = kit.PickNonZeroValuePtr(targetSession.MaxTemperature, session.MaxTemperature)
+	targetSession.AvgAltitude = kit.PickNonZeroValuePtr(targetSession.AvgAltitude, session.AvgAltitude)
+	targetSession.MaxAltitude = kit.PickNonZeroValuePtr(targetSession.MaxAltitude, session.MaxAltitude)
+	targetSession.AvgPace = kit.PickNonZeroValuePtr(targetSession.AvgPace, session.AvgPace)
+	targetSession.AvgElapsedPace = kit.PickNonZeroValuePtr(targetSession.AvgElapsedPace, session.AvgElapsedPace)
 }

@@ -212,3 +212,40 @@ func (l *Lap) ToMap() map[string]any {
 
 	return m
 }
+
+func (l *Lap) IsBelongToThisLap(t time.Time) bool {
+	return isBelong(t, l.StartTime, l.EndTime)
+}
+
+// CombineLap combines lap's values into targetLap.
+// Every zero value in targetLap will be replaced with the corresponding value in lap.
+func CombineLap(targetLap, lap *Lap) {
+	if targetLap == nil || lap == nil {
+		return
+	}
+
+	if targetLap.EndTime.IsZero() {
+		targetLap.EndTime = lap.EndTime
+	}
+
+	targetLap.TotalElapsedTime = kit.PickNonZeroValue(targetLap.TotalElapsedTime, lap.TotalElapsedTime)
+	targetLap.TotalMovingTime = kit.PickNonZeroValue(targetLap.TotalMovingTime, lap.TotalMovingTime)
+	targetLap.TotalDistance = kit.PickNonZeroValue(targetLap.TotalDistance, lap.TotalDistance)
+	targetLap.TotalCalories = kit.PickNonZeroValue(targetLap.TotalCalories, lap.TotalCalories)
+	targetLap.TotalAscent = kit.PickNonZeroValue(targetLap.TotalAscent, lap.TotalAscent)
+	targetLap.TotalDescent = kit.PickNonZeroValue(targetLap.TotalDescent, lap.TotalDescent)
+	targetLap.AvgSpeed = kit.PickNonZeroValuePtr(targetLap.AvgSpeed, lap.AvgSpeed)
+	targetLap.MaxSpeed = kit.PickNonZeroValuePtr(targetLap.MaxSpeed, lap.MaxSpeed)
+	targetLap.AvgHeartRate = kit.PickNonZeroValuePtr(targetLap.AvgHeartRate, lap.AvgHeartRate)
+	targetLap.MaxHeartRate = kit.PickNonZeroValuePtr(targetLap.MaxHeartRate, lap.MaxHeartRate)
+	targetLap.AvgCadence = kit.PickNonZeroValuePtr(targetLap.AvgCadence, lap.AvgCadence)
+	targetLap.MaxCadence = kit.PickNonZeroValuePtr(targetLap.MaxCadence, lap.MaxCadence)
+	targetLap.AvgPower = kit.PickNonZeroValuePtr(targetLap.AvgPower, lap.AvgPower)
+	targetLap.MaxPower = kit.PickNonZeroValuePtr(targetLap.MaxPower, lap.MaxPower)
+	targetLap.AvgTemperature = kit.PickNonZeroValuePtr(targetLap.AvgTemperature, lap.AvgTemperature)
+	targetLap.MaxTemperature = kit.PickNonZeroValuePtr(targetLap.MaxTemperature, lap.MaxTemperature)
+	targetLap.AvgAltitude = kit.PickNonZeroValuePtr(targetLap.AvgAltitude, lap.AvgAltitude)
+	targetLap.MaxAltitude = kit.PickNonZeroValuePtr(targetLap.MaxAltitude, lap.MaxAltitude)
+	targetLap.AvgPace = kit.PickNonZeroValuePtr(targetLap.AvgPace, lap.AvgPace)
+	targetLap.AvgElapsedPace = kit.PickNonZeroValuePtr(targetLap.AvgElapsedPace, lap.AvgElapsedPace)
+}

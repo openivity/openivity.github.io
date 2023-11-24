@@ -13,9 +13,12 @@ func NewLap(mesg proto.Message) *activity.Lap {
 
 	for i := range mesg.Fields {
 		field := &mesg.Fields[i]
+
 		switch field.Num {
 		case fieldnum.LapTimestamp:
 			lap.Timestamp = datetime.ToTime(field.Value)
+		case fieldnum.LapStartTime:
+			lap.StartTime = datetime.ToTime(field.Value)
 		case fieldnum.LapTotalMovingTime:
 			totalMovingTime, ok := field.Value.(uint32)
 			if !ok || totalMovingTime == basetype.Uint32Invalid {
