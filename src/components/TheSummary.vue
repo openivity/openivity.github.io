@@ -143,8 +143,8 @@ export default {
       const summary = new Summary()
       let sports: Set<string> = new Set()
 
-      let gapSeconds: number = 0
       for (let i = 0; i < this.selectedSessions.length; i++) {
+        let gapSeconds: number = 0
         const session = this.selectedSessions[i]
         if (i > 0) {
           const prev = this.selectedSessions[i - 1]
@@ -152,7 +152,7 @@ export default {
           const prevLastTimestamp = new Date(prev.endTime).getTime()
           const currentFirstTimestamp = new Date(session.startTime).getTime()
 
-          gapSeconds += (currentFirstTimestamp - prevLastTimestamp) / 1000
+          gapSeconds = (currentFirstTimestamp - prevLastTimestamp) / 1000
         }
 
         sports.add(session.sport)
