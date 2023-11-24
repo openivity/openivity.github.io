@@ -102,42 +102,42 @@ func (p *Preprocessor) AggregateByTimestamp(records []*activity.Record) []*activ
 
 // CalculateDistanceAndSpeed calculates distance from latitude and longitude and speed when those values are missing.
 func (p *Preprocessor) CalculateDistanceAndSpeed(records []*activity.Record) {
-	var prevRec *activity.Record
-	for i := range records {
+	for i := 1; i < len(records); i++ {
 		rec := records[i]
+		prev := records[i-1]
 
 		// Calculate distance from two coordinates
 		var pointDistance float64
-		if rec.Distance == nil && prevRec != nil {
+		if rec.Distance == nil {
 			if rec.PositionLat != nil && rec.PositionLong != nil &&
-				prevRec.PositionLat != nil && prevRec.PositionLong != nil {
+				prev.PositionLat != nil && prev.PositionLong != nil {
 
 				var prevDist float64
-				if prevRec.Distance != nil {
-					prevDist = *prevRec.Distance
+				if prev.Distance != nil {
+					prevDist = *prev.Distance
 				}
 
 				pointDistance = geomath.VincentyDistance(
 					*rec.PositionLat,
 					*rec.PositionLong,
-					*prevRec.PositionLat,
-					*prevRec.PositionLong,
+					*prev.PositionLat,
+					*prev.PositionLong,
 				)
 
 				rec.Distance = kit.Ptr(prevDist + pointDistance)
 			}
+		} else if rec.Distance != nil && prev.Distance != nil {
+			pointDistance = *rec.Distance - *prev.Distance
 		}
 
 		// Speed
 		if rec.Speed == nil && pointDistance > 0 {
-			elapsed := rec.Timestamp.Sub(prevRec.Timestamp).Seconds()
+			elapsed := rec.Timestamp.Sub(prev.Timestamp).Seconds()
 			if elapsed > 0 {
 				speed := pointDistance / elapsed
 				rec.Speed = &speed
 			}
 		}
-
-		prevRec = rec
 	}
 }
 
