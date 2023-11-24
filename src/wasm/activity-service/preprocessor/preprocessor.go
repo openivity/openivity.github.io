@@ -1,8 +1,6 @@
 package preprocessor
 
 import (
-	"math"
-
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/geomath"
 	"github.com/muktihari/openactivity-fit/kit"
@@ -192,10 +190,12 @@ func (p *Preprocessor) CalculateGrade(records []*activity.Record) {
 			run = d
 		}
 
-		grade := rise / run * 100
-		if math.IsInf(grade, 0) {
+		if rise == 0 || run == 0 {
 			continue
 		}
+
+		grade := rise / run * 100
+
 		rec.Grade = &grade
 	}
 }
