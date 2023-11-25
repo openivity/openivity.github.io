@@ -80,7 +80,7 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 		ses := activity.NewSessionFromLaps(result.Laps, activity.SportGeneric)
 		ses.Records = result.Records
 		ses.Laps = result.Laps
-		s.preprocessingRecords(ses.Records)
+		s.preprocessingRecords(ses.Records, ses.Sport)
 		act.Sessions = []*activity.Session{ses}
 
 		return act
@@ -96,7 +96,7 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 			continue
 		}
 
-		s.preprocessingRecords(ses.Records)
+		s.preprocessingRecords(ses.Records, ses.Sport)
 		s.finalizeSession(ses)
 
 		act.Sessions = append(act.Sessions, ses)
@@ -109,7 +109,7 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 	// Handle remaining laps and records that don't belong any session
 	// This could happen when file is truncated or file is not properly encoded.
 	sport := activity.SportGeneric // Mark as Generic
-	s.preprocessingRecords(result.Records)
+	s.preprocessingRecords(result.Records, sport)
 
 	if len(result.Laps) != 0 {
 		ses := activity.NewSessionFromLaps(result.Laps, sport)
@@ -174,12 +174,12 @@ func (s *service) sanitize(result *ListenerResult) {
 
 // preprocessingRecords pre-processes records per session since 1 session corresponds to 1 sport.
 // We should not process different sports as one.
-func (s *service) preprocessingRecords(records []*activity.Record) {
+func (s *service) preprocessingRecords(records []*activity.Record, sport string) {
 	s.preprocessor.CalculateDistanceAndSpeed(records)
 	s.preprocessor.SmoothingElev(records)
 	s.preprocessor.CalculateGrade(records)
-	if activity.HasPace(activity.SportGeneric) {
-		s.preprocessor.CalculatePace(activity.SportGeneric, records)
+	if activity.HasPace(sport) {
+		s.preprocessor.CalculatePace(sport, records)
 	}
 }
 
