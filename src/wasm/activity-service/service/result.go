@@ -7,9 +7,11 @@ import (
 )
 
 type Result struct {
-	Err        error
-	Took       time.Duration
-	Activities []activity.Activity
+	Err               error
+	DecodeTook        time.Duration
+	SerializationTook time.Duration
+	TotalElapsed      time.Duration
+	Activities        []activity.Activity
 }
 
 func (r Result) ToMap() map[string]any {
@@ -17,15 +19,22 @@ func (r Result) ToMap() map[string]any {
 		return map[string]any{"err": r.Err.Error()}
 	}
 
+	begin := time.Now()
+
 	activities := make([]any, len(r.Activities))
 	for i := range r.Activities {
 		activities[i] = r.Activities[i].ToMap()
 	}
 
+	r.SerializationTook = time.Since(begin)
+	r.TotalElapsed = r.DecodeTook + r.SerializationTook
+
 	m := map[string]any{
-		"err":        nil,
-		"took":       r.Took.Milliseconds(),
-		"activities": activities,
+		"err":               nil,
+		"activities":        activities,
+		"decodeTook":        r.DecodeTook.Milliseconds(),
+		"serializationTook": r.SerializationTook.Milliseconds(),
+		"totalElapsed":      r.TotalElapsed.Milliseconds(),
 	}
 
 	return m

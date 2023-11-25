@@ -299,15 +299,19 @@ if (isWebAssemblySupported == false) {
 
 class Result {
   err: string | null = null
-  took: number
   activities: Array<ActivityFile>
+  decodeTook: number
+  serializationTook: number
+  totalElapsed: number
 
   constructor(json?: any) {
     const casted = json as Result
 
     this.err = casted?.err
-    this.took = casted?.took
     this.activities = casted?.activities
+    this.decodeTook = casted?.decodeTook
+    this.serializationTook = casted?.serializationTook
+    this.totalElapsed = casted?.totalElapsed
   }
 }
 
@@ -460,10 +464,15 @@ export default {
         return
       }
 
+      // Instrumenting...
       const totalDuration = new Date().getTime() - this.decodeBeginTimestamp
-      console.group('Decoding')
-      console.debug('Decode took:\t\t', result.took, 'ms')
-      console.debug('Interop WASM to JS:\t', totalDuration - result.took, 'ms')
+      console.group('Decoding:')
+      console.group('Spent on WASM:')
+      console.debug('Decode took:\t\t', result.decodeTook, 'ms')
+      console.debug('Serialization took:\t', result.serializationTook, 'ms')
+      console.debug('Total elapsed:\t\t', result.totalElapsed, 'ms')
+      console.groupEnd()
+      console.debug('Interop WASM to JS:\t', totalDuration - result.totalElapsed, 'ms')
       console.debug('Total elapsed:\t\t', totalDuration, 'ms')
       console.groupEnd()
 
