@@ -8,6 +8,7 @@ import (
 
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/activity/tcx/schema"
+	"github.com/muktihari/openactivity-fit/kit"
 	"github.com/muktihari/openactivity-fit/preprocessor"
 )
 
@@ -119,10 +120,12 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			records = append(records, lapRecords...)
 
 			lap := activity.NewLapFromRecords(lapRecords, sport)
-			lap.StartTime = activityLap.StartTime
-			lap.TotalDistance = activityLap.DistanceMeters
-			lap.TotalCalories = activityLap.Calories
-			lap.TotalElapsedTime = activityLap.TotalTimeSeconds
+			if !activityLap.StartTime.IsZero() {
+				lap.StartTime = activityLap.StartTime
+			}
+			lap.TotalDistance = kit.PickNonZeroValue(activityLap.DistanceMeters, lap.TotalDistance)
+			lap.TotalCalories = kit.PickNonZeroValue(activityLap.Calories, lap.TotalCalories)
+			lap.TotalElapsedTime = kit.PickNonZeroValue(activityLap.TotalTimeSeconds, lap.TotalElapsedTime)
 
 			if activityLap.AverageHeartRateBpm != nil {
 				lap.AvgHeartRate = activityLap.AverageHeartRateBpm
@@ -139,7 +142,9 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		}
 
 		session := activity.NewSessionFromLaps(laps, sport)
-		session.StartTime = a.Activity.ID
+		if !a.Activity.ID.IsZero() {
+			session.StartTime = a.Activity.ID
+		}
 
 		session.Laps = laps
 		session.Records = records
@@ -154,7 +159,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	}
 
 	if len(sessions) == 0 {
-		return nil, fmt.Errorf("tcx has no activity data")
+		return nil, fmt.Errorf("tcx: %w", activity.ErrNoActivity)
 	}
 
 	act.Sessions = sessions

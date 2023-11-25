@@ -120,7 +120,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	}
 
 	if len(sessions) == 0 {
-		return nil, fmt.Errorf("gpx has no activity data")
+		return nil, fmt.Errorf("gpx: %w", activity.ErrNoActivity)
 	}
 
 	act.Sessions = sessions

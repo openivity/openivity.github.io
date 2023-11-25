@@ -508,7 +508,7 @@ export default {
       for (let i = 0; i < combinedSessions.value.length; i++) {
         const ses = combinedSessions.value[i]
         for (let j = 0; j < ses.records.length; j++) {
-          if (ses.records[i].distance == null) continue
+          if (ses.records[j].distance == null) continue
           ses.records[j].distance! += prevSessionlastDistance
           lastDistance = ses.records[j].distance!
         }
@@ -564,6 +564,10 @@ export default {
       })
     },
     summarizeRecords(records: Record[], distance: number): Record[] {
+      let timestamps: string[] = []
+      let distances: number[] = []
+      let positionLats: number[] = []
+      let positionLongs: number[] = []
       let altitudes: number[] = []
       let cadences: number[] = []
       let heartRates: number[] = []
@@ -576,15 +580,15 @@ export default {
       const summarized: Record[] = []
       let cur = 0
       for (let i = 0; i < records.length; i++) {
-        const d = records[i].distance! - records[cur].distance!
+        const d = (records[i].distance ?? 0) - (records[cur].distance ?? 0)
 
         if (d > distance) {
-          let record = new Record({
-            timestamp: records[cur].timestamp,
-            distance: records[cur].distance,
-            positionLat: records[cur].positionLat,
-            positionLong: records[cur].positionLong
-          })
+          let record = new Record()
+
+          if (timestamps.length > 0) record.timestamp = timestamps[0]
+          if (distances.length > 0) record.distance = distances[0]
+          if (positionLats.length > 0) record.positionLat = positionLats[0]
+          if (positionLongs.length > 0) record.positionLong = positionLongs[0]
 
           if (altitudes.length > 0)
             record.altitude = altitudes.reduce((sum, val) => sum + val, 0) / altitudes.length
@@ -606,6 +610,10 @@ export default {
           summarized.push(record)
 
           // Reset array
+          timestamps = []
+          distances = []
+          positionLats = []
+          positionLongs = []
           altitudes = []
           cadences = []
           heartRates = []
@@ -618,30 +626,18 @@ export default {
           cur = i
         }
 
-        if (records[i].altitude) {
-          altitudes.push(records[i].altitude!)
-        }
-        if (records[i].cadence) {
-          cadences.push(records[i].cadence!)
-        }
-        if (records[i].heartRate) {
-          heartRates.push(records[i].heartRate!)
-        }
-        if (records[i].speed) {
-          speeds.push(records[i].speed!)
-        }
-        if (records[i].power) {
-          powers.push(records[i].power!)
-        }
-        if (records[i].temperature) {
-          temps.push(records[i].temperature!)
-        }
-        if (records[i].grade) {
-          grades.push(records[i].grade!)
-        }
-        if (records[i].pace) {
-          paces.push(records[i].pace!)
-        }
+        if (records[i].timestamp != null) timestamps.push(records[i].timestamp!)
+        if (records[i].distance != null) distances.push(records[i].distance!)
+        if (records[i].positionLat != null) positionLats.push(records[i].positionLat!)
+        if (records[i].positionLong != null) positionLongs.push(records[i].positionLong!)
+        if (records[i].altitude != null) altitudes.push(records[i].altitude!)
+        if (records[i].cadence != null) cadences.push(records[i].cadence!)
+        if (records[i].heartRate != null) heartRates.push(records[i].heartRate!)
+        if (records[i].speed != null) speeds.push(records[i].speed!)
+        if (records[i].power != null) powers.push(records[i].power!)
+        if (records[i].temperature != null) temps.push(records[i].temperature!)
+        if (records[i].grade != null) grades.push(records[i].grade!)
+        if (records[i].pace != null) paces.push(records[i].pace!)
       }
 
       return summarized

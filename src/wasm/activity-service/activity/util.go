@@ -2,6 +2,7 @@ package activity
 
 import (
 	"strings"
+	"time"
 	"unicode"
 
 	"golang.org/x/text/cases"
@@ -57,4 +58,17 @@ func FormatTitle(s string) string {
 	}, s)
 	s = cases.Title(language.English).String(s)
 	return s
+}
+
+func isBelong(timestamp, startTime, endTime time.Time) bool {
+	if timestamp.Equal(startTime) {
+		return true
+	}
+	if endTime.IsZero() { // Last Lap or Session has no EndTime
+		return timestamp.After(startTime)
+	}
+	if timestamp.Equal(endTime) {
+		return true
+	}
+	return timestamp.After(startTime) && timestamp.Before(endTime)
 }

@@ -2,7 +2,12 @@ package activity
 
 import (
 	"context"
+	"errors"
 	"io"
+)
+
+var (
+	ErrNoActivity = errors.New("no activity")
 )
 
 type Service interface {
