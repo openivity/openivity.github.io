@@ -347,6 +347,7 @@ export default {
     },
     hasPace(): boolean {
       for (let i = 0; i < selectedSessions.value.length; i++) {
+        const ses = selectedSessions.value[i]
         switch (selectedSessions.value[i].sport) {
           case 'Hiking':
           case 'Walking':
@@ -354,7 +355,10 @@ export default {
           case 'Swimming':
           case 'Transition':
           case SPORT_GENERIC:
-            return true
+            for (let j = 0; j < ses.records.length; j++) {
+              const rec = ses.records[j]
+              if (rec.pace != null) return true
+            }
         }
       }
       return false
@@ -524,24 +528,13 @@ export default {
         }
       }
 
-      combinedGraphRecords.value = this.summarizeRecords(
-        combinedRecords.value,
-        this.scale(lastDistance)
-      )
+      combinedGraphRecords.value = this.summarizeRecords(combinedRecords.value)
 
       const n = sessions.value.length
       this.selectSession(n == 0 ? NONE : n == 1 ? 0 : MULTIPLE)
 
       setTimeout(() => (this.loading = false), 200)
       console.timeEnd('Preprocessing')
-    },
-    scale(distance: number): number {
-      // NOTE:
-      // There is a limit on the amount of data that can be visually displayed in a graph, so will summarize it based on distance.
-      // As a cyclist, the longer the distance, the less likely we are to be concerned about smaller distances.
-      // If the distance between data exceeds this scale, then no data will be scaled.
-
-      return distance * (0.05 / 100) // 0.05% e.g distance is 1km, we summarize every 0.5m.
     },
     createFeature(session: Session, sessionIndex: number): Feature | null {
       let coordinates: number[][] = []
@@ -563,7 +556,55 @@ export default {
         }
       })
     },
-    summarizeRecords(records: Record[], distance: number): Record[] {
+    startTime(records: Record[]): string | null {
+      let timestamp: string | null = null
+      for (let i = 0; i < records.length; i++) {
+        if (timestamp != null) break
+        timestamp = records[i].timestamp
+      }
+      return timestamp
+    },
+    endTime(records: Record[]): string | null {
+      let timestamp: string | null = null
+      for (let i = records.length - 1; i >= 0; i--) {
+        if (timestamp != null) break
+        timestamp = records[i].timestamp
+      }
+      return timestamp
+    },
+    hasDistance(records: Record[]): boolean {
+      for (let i = 0; i < records.length; i++) {
+        if (records[i].distance != null && records[i].distance! > 0) return true
+      }
+      return false
+    },
+    lastDistance(records: Record[]): number {
+      let d: number = 0
+      for (let i = records.length - 1; i >= 0; i--) {
+        const rec = records[i]
+        if (d > 0) break
+        if (rec.distance != null) d = records[i].distance!
+      }
+      return d
+    },
+    summarizeRecords(records: Record[]): Record[] {
+      // There is a limit on the amount of data that can be visually displayed in a graph, so will summarize it based on distance.
+      // As a cyclist, the longer the distance, the less likely we are to be concerned about smaller distances.
+      // If the distance between data exceeds this scale, then no data will be scaled.
+      const percentage = 0.05 / 100 // 0.05% e.g distance is 1km, we summarize every 0.5m.
+
+      const summarizeByDistance = this.hasDistance(records)
+      let threshold: number = 0 // the unit value is either distance meters or duration seconds depends on conditions below:
+      if (summarizeByDistance) {
+        const ld = this.lastDistance(records)
+        threshold = ld * percentage
+      } else {
+        const startTime = this.startTime(records)
+        const endTime = this.endTime(records)
+        const dur = new Date(endTime!).getTime() - new Date(startTime!).getTime()
+        threshold = dur * percentage
+      }
+
       let timestamps: string[] = []
       let distances: number[] = []
       let positionLats: number[] = []
@@ -578,11 +619,20 @@ export default {
       let paces: number[] = []
 
       const summarized: Record[] = []
-      let cur = 0
+      let curIndex = 0
       for (let i = 0; i < records.length; i++) {
-        const d = (records[i].distance ?? 0) - (records[cur].distance ?? 0)
+        const rec = records[i]
+        const cur = records[curIndex]
 
-        if (d > distance) {
+        let delta: number = 0
+        if (summarizeByDistance) {
+          delta = (rec.distance ?? 0) - (cur.distance ?? 0)
+        } else {
+          delta = new Date(rec.timestamp!).getTime() - new Date(cur.timestamp!).getTime()
+          if (cur.timestamp == null) curIndex = i // move cursor
+        }
+
+        if (delta > threshold) {
           let record = new Record()
 
           if (timestamps.length > 0) record.timestamp = timestamps[0]
@@ -623,7 +673,7 @@ export default {
           grades = []
           paces = []
 
-          cur = i
+          curIndex = i
         }
 
         if (records[i].timestamp != null) timestamps.push(records[i].timestamp!)
@@ -667,15 +717,8 @@ export default {
           selectedFeatures.value = feature ? [feature] : []
 
           if (graphRecordsBySession.value.get(index) == undefined) {
-            let lastDistance = 0
             const ses = sessions.value[index]
-            for (let j = ses.records.length - 1; j >= 0; j--) {
-              if (ses.records[j].distance) {
-                lastDistance = ses.records[j].distance!
-                break
-              }
-            }
-            const graphRecords = this.summarizeRecords(ses.records, this.scale(lastDistance))
+            const graphRecords = this.summarizeRecords(ses.records)
             graphRecordsBySession.value.set(index, graphRecords)
           }
 
