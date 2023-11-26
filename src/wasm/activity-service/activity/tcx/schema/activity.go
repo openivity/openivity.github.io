@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/xml"
+	"fmt"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error
 			case "Activity":
 				var activity Activity
 				if err := activity.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Activity: %w", err)
 				}
 				a.Activity = &activity
 			}
@@ -69,13 +70,13 @@ func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Lap":
 				var activityLap ActivityLap
 				if err := activityLap.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Lap: %w", err)
 				}
 				a.Laps = append(a.Laps, activityLap)
 			case "Creator":
 				var device Device
 				if err := device.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Creator: %w", err)
 				}
 				a.Creator = &device
 			default:
@@ -86,7 +87,7 @@ func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Id":
 				t, err := time.Parse(time.RFC3339, string(elem))
 				if err != nil {
-					return err
+					return fmt.Errorf("parse Id: %w", err)
 				}
 				a.ID = t
 			case "Notes":

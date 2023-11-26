@@ -23,6 +23,12 @@ func NewRecord(trackpoint *schema.Trackpoint, prevRec *activity.Record) *activit
 		rec.PositionLong = &trackpoint.Position.LongitudeDegrees
 	}
 
+	if trackpoint.Extensions != nil {
+		if trackpoint.Extensions.Speed != nil {
+			rec.Speed = trackpoint.Extensions.Speed
+		}
+	}
+
 	var pointDistance float64
 	if prevRec != nil && prevRec.Distance != nil && rec.Distance != nil {
 		pointDistance = *rec.Distance - *prevRec.Distance

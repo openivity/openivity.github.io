@@ -2,7 +2,23 @@ package schema
 
 import (
 	"encoding/xml"
+	"fmt"
 )
+
+// TODO: for implementing xml.Marshaler
+const (
+	xmlns    = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+	xmlnsxsi = "http://www.w3.org/2001/XMLSchema-instance"
+	xmlnsns5 = "http://www.garmin.com/xmlschemas/ActivityGoals/v1"
+	xmlnsns3 = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
+	xmlnsns2 = "http://www.garmin.com/xmlschemas/UserProfile/v2"
+	xmlnstpx = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+)
+
+var schemaLocations = [...]string{
+	"http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2",
+	"http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd",
+}
 
 // TCX simplified schema.
 type TCX struct {
@@ -25,13 +41,13 @@ func (t *TCX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Activities":
 				var al ActivityList
 				if err := al.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Activities: %w", err)
 				}
 				t.Activities = append(t.Activities, al)
 			case "Author":
 				var application Application
 				if err := application.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Author: %w", err)
 				}
 				t.Author = &application
 			}
