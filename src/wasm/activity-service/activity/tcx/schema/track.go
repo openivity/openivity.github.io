@@ -28,7 +28,7 @@ func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Trackpoint":
 				var trackpoint Trackpoint
 				if err := trackpoint.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Trackpoint: %w", err)
 				}
 				t.Trackpoints = append(t.Trackpoints, trackpoint)
 			}
@@ -41,13 +41,14 @@ func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 }
 
 type Trackpoint struct {
-	Time           time.Time   `xml:"Time"`
-	Position       *Position   `xml:"Position,omitempty"`
-	AltitudeMeters *float64    `xml:"AltitudeMeters,omitempty"`
-	DistanceMeters *float64    `xml:"DistanceMeters,omitempty"`
-	HeartRateBpm   *uint8      `xml:"HeartRateBpm,omitempty"`
-	Cadence        *uint8      `xml:"Cadence,omitempty"`
-	SensorState    SensorState `xml:"SensorState,omitempty"`
+	Time           time.Time            `xml:"Time"`
+	Position       *Position            `xml:"Position,omitempty"`
+	AltitudeMeters *float64             `xml:"AltitudeMeters,omitempty"`
+	DistanceMeters *float64             `xml:"DistanceMeters,omitempty"`
+	HeartRateBpm   *uint8               `xml:"HeartRateBpm,omitempty"`
+	Cadence        *uint8               `xml:"Cadence,omitempty"`
+	SensorState    SensorState          `xml:"SensorState,omitempty"`
+	Extensions     *TrackpointExtension `xml:"Extensions>TPX,omitempty"`
 }
 
 var _ xml.Unmarshaler = &Trackpoint{}
@@ -66,13 +67,17 @@ func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			case "Position":
 				var position Position
 				if err := position.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Position: %w", err)
 				}
 				tp.Position = &position
 			case "Value":
-				if targetCharData == "HeartRateBpm" { // check prev value
-					targetCharData = "HeartRateBpmValue"
+				targetCharData = targetCharData + "Value"
+			case "Extensions":
+				var trackpointExtension TrackpointExtension
+				if err := trackpointExtension.UnmarshalXML(dec, elem); err != nil {
+					return fmt.Errorf("unmarshal Extensions: %w", err)
 				}
+				tp.Extensions = &trackpointExtension
 			default:
 				targetCharData = elem.Name.Local
 			}
@@ -96,6 +101,8 @@ func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 					return fmt.Errorf("parse DistanceMeters %q: %w", elem, err)
 				}
 				tp.DistanceMeters = &f
+			case "HeartRateBpm":
+				continue
 			case "HeartRateBpmValue":
 				u, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
@@ -143,13 +150,13 @@ func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "LatitudeDegrees":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse LatitudeDegrees: %w", err)
 				}
 				p.LatitudeDegrees = f
 			case "LongitudeDegrees":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse LongitudeDegrees: %w", err)
 				}
 				p.LongitudeDegrees = f
 			}
@@ -168,3 +175,36 @@ const (
 	SensorStatePresent SensorState = "Present"
 	SensorStateAbsent  SensorState = "Absent"
 )
+
+type TrackpointExtension struct {
+	Speed *float64 `xml:"Speed,omitempty"`
+}
+
+func (tpe *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	var targetCharData string
+	for {
+		token, err := dec.Token()
+		if err != nil {
+			return err
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			targetCharData = elem.Name.Local
+		case xml.CharData:
+			switch targetCharData {
+			case "Speed":
+				f, err := strconv.ParseFloat(string(elem), 64)
+				if err != nil {
+					return fmt.Errorf("parse Speed: %w", err)
+				}
+				tpe.Speed = &f
+			}
+			targetCharData = ""
+		case xml.EndElement:
+			if elem == se.End() {
+				return nil
+			}
+		}
+	}
+}

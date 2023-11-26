@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -33,7 +34,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 		case "StartTime":
 			t, err := time.Parse(time.RFC3339, attr.Value)
 			if err != nil {
-				return err
+				return fmt.Errorf("parse StartTime: %w", err)
 			}
 			a.StartTime = t
 		}
@@ -52,9 +53,11 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			case "Track":
 				var track Track
 				if err := track.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Track: %w", err)
 				}
 				a.Tracks = append(a.Tracks, track)
+			case "Value":
+				targetCharData = targetCharData + "Value"
 			default:
 				targetCharData = elem.Name.Local
 			}
@@ -63,37 +66,41 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			case "TotalTimeSeconds":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse TotalTimeSeconds: %w", err)
 				}
 				a.TotalTimeSeconds = f
 			case "DistanceMeters":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse DistanceMeters: %w", err)
 				}
 				a.DistanceMeters = f
 			case "MaximumSpeed":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse MaximumSpeed: %w", err)
 				}
 				a.MaximumSpeed = &f
 			case "Calories":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse Calories: %w", err)
 				}
 				a.Calories = uint16(u)
 			case "AverageHeartRateBpm":
+				continue
+			case "AverageHeartRateBpmValue":
 				u, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse AverageHeartRateBpm: %w", err)
 				}
 				a.AverageHeartRateBpm = kit.Ptr(uint8(u))
 			case "MaximumHeartRateBpm":
+				continue
+			case "MaximumHeartRateBpmValue":
 				u, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse MaximumHeartRateBpm: %w", err)
 				}
 				a.MaximumHeartRateBpm = kit.Ptr(uint8(u))
 			case "Intensity":
@@ -101,7 +108,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			case "Cadence":
 				u, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse Cadence: %w", err)
 				}
 				a.Cadence = kit.Ptr(uint8(u))
 			case "TriggerMethod":

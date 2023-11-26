@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strconv"
 )
 
@@ -28,7 +29,7 @@ func (a *Application) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			case "Build":
 				var build Build
 				if err := build.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Build: %w", err)
 				}
 				a.Build = &build
 
@@ -74,7 +75,7 @@ func (b *Build) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Version":
 				var version Version
 				if err := version.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Version: %w", err)
 				}
 				b.Version = &version
 			default:
@@ -106,7 +107,7 @@ const (
 type Device struct {
 	Name      string   `xml:"Name"`
 	UnitId    uint32   `xml:"UnitId"`
-	ProductID uint16   `xml:"ProductID"`
+	ProductID uint16   `xml:"ProductId"`
 	Version   *Version `xml:"Version"`
 }
 
@@ -126,7 +127,7 @@ func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "Version":
 				var version Version
 				if err := version.UnmarshalXML(dec, elem); err != nil {
-					return err
+					return fmt.Errorf("unmarshal Version: %w", err)
 				}
 				d.Version = &version
 
@@ -140,13 +141,13 @@ func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "UnitId":
 				u, err := strconv.ParseUint(string(elem), 10, 32)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse UnitId: %w", err)
 				}
 				d.UnitId = uint32(u)
-			case "ProductID":
+			case "ProductId":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse ProductId: %w", err)
 				}
 				d.ProductID = uint16(u)
 			}
@@ -184,25 +185,25 @@ func (v *Version) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			case "VersionMajor":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse VersionMajor: %w", err)
 				}
 				v.VersionMajor = uint16(u)
 			case "VersionMinor":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse VersionMinor: %w", err)
 				}
 				v.VersionMinor = uint16(u)
 			case "BuildMajor":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse BuildMajor: %w", err)
 				}
 				v.BuildMajor = uint16(u)
 			case "BuildMinor":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse BuildMinor: %w", err)
 				}
 				v.BuildMinor = uint16(u)
 			}
