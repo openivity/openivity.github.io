@@ -35,10 +35,10 @@
         </span>
       </div>
     </div>
-    <div>
-      <div v-if="!hasAltitude">No altitude data</div>
-      <div :ref="name" v-else></div>
+    <div v-if="!hasAltitude" class="h-75 d-flex text-center align-middle no-altitude-data">
+      No altitude data
     </div>
+    <div :ref="name" v-else></div>
   </div>
 </template>
 <script lang="ts">
@@ -126,9 +126,7 @@ export default {
       handler(freeze: Boolean) {
         this.hoveredRecordFreeze = freeze
         if (!freeze) {
-          const pointer = d3
-            .select(this.$refs[`${this.name}`] as HTMLElement)
-            .select('g#pointer')
+          const pointer = d3.select(this.$refs[`${this.name}`] as HTMLElement).select('g#pointer')
           pointer.style('opacity', 0)
         }
       }
@@ -196,9 +194,16 @@ export default {
 
       this.xScale = xScale
 
+      // Having an excessively small extent size is not conducive to elevation analysis,
+      // as it impedes our ability to discern the elevation differences.
+      let yExtent = d3.extent(graphRecords, (d) => d.altitude) as number[]
+      const yExtentMinSize = 100 // masl
+      const currentSize = yExtent[1] - yExtent[0]
+      if (currentSize < yExtentMinSize) yExtent[1] += yExtentMinSize - currentSize
+
       const yScale = d3
         .scaleLinear()
-        .domain(d3.extent(graphRecords, (d) => d.altitude) as Number[])
+        .domain(yExtent)
         .rangeRound([height - marginBottom, marginTop])
         .nice()
 
@@ -466,6 +471,13 @@ export default {
   padding-left: 5px;
   padding-right: 5px;
   display: inline-block;
+}
+
+.no-altitude-data {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.25rem;
 }
 
 @media (pointer: coarse) {

@@ -1,6 +1,6 @@
 <template>
   <div class="map-container position-relative w-100 h-100">
-    <div v-if="features?.length == 0">No map data</div>
+    <div v-if="features?.length == 0" class="no-map-data">No map data</div>
     <div v-else class="map" ref="map"></div>
     <div id="popup" class="ol-popup">
       <div class="popup-content" v-if="isIndexed">
@@ -131,7 +131,7 @@ const routeVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] }),
   visible: true,
   style: [
-    new Style({ stroke: new Stroke({ color: 'white', width: 8 }), zIndex: -1 }), // outliner
+    new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
     new Style({ stroke: new Stroke({ color: '#34495e', width: 4 }) })
   ]
 })
@@ -224,7 +224,7 @@ export default {
       handler(freeze: Boolean) {
         this.$emit('hoveredRecordFreeze', freeze)
       }
-    },
+    }
   },
   expose: ['showPopUpRecord'],
   methods: {
@@ -482,5 +482,9 @@ export default {
 
 .popup-content span:nth-child(2) {
   font-weight: 500;
+}
+
+.no-map-data {
+  font-size: 1.25rem;
 }
 </style>
