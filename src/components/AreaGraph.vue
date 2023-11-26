@@ -215,9 +215,15 @@ export default {
         return xScale(new Date(rec.timestamp!).getTime())
       }
 
+      let altitudeExtent = d3.extent(graphRecords, (d) => d.altitude) as number[]
+      const altitudeExtentMinSize = 100 // masl
+      const currentSize = altitudeExtent[1] - altitudeExtent[0]
+      if (currentSize < altitudeExtentMinSize)
+        altitudeExtent[1] += altitudeExtentMinSize - currentSize
+
       const altitudeScale = d3
         .scaleLinear()
-        .domain(d3.extent(graphRecords, (d) => d.altitude) as Number[])
+        .domain(altitudeExtent)
         .rangeRound([height - marginBottom, marginTop])
         .nice()
 
