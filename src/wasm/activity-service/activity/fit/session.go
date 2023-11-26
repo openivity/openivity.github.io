@@ -26,7 +26,7 @@ func NewSession(mesg proto.Message) *activity.Session {
 			if !ok || sport == basetype.EnumInvalid {
 				continue
 			}
-			ses.Sport = activity.FormatTitle(typedef.Sport(sport).String())
+			ses.Sport = kit.FormatTitle(typedef.Sport(sport).String())
 		case fieldnum.SessionTotalMovingTime:
 			totalMovingTime, ok := field.Value.(uint32)
 			if !ok || totalMovingTime == basetype.Uint32Invalid {
@@ -149,7 +149,7 @@ func NewSession(mesg proto.Message) *activity.Session {
 		}
 	}
 
-	if ses.Sport == activity.FormatTitle(typedef.SportAll.String()) {
+	if ses.Sport == kit.FormatTitle(typedef.SportAll.String()) {
 		ses.Sport = activity.SportGeneric
 	}
 

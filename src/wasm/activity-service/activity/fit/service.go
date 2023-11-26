@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/openactivity-fit/activity"
@@ -13,11 +14,15 @@ import (
 var _ activity.Service = &service{}
 
 type service struct {
-	preprocessor *preprocessor.Preprocessor
+	preprocessor  *preprocessor.Preprocessor
+	manufacturers map[uint16]Manufacturer
 }
 
-func NewService(preproc *preprocessor.Preprocessor) activity.Service {
-	return &service{preprocessor: preproc}
+func NewService(preproc *preprocessor.Preprocessor, manufacturers map[uint16]Manufacturer) activity.Service {
+	return &service{
+		preprocessor:  preproc,
+		manufacturers: manufacturers,
+	}
 }
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
@@ -59,6 +64,11 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 	}
 
 	s.sanitize(result)
+
+	creator := result.Creator
+	if creator.Manufacturer != nil && creator.Product != nil {
+		creator.Name = s.creatorName(*creator.Manufacturer, *creator.Product)
+	}
 
 	act := &activity.Activity{
 		Creator:  *result.Creator,
@@ -222,4 +232,26 @@ func (s *service) finalizeSession(ses *activity.Session) {
 
 	sesFromLaps := activity.NewSessionFromLaps(ses.Laps, ses.Sport)
 	activity.CombineSession(ses, sesFromLaps)
+}
+
+func (s *service) creatorName(manufacturerID, productID uint16) string {
+	manufacturer, ok := s.manufacturers[manufacturerID]
+	if !ok {
+		return activity.Unknown
+	}
+
+	var productName string
+	for i := range manufacturer.Products {
+		product := manufacturer.Products[i]
+		if product.ID == productID {
+			productName = product.Name
+			break
+		}
+	}
+
+	if productName == "" {
+		productName = "(" + strconv.FormatUint(uint64(productID), 10) + ")"
+	}
+
+	return manufacturer.Name + " " + productName
 }

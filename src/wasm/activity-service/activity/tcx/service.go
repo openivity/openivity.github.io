@@ -68,7 +68,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			continue
 		}
 
-		sport := activity.FormatTitle(a.Activity.Sport)
+		sport := kit.FormatTitle(a.Activity.Sport)
 		if sport == "" || sport == "Other" {
 			sport = activity.SportGeneric
 		}

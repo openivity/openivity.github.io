@@ -8,6 +8,7 @@ import (
 
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/activity/gpx/schema"
+	"github.com/muktihari/openactivity-fit/kit"
 	"github.com/muktihari/openactivity-fit/preprocessor"
 )
 
@@ -60,7 +61,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	for i := range gpx.Tracks { // Sessions
 		trk := gpx.Tracks[i]
 
-		sport := activity.FormatTitle(trk.Type)
+		sport := kit.FormatTitle(trk.Type)
 		if sport == "" || sport == "Other" {
 			sport = activity.SportGeneric
 		}

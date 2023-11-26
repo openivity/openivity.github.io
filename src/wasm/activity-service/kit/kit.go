@@ -1,6 +1,13 @@
 package kit
 
-import "golang.org/x/exp/constraints"
+import (
+	"strings"
+	"unicode"
+
+	"golang.org/x/exp/constraints"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+)
 
 // Ptr returns pointer of v
 func Ptr[T any](v T) *T { return &v }
@@ -22,4 +29,16 @@ func PickNonZeroValuePtr[T constraints.Integer | constraints.Float](x, y *T) *T 
 		return y
 	}
 	return x
+}
+
+// FormatTitle returns init capital for every word. "snow boarding", "snow_boarding", "SNOW_boardinG" -> "Show Boarding".
+func FormatTitle(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return ' '
+		}
+		return r
+	}, s)
+	s = cases.Title(language.English).String(s)
+	return s
 }
