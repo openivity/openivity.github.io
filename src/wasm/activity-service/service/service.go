@@ -97,7 +97,7 @@ func (s *service) Decode(ctx context.Context, rs []io.Reader) Result {
 	})
 
 	return Result{
-		Took:       time.Since(begin),
+		DecodeTook: time.Since(begin),
 		Activities: activities,
 	}
 }
