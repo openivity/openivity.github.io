@@ -12,23 +12,28 @@ import { Duration } from 'luxon'
       </div>
     </div>
     <div class="row gx-0">
-      <div class="col-9">
+      <div class="col d-flex flex-row">
         <div
-          class="progress"
+          class="progress flex-fill"
           role="progressbar"
           aria-label="Success example"
           aria-valuenow="{{ validProsen }}"
           aria-valuemin="0"
           aria-valuemax="100"
         >
-          <div :class="['progress-bar', ...progressClass]" :style="{ width: `${validProsen}%` }">
-            {{ validProsen }}%
+          <div
+            :class="[
+              'progress-bar',
+              ...progressClass,
+              isLoading ? 'progress-bar-striped progress-bar-animated' : ''
+            ]"
+            :style="{ width: `${isLoading ? 100 : validProsen.toFixed(0)}%` }"
+          >
+            <span v-if="progressText"> {{ validProsen.toFixed(1) }}% </span>
           </div>
         </div>
-      </div>
-      <div class="col-3 d-flex flex-row">
-        <small class="text-body-secondary flex-fill text-end hr-time">{{ formattedTime }}</small>
-        <small class="text-body-secondary text-end hr-prosen">{{ validProsen }}%</small>
+        <small class="text-body-secondary text-end hr-time">{{ formattedTime }}</small>
+        <small class="text-body-secondary text-end hr-prosen">{{ validProsen.toFixed(1) }}%</small>
       </div>
     </div>
   </div>
@@ -57,12 +62,20 @@ export default {
       type: Number,
       default: 0
     },
+    progressText: {
+      type: Boolean
+    },
     progressClass: {
       type: Array<String>,
       default: []
+    },
+    isLoading: {
+      type: Boolean
     }
   },
-  data() {},
+  data() {
+    return {}
+  },
   watch: {},
   computed: {
     formattedTime(): String {
@@ -97,9 +110,10 @@ export default {
   margin-top: 5px;
 }
 .hr-time {
+  width: 60px;
   font-weight: bold;
 }
 .hr-prosen {
-  width: 40px;
+  width: 45px;
 }
 </style>
