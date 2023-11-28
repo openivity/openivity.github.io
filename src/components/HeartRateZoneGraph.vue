@@ -3,22 +3,61 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 </script>
 
 <template>
-  <div class="col-12 h-100 pt-2" v-for="hrZone in hrZones" :key="hrZone.zone">
-    <HeartRateZoneBar
-      :zone="hrZone.zone"
-      :zoneSub="hrZone.zoneSub"
-      :minmax="hrZone.minmax"
-      :timeInSecond="hrZone.timeInSecond"
-      :prosen="hrZone.prosen"
-      :progress-class="hrZone.progressClass"
-      :progress-text="hrZone.showProgressText"
-      :isLoading="isLoading"
-    ></HeartRateZoneBar>
+  <div class="container">
+    <div class="row collapsible">
+      <div
+        class="col text-start"
+        style="cursor: pointer"
+        data-bs-toggle="collapse"
+        data-bs-target="#hrzone-graph-content"
+        aria-expanded="false"
+        aria-controls="hrzone-graph-content"
+      >
+        <h6 class="pt-1 mb-0 title">
+          <i class="fa-solid fa-caret-right collapse-indicator"></i>
+          Heart Rate Zone
+          <i class="fa-md fa-solid fa-solid fa-heart-circle-check"></i>
+        </h6>
+      </div>
+      <div class="col-auto text-end">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Max</span>
+          <input
+            type="text"
+            class="form-control form-control-sm text-end"
+            placeholder="-"
+            inputmode="numeric"
+            maxlength="3"
+            style="width: 40px"
+            :value="maxHr"
+            @change="maxHrOnChange(maxHr, $event)"
+            :readonly="isLoading"
+          />
+          <span class="input-group-text">bpm</span>
+        </div>
+      </div>
+    </div>
+    <div class="row collapse show" id="hrzone-graph-content">
+      <div class="col-12 pt-2" v-for="hrZone in hrZones" :key="hrZone.zone">
+        <HeartRateZoneBar
+          :zone="hrZone.zone"
+          :zoneSub="hrZone.zoneSub"
+          :minmax="hrZone.minmax"
+          :timeInSecond="hrZone.timeInSecond"
+          :prosen="hrZone.prosen"
+          :progress-class="hrZone.progressClass"
+          :progress-text="hrZone.showProgressText"
+          :isLoading="isLoading"
+        ></HeartRateZoneBar>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { Record, Session } from '@/spec/activity'
+
+const defaultHr = 193
 
 export default {
   props: {
@@ -44,9 +83,27 @@ export default {
       isLoading: false,
       hrZones: [
         {
-          zone: 'Zone 5',
+          zone: 'Zone 5C',
           zoneSub: 'Maximum',
-          minmax: [174, Infinity],
+          minmax: [179, Infinity],
+          timeInSecond: 0,
+          prosen: 0,
+          progressClass: ['bg-danger'],
+          showProgressText: false
+        },
+        {
+          zone: 'Zone 5B',
+          zoneSub: 'Maximum',
+          minmax: [176, 179],
+          timeInSecond: 0,
+          prosen: 0,
+          progressClass: ['bg-danger'],
+          showProgressText: false
+        },
+        {
+          zone: 'Zone 5A',
+          zoneSub: 'Maximum',
+          minmax: [174, 176],
           timeInSecond: 0,
           prosen: 0,
           progressClass: ['bg-danger'],
@@ -88,7 +145,9 @@ export default {
           progressClass: ['bg-secondary'],
           showProgressText: false
         }
-      ]
+      ],
+      // hrConst: 220,
+      maxHr: defaultHr
     }
   },
   watch: {
@@ -103,25 +162,136 @@ export default {
       }
     }
   },
-  computed: {
-    // details(): Detail[] {
-    //   return [
-    //     new Detail({
-    //       title: 'Avg Heart Rate',
-    //       value: this.summary.avgHeartRate?.toFixed(0) ?? '0'
-    //     }),
-    //     new Detail({
-    //       title: 'Max Heart Rate',
-    //       value: this.summary.maxHeartRate?.toFixed(0) ?? '0'
-    //     })
-    //   ]
-    // }
-  },
+  computed: {},
   methods: {
+    maxHrOnChange(oldHr: number, event: Event) {
+      this.$nextTick(() => {
+        this.maxHr = this.validateHr(parseFloat((event.target as HTMLInputElement).value), oldHr)
+        this.$forceUpdate()
+
+        if (oldHr == this.maxHr) return
+        this.summarizedGraph(this.selectedSession)
+      })
+    },
+    validateHr(value: number, defaultValue: number) {
+      return value >= 50 && value <= 300 ? value : defaultValue
+    },
     summarizedGraph(sessions: Array<Session>) {
       this.isLoading = true
       console.time('HR Zone Process')
 
+      /* Re-adjust HR Zone */
+      // this.maxHr = this.hrConst - (this.age <= 1 ? 1 : this.age >= 150 ? 150 : this.age)
+
+      this.hrZones.forEach((zone) => {
+        zone.prosen = 0
+        zone.timeInSecond = 0
+      })
+
+      this.hrZones[0].minmax = [Math.floor(this.maxHr * 0.96), Infinity]
+      this.hrZones[1].minmax = [Math.floor(this.maxHr * 0.93), this.hrZones[0].minmax[0]]
+      this.hrZones[2].minmax = [Math.floor(this.maxHr * 0.915), this.hrZones[1].minmax[0]]
+      this.hrZones[3].minmax = [Math.floor(this.maxHr * 0.85), this.hrZones[2].minmax[0]]
+      this.hrZones[4].minmax = [Math.floor(this.maxHr * 0.8), this.hrZones[3].minmax[0]]
+      this.hrZones[5].minmax = [Math.floor(this.maxHr * 0.745), this.hrZones[4].minmax[0]]
+      this.hrZones[6].minmax = [Math.floor(this.maxHr * 0), this.hrZones[5].minmax[0]]
+
+      if (!sessions) {
+        console.timeEnd('HR Zone Process')
+        this.isLoading = false
+        return
+      }
+
+      // categorize...
+      // this.categorizedByDiffData(sessions, false)
+      // this.categorizedByDiffData(sessions, true)
+      this.categorizedByTransition(sessions)
+
+      console.timeEnd('HR Zone Process')
+      this.isLoading = false
+    },
+    categorizedByDiffData(sessions: Array<Session>, useNextDataAsHrZone: Boolean) {
+      /* Categorized HR Zone ver. Diff */
+      // Example
+      // let zones = {
+      //   zone1: { min: 110, max: 120 },
+      //   zone2: { min: 121, max: 130 },
+      //   zone3: { min: 131, max: 140 },
+      //   zone4: { min: 141, max: 150 },
+      //   zone5: { min: 151, max: 160 }
+      // }
+      // const data = [
+      //   { timestamp: '2022-07-10T11:36:00Z', heartRate: 150 },
+      //   { timestamp: '2022-07-10T11:36:20Z', heartRate: 120 }
+      // ]
+      // // Heart Rate Zone Breakdown:
+      // // zone4: 20s
+      // // zone3: 0s
+      // // zone2: 0s
+      // // zone1: 0s
+      // // Total Time: 20.00 seconds
+      // // Reverse if useNextDataAsHrZone = true
+
+      // Initialize variables for tracking total time in each zone
+      let zoneTotals: number[] = []
+      let totalSeconds = 0
+
+      // Process each data point and calculate heart rate zone and total time
+      sessions.forEach((session) => {
+        if (!session.records) return
+        for (let i = 0; i < session.records.length - 1; i++) {
+          const entry = session.records[i]
+          const nextEntry = session.records[i + 1]
+
+          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
+
+          if (entry.timestamp == null || nextEntry.timestamp == null) continue
+
+          const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
+          const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
+          let secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          if (secondsDiff > 30) secondsDiff = 1
+
+          totalSeconds += secondsDiff
+
+          let selectedHrZoneIndex = hrZoneIndex
+          if (useNextDataAsHrZone) selectedHrZoneIndex = nextHrZoneIndex
+
+          if (!zoneTotals[selectedHrZoneIndex]) {
+            zoneTotals[selectedHrZoneIndex] = 0
+          }
+
+          zoneTotals[selectedHrZoneIndex] += secondsDiff
+        }
+      })
+
+      // Calculate percentage of time in each zone and assign to hr zone
+      const zonePercentages: any = {}
+      for (const [zoneIndex, zoneSeconds] of zoneTotals.entries()) {
+        const percentage = (zoneSeconds / totalSeconds) * 100
+        zonePercentages[zoneIndex] = percentage
+
+        if (this.hrZones[zoneIndex]) {
+          this.hrZones[zoneIndex].prosen = percentage || 0
+          this.hrZones[zoneIndex].timeInSecond = zoneSeconds
+        }
+      }
+
+      // Debugging
+      console.log('> Heart Rate Zone Breakdown:')
+      for (const [zoneIndex, zoneSeconds] of zoneTotals.entries()) {
+        console.log(
+          ` > ${this.hrZones[zoneIndex]?.zone}: ${zoneSeconds?.toFixed(
+            2
+          )} seconds (${zonePercentages[zoneIndex].toFixed(2)}%)`
+        )
+      }
+
+      console.log(`> Total Time: ${totalSeconds.toFixed(2)} seconds`)
+    },
+    categorizedByTransition(sessions: Array<Session>) {
+      /* Categorized HR Zone ver. Transition Zone */
       // Example
       // let zones = {
       //   zone1: { min: 110, max: 120 },
@@ -152,27 +322,7 @@ export default {
       // // zone4: 12.90 seconds (32.26%)
       // // Total Time: 40.00 seconds
 
-      /* Re-adjust HR Zone */
-      const maxHr = 220 - (this.age <= 1 ? 1 : this.age >= 150 ? 150 : this.age)
-
-      this.hrZones.forEach((zone) => {
-        zone.prosen = 0
-        zone.timeInSecond = 0
-      })
-
-      this.hrZones[0].minmax = [Math.floor(maxHr * 0.9), Infinity]
-      this.hrZones[1].minmax = [Math.floor(maxHr * 0.8), this.hrZones[0].minmax[0] - 1]
-      this.hrZones[2].minmax = [Math.floor(maxHr * 0.7), this.hrZones[1].minmax[0] - 1]
-      this.hrZones[3].minmax = [Math.floor(maxHr * 0.6), this.hrZones[2].minmax[0] - 1]
-      this.hrZones[4].minmax = [Math.floor(maxHr * 0.5), this.hrZones[3].minmax[0] - 1]
-
-      /* Categorized HR Zone */
       // Initialize variables for tracking total time in each zone
-      if (!sessions) {
-        console.timeEnd('HR Zone Process')
-        this.isLoading = false
-        return
-      }
       let zoneTotals: number[] = []
       let totalSeconds = 0
 
@@ -186,11 +336,12 @@ export default {
           const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
           const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
 
-          if (entry.timestamp == null && nextEntry.timestamp == null) continue
+          if (entry.timestamp == null || nextEntry.timestamp == null) continue
 
           const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
           const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
-          const secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          let secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          if (secondsDiff > 30) secondsDiff = 1
 
           totalSeconds += secondsDiff
 
@@ -259,9 +410,6 @@ export default {
       }
 
       console.log(`> Total Time: ${totalSeconds.toFixed(2)} seconds`)
-
-      console.timeEnd('HR Zone Process')
-      this.isLoading = false
     },
     // get hr this.hrZones index based on hr
     getHeartRateZoneIndex(heartRate: number) {
@@ -302,5 +450,6 @@ export default {
   font-weight: bold;
 }
 .hr-prosen {
+  font-weight: normal;
 }
 </style>

@@ -6,12 +6,12 @@ import { Duration } from 'luxon'
   <div class="col-12 h-100 pt-2">
     <div class="row">
       <div class="col d-flex flex-row pb-1">
-        <h6 class="p-0 m-0">{{ zone }}</h6>
+        <h6 class="p-0 m-0 text-body-secondary">{{ zone }}</h6>
         <small class="text-body-secondary ms-2 me-1">{{ validMinMax }} bpm</small>
         <small class="text-body-secondary">&#183; {{ zoneSub }}</small>
       </div>
     </div>
-    <div class="row gx-0">
+    <div class="row">
       <div class="col d-flex flex-row">
         <div
           class="progress flex-fill"
