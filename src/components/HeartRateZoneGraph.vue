@@ -21,7 +21,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
       </div>
       <div class="col-auto text-end">
         <div class="input-group input-group-sm">
-          <span class="input-group-text">Max HR</span>
+          <span class="input-group-text ps-1">Max HR</span>
           <input
             type="text"
             class="form-control form-control-sm text-end"
@@ -33,7 +33,19 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
             @change="maxHrOnChange(maxHr, $event)"
             :readonly="isLoading"
           />
-          <span class="input-group-text">bpm</span>
+          <span class="input-group-text pe-1"
+            >bpm
+            <i
+              class="fa-solid fa-question-circle ps-1 mt-1"
+              data-bs-toggle="tooltip"
+              data-bs-html="true"
+              data-bs-custom-class="openivity-tooltip"
+              data-bs-title="
+            <p>Your maximum heart rate can be estimated with a commonly used formula</p>
+            <p> 220 - <em>Age</em> = <b>Max HR</b></p>
+          "
+            ></i
+          ></span>
         </div>
       </div>
     </div>
@@ -56,6 +68,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 
 <script lang="ts">
 import { Record, Session } from '@/spec/activity'
+import { Tooltip } from 'bootstrap'
 
 const defaultHr = 193
 
@@ -438,6 +451,9 @@ export default {
   },
   mounted() {
     this.summarizedGraph(this.selectedSession)
+    new Tooltip(document.body, {
+      selector: "[data-bs-toggle='tooltip']"
+    })
   }
 }
 </script>
