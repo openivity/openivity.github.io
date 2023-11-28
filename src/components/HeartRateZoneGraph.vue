@@ -21,7 +21,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
       </div>
       <div class="col-auto text-end">
         <div class="input-group input-group-sm">
-          <span class="input-group-text">Max</span>
+          <span class="input-group-text">Max HR</span>
           <input
             type="text"
             class="form-control form-control-sm text-end"
