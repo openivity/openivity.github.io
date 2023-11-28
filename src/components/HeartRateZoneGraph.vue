@@ -18,13 +18,13 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 </template>
 
 <script lang="ts">
-import { Record } from '@/spec/activity'
+import { Record, Session } from '@/spec/activity'
 
 export default {
   props: {
     // The record, it don't need to know it's single or combined
-    records: {
-      type: Array<Record>,
+    selectedSession: {
+      type: Array<Session>,
       required: true,
       default: []
     },
@@ -92,14 +92,14 @@ export default {
     }
   },
   watch: {
-    records: {
-      handler(records: Array<Record>) {
-        this.processRecord(records)
+    selectedSession: {
+      handler(sessions: Array<Session>) {
+        this.summarizedGraph(sessions)
       }
     },
     age: {
       handler() {
-        this.processRecord(this.records)
+        this.summarizedGraph(this.selectedSession)
       }
     }
   },
@@ -118,7 +118,7 @@ export default {
     // }
   },
   methods: {
-    processRecord(records: Array<Record>) {
+    summarizedGraph(sessions: Array<Session>) {
       this.isLoading = true
       console.time('HR Zone Process')
 
@@ -168,65 +168,73 @@ export default {
 
       /* Categorized HR Zone */
       // Initialize variables for tracking total time in each zone
+      if (!sessions) {
+        console.timeEnd('HR Zone Process')
+        this.isLoading = false
+        return
+      }
       let zoneTotals: number[] = []
       let totalSeconds = 0
 
       // Process each data point and calculate heart rate zone and total time
-      for (let i = 0; i < records.length - 1; i++) {
-        const entry = records[i]
-        const nextEntry = records[i + 1]
+      sessions.forEach((session) => {
+        if (!session.records) return
+        for (let i = 0; i < session.records.length - 1; i++) {
+          const entry = session.records[i]
+          const nextEntry = session.records[i + 1]
 
-        const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
-        const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
+          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
 
-        if (entry.timestamp == null && nextEntry.timestamp == null) continue
+          if (entry.timestamp == null && nextEntry.timestamp == null) continue
 
-        const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
-        const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
-        const secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
+          const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
+          const secondsDiff: any = (timestamp2 - timestamp1) / 1000
 
-        totalSeconds += secondsDiff
+          totalSeconds += secondsDiff
 
-        if (!zoneTotals[hrZoneIndex]) {
-          zoneTotals[hrZoneIndex] = 0
-        }
-
-        // If there is a transition between heart rate zones, distribute time proportionally
-        if (hrZoneIndex !== nextHrZoneIndex) {
-          // calculate the bpm step
-          const zonesInvolved = this.determineZonesInvolved(hrZoneIndex, nextHrZoneIndex)
-          const totalSteps = zonesInvolved.reduce((total, zoneIndex) => {
-            const start = Math.min(
-              Math.max(this.hrZones[zoneIndex].minmax[0], entry.heartRate || 0),
-              this.hrZones[zoneIndex].minmax[1]
-            )
-            const end = Math.min(
-              Math.max(this.hrZones[zoneIndex].minmax[0], nextEntry.heartRate || 0),
-              this.hrZones[zoneIndex].minmax[1]
-            )
-            return 1 + total + (Math.max(end, start) - Math.min(end, start))
-          }, 0)
-
-          // calculate the fraction or delta
-          for (let j = 0; j < zonesInvolved.length; j++) {
-            const zIndex = zonesInvolved[j]
-            zoneTotals[zIndex] = zoneTotals[zIndex] || 0
-            const start = Math.min(
-              Math.max(this.hrZones[zIndex].minmax[0], entry.heartRate || 0),
-              this.hrZones[zIndex].minmax[1]
-            )
-            const end = Math.min(
-              Math.max(this.hrZones[zIndex].minmax[0], nextEntry.heartRate || 0),
-              this.hrZones[zIndex].minmax[1]
-            )
-            const fraction = 1 + (Math.max(end, start) - Math.min(end, start))
-            zoneTotals[zIndex] += secondsDiff * (fraction / totalSteps)
+          if (!zoneTotals[hrZoneIndex]) {
+            zoneTotals[hrZoneIndex] = 0
           }
-        } else {
-          // If the heart rate zone remains the same, accumulate time in the current zone
-          zoneTotals[hrZoneIndex] += secondsDiff
+
+          // If there is a transition between heart rate zones, distribute time proportionally
+          if (hrZoneIndex !== nextHrZoneIndex) {
+            // calculate the bpm step
+            const zonesInvolved = this.determineZonesInvolved(hrZoneIndex, nextHrZoneIndex)
+            const totalSteps = zonesInvolved.reduce((total, zoneIndex) => {
+              const start = Math.min(
+                Math.max(this.hrZones[zoneIndex].minmax[0], entry.heartRate || 0),
+                this.hrZones[zoneIndex].minmax[1]
+              )
+              const end = Math.min(
+                Math.max(this.hrZones[zoneIndex].minmax[0], nextEntry.heartRate || 0),
+                this.hrZones[zoneIndex].minmax[1]
+              )
+              return 1 + total + (Math.max(end, start) - Math.min(end, start))
+            }, 0)
+
+            // calculate the fraction or delta
+            for (let j = 0; j < zonesInvolved.length; j++) {
+              const zIndex = zonesInvolved[j]
+              zoneTotals[zIndex] = zoneTotals[zIndex] || 0
+              const start = Math.min(
+                Math.max(this.hrZones[zIndex].minmax[0], entry.heartRate || 0),
+                this.hrZones[zIndex].minmax[1]
+              )
+              const end = Math.min(
+                Math.max(this.hrZones[zIndex].minmax[0], nextEntry.heartRate || 0),
+                this.hrZones[zIndex].minmax[1]
+              )
+              const fraction = 1 + (Math.max(end, start) - Math.min(end, start))
+              zoneTotals[zIndex] += secondsDiff * (fraction / totalSteps)
+            }
+          } else {
+            // If the heart rate zone remains the same, accumulate time in the current zone
+            zoneTotals[hrZoneIndex] += secondsDiff
+          }
         }
-      }
+      })
 
       // Calculate percentage of time in each zone and assign to hr zone
       const zonePercentages: any = {}
@@ -281,7 +289,7 @@ export default {
     }
   },
   mounted() {
-    this.processRecord(this.records)
+    this.summarizedGraph(this.selectedSession)
   }
 }
 </script>

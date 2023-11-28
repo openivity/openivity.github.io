@@ -130,7 +130,7 @@ import { Summary } from '@/spec/summary'
                 >
                   <div class="graph" v-if="hasHeartRate">
                     <HeartRateZoneGraph
-                      :records="selectedGraphRecords"
+                      :selected-session="selectedSessions"
                       :age="20"
                       :received-record="hoveredRecord"
                       :received-record-freeze="hoveredRecordFreeze"
