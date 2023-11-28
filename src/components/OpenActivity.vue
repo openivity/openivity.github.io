@@ -46,7 +46,14 @@ import { Summary } from '@/spec/summary'
                 :isWebAssemblySupported="isWebAssemblySupported"
               >
               </TheNavigatorInput>
-              <div style="font-size: 0.8em" class="pt-1">Supported files: *.fit, *.gpx, *.tcx</div>
+              <Transition>
+                <div style="font-size: 0.8em" class="pt-1">
+                  <span v-if="isActivityServiceReady"> Supported files: *.fit, *.gpx, *.tcx </span>
+                  <span v-else>
+                    Instantiating WebAssembly <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                </div>
+              </Transition>
             </div>
             <div class="mb-3" v-if="isActivityFileReady">
               <TheSummary
@@ -286,6 +293,7 @@ import { Summary } from '@/spec/summary'
 
 <script lang="ts">
 import { ActivityFile, Lap, Record, SPORT_GENERIC, Session } from '@/spec/activity'
+import { DecodeResult, EncodeResult, ManufacturerListResult } from '@/spec/activity-service'
 import { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
 import { shallowRef } from 'vue'
@@ -295,24 +303,6 @@ const isWebAssemblySupported =
 
 if (isWebAssemblySupported == false) {
   alert('Sorry, it appears that your browser does not support WebAssembly :(')
-}
-
-class Result {
-  err: string | null = null
-  activities: Array<ActivityFile>
-  decodeTook: number
-  serializationTook: number
-  totalElapsed: number
-
-  constructor(json?: any) {
-    const casted = json as Result
-
-    this.err = casted?.err
-    this.activities = casted?.activities
-    this.decodeTook = casted?.decodeTook
-    this.serializationTook = casted?.serializationTook
-    this.totalElapsed = casted?.totalElapsed
-  }
 }
 
 // shallowRef
@@ -330,19 +320,20 @@ const selectedSessions = shallowRef(new Array<Session>())
 const selectedLaps = shallowRef(new Array<Lap>())
 const selectedFeatures = shallowRef(new Array<Feature>())
 const selectedGraphRecords = shallowRef(new Array<Record>())
+const manufacturerList = shallowRef(new ManufacturerListResult())
 
 export default {
   data() {
     return {
       loading: false,
-      decodeWorker: new Worker(new URL('@/workers/activity-service.ts', import.meta.url), {
+      activityService: new Worker(new URL('@/workers/activity-service.ts', import.meta.url), {
         type: 'module'
       }),
-      decodeBeginTimestamp: 0,
       sessionSelected: NONE,
       summary: new Summary(),
       hoveredRecord: new Record(),
-      hoveredRecordFreeze: new Boolean()
+      hoveredRecordFreeze: new Boolean(),
+      isActivityServiceReady: false
     }
   },
   computed: {
@@ -450,17 +441,33 @@ export default {
 
       Promise.all(promisers)
         .then((arr) => {
-          this.decodeBeginTimestamp = new Date().getTime()
           this.loading = true
-          this.decodeWorker.postMessage(arr)
+          this.activityService.postMessage({ type: 'decode', input: arr })
         })
         .catch((e: string) => {
           console.log(e)
           alert(e)
         })
     },
-    decodeWorkerOnMessage(e: MessageEvent) {
-      const result = new Result(e.data)
+    activityServiceOnMessage(e: MessageEvent) {
+      const [type, result, elapsed] = [e.data.type, e.data.result, e.data.elapsed]
+      switch (type) {
+        case 'isReady':
+          this.isActivityServiceReady = true
+          break
+        case 'decode':
+          this.decodeHandler(result, elapsed)
+          break
+        case 'encode':
+          this.encodeHandler(result, elapsed)
+          break
+        case 'manufacturerList':
+          this.manufacturerListHandler(result)
+          break
+      }
+    },
+    decodeHandler(result: DecodeResult, elapsed: number) {
+      result = new DecodeResult(result)
       if (result.err != null) {
         console.error(`Decode: ${result.err}`)
         alert(`Decode: ${result.err}`)
@@ -469,15 +476,14 @@ export default {
       }
 
       // Instrumenting...
-      const totalDuration = new Date().getTime() - this.decodeBeginTimestamp
       console.group('Decoding:')
       console.group('Spent on WASM:')
       console.debug('Decode took:\t\t', result.decodeTook, 'ms')
       console.debug('Serialization took:\t', result.serializationTook, 'ms')
       console.debug('Total elapsed:\t\t', result.totalElapsed, 'ms')
       console.groupEnd()
-      console.debug('Interop WASM to JS:\t', totalDuration - result.totalElapsed, 'ms')
-      console.debug('Total elapsed:\t\t', totalDuration, 'ms')
+      console.debug('Interop WASM to JS:\t', elapsed - result.totalElapsed, 'ms')
+      console.debug('Total elapsed:\t\t', elapsed, 'ms')
       console.groupEnd()
 
       requestAnimationFrame(() => {
@@ -485,7 +491,19 @@ export default {
         this.scrollTop()
       })
     },
-    preprocessing(result: Result) {
+    encodeHandler(result: EncodeResult, elapsed: number) {
+      result = new EncodeResult(result)
+      if (result.err != null) {
+        console.error(`Encode: ${result.err}`)
+        alert(`Encode: ${result.err}`)
+        this.loading = false
+        return
+      }
+    },
+    manufacturerListHandler(result: ManufacturerListResult) {
+      manufacturerList.value = new ManufacturerListResult(result)
+    },
+    preprocessing(result: DecodeResult) {
       console.time('Preprocessing')
 
       activities.value = result.activities
@@ -756,7 +774,9 @@ export default {
   },
   mounted() {
     document.getElementById('fileInput')?.addEventListener('change', this.fileInputEventListener)
-    this.decodeWorker.onmessage = this.decodeWorkerOnMessage
+    this.activityService.onmessage = this.activityServiceOnMessage
+    this.activityService.postMessage({ type: 'isReady' })
+    this.activityService.postMessage({ type: 'manufacturerList' })
     this.selectSession(this.sessionSelected)
   }
 }

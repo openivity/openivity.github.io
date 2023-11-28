@@ -1,12 +1,7 @@
 package activity
 
 import (
-	"strings"
 	"time"
-	"unicode"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 const (
@@ -46,18 +41,6 @@ func HasPace(sport string) bool {
 	default:
 		return false
 	}
-}
-
-// FormatTitle returns init capital for every word. "snow boarding", "snow_boarding", "SNOW_boardinG" -> "Show Boarding".
-func FormatTitle(s string) string {
-	s = strings.Map(func(r rune) rune {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-			return ' '
-		}
-		return r
-	}, s)
-	s = cases.Title(language.English).String(s)
-	return s
 }
 
 func isBelong(timestamp, startTime, endTime time.Time) bool {
