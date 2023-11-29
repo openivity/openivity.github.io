@@ -95,26 +95,36 @@ export default {
     return {
       isLoading: false,
       hrZones: [
+        // Please don't remove, it's for reference if using Zone 5A/B/C
+        // {
+        //   zone: 'Zone 5C',
+        //   zoneSub: 'Maximum',
+        //   minmax: [179, Infinity],
+        //   timeInSecond: 0,
+        //   prosen: 0,
+        //   progressClass: ['bg-danger'],
+        //   showProgressText: false
+        // },
+        // {
+        //   zone: 'Zone 5B',
+        //   zoneSub: 'Maximum',
+        //   minmax: [176, 179],
+        //   timeInSecond: 0,
+        //   prosen: 0,
+        //   progressClass: ['bg-danger'],
+        //   showProgressText: false
+        // },
+        // {
+        //   zone: 'Zone 5A',
+        //   zoneSub: 'Maximum',
+        //   minmax: [174, 176],
+        //   timeInSecond: 0,
+        //   prosen: 0,
+        //   progressClass: ['bg-danger'],
+        //   showProgressText: false
+        // },
         {
-          zone: 'Zone 5C',
-          zoneSub: 'Maximum',
-          minmax: [179, Infinity],
-          timeInSecond: 0,
-          prosen: 0,
-          progressClass: ['bg-danger'],
-          showProgressText: false
-        },
-        {
-          zone: 'Zone 5B',
-          zoneSub: 'Maximum',
-          minmax: [176, 179],
-          timeInSecond: 0,
-          prosen: 0,
-          progressClass: ['bg-danger'],
-          showProgressText: false
-        },
-        {
-          zone: 'Zone 5A',
+          zone: 'Zone 5',
           zoneSub: 'Maximum',
           minmax: [174, 176],
           timeInSecond: 0,
@@ -159,7 +169,6 @@ export default {
           showProgressText: false
         }
       ],
-      // hrConst: 220,
       maxHr: defaultHr
     }
   },
@@ -201,13 +210,19 @@ export default {
         zone.timeInSecond = 0
       })
 
-      this.hrZones[0].minmax = [Math.floor(this.maxHr * 0.96), Infinity]
-      this.hrZones[1].minmax = [Math.floor(this.maxHr * 0.93), this.hrZones[0].minmax[0]]
-      this.hrZones[2].minmax = [Math.floor(this.maxHr * 0.915), this.hrZones[1].minmax[0]]
-      this.hrZones[3].minmax = [Math.floor(this.maxHr * 0.85), this.hrZones[2].minmax[0]]
-      this.hrZones[4].minmax = [Math.floor(this.maxHr * 0.8), this.hrZones[3].minmax[0]]
-      this.hrZones[5].minmax = [Math.floor(this.maxHr * 0.745), this.hrZones[4].minmax[0]]
-      this.hrZones[6].minmax = [Math.floor(this.maxHr * 0), this.hrZones[5].minmax[0]]
+      // Please don't remove, it's for reference if using Zone 5A/B/C
+      // this.hrZones[0].minmax = [Math.floor(this.maxHr * 0.96), Infinity]
+      // this.hrZones[1].minmax = [Math.floor(this.maxHr * 0.93), this.hrZones[0].minmax[0]]
+      // this.hrZones[2].minmax = [Math.floor(this.maxHr * 0.915), this.hrZones[1].minmax[0]]
+      // this.hrZones[3].minmax = [Math.floor(this.maxHr * 0.85), this.hrZones[2].minmax[0]]
+      // this.hrZones[4].minmax = [Math.floor(this.maxHr * 0.8), this.hrZones[3].minmax[0]]
+      // this.hrZones[5].minmax = [Math.floor(this.maxHr * 0.745), this.hrZones[4].minmax[0]]
+      // this.hrZones[6].minmax = [Math.floor(this.maxHr * 0), this.hrZones[5].minmax[0]]
+      this.hrZones[0].minmax = [Math.floor(this.maxHr * 0.9), Infinity]
+      this.hrZones[1].minmax = [Math.floor(this.maxHr * 0.8), this.hrZones[0].minmax[0] - 1]
+      this.hrZones[2].minmax = [Math.floor(this.maxHr * 0.7), this.hrZones[1].minmax[0] - 1]
+      this.hrZones[3].minmax = [Math.floor(this.maxHr * 0.6), this.hrZones[2].minmax[0] - 1]
+      this.hrZones[4].minmax = [Math.floor(this.maxHr * 0.5), this.hrZones[3].minmax[0] - 1]
 
       if (!sessions) {
         console.timeEnd('HR Zone Process')
@@ -223,8 +238,8 @@ export default {
       console.timeEnd('HR Zone Process')
       this.isLoading = false
     },
+    /* Categorized HR Zone ver. Diff */
     categorizedByDiffData(sessions: Array<Session>, useNextDataAsHrZone: Boolean) {
-      /* Categorized HR Zone ver. Diff */
       // Example
       // let zones = {
       //   zone1: { min: 110, max: 120 },
@@ -263,7 +278,7 @@ export default {
 
           const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
           const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
-          let secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          let secondsDiff: number = (timestamp2.valueOf() - timestamp1.valueOf()) / 1000
           if (secondsDiff > 30) secondsDiff = 1
 
           totalSeconds += secondsDiff
@@ -303,8 +318,8 @@ export default {
 
       console.log(`> Total Time: ${totalSeconds.toFixed(2)} seconds`)
     },
+    /* Categorized HR Zone ver. Transition Zone */
     categorizedByTransition(sessions: Array<Session>) {
-      /* Categorized HR Zone ver. Transition Zone */
       // Example
       // let zones = {
       //   zone1: { min: 110, max: 120 },
@@ -353,7 +368,7 @@ export default {
 
           const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
           const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
-          let secondsDiff: any = (timestamp2 - timestamp1) / 1000
+          let secondsDiff: number = (timestamp2.valueOf() - timestamp1.valueOf()) / 1000
           if (secondsDiff > 30) secondsDiff = 1
 
           totalSeconds += secondsDiff
