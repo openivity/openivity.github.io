@@ -12,4 +12,5 @@ var (
 
 type Service interface {
 	Decode(ctx context.Context, r io.Reader) ([]Activity, error)
+	Encode(ctx context.Context, activities []Activity) ([][]byte, error)
 }

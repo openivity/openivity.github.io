@@ -2,21 +2,24 @@ package activity
 
 import (
 	"time"
+
+	"github.com/muktihari/openactivity-fit/kit"
 )
 
 type Record struct {
-	Timestamp    time.Time
-	PositionLat  *float64
-	PositionLong *float64
-	Distance     *float64
-	Altitude     *float64
-	HeartRate    *uint8
-	Cadence      *uint8
-	Speed        *float64
-	Power        *uint16
-	Temperature  *int8
-	Pace         *float64
-	Grade        *float64
+	Timestamp        time.Time
+	PositionLat      *float64
+	PositionLong     *float64
+	Distance         *float64
+	Altitude         *float64 // Original Altitude from file.
+	SmoothedAltitude *float64 // Smoothed Altitude using our preprocessor algorithm.
+	HeartRate        *uint8
+	Cadence          *uint8
+	Speed            *float64
+	Power            *uint16
+	Temperature      *int8
+	Pace             *float64
+	Grade            *float64
 }
 
 func (r *Record) ToMap() map[string]any {
@@ -34,8 +37,8 @@ func (r *Record) ToMap() map[string]any {
 	if r.Distance != nil {
 		m["distance"] = *r.Distance
 	}
-	if r.Altitude != nil {
-		m["altitude"] = *r.Altitude
+	if r.SmoothedAltitude != nil {
+		m["altitude"] = *r.SmoothedAltitude // for better data representation.
 	}
 	if r.HeartRate != nil {
 		m["heartRate"] = *r.HeartRate
@@ -60,4 +63,49 @@ func (r *Record) ToMap() map[string]any {
 	}
 
 	return m
+}
+
+func (r *Record) Clone() *Record {
+	rec := &Record{
+		Timestamp: r.Timestamp,
+	}
+
+	if r.PositionLat != nil {
+		rec.PositionLat = kit.Ptr(*r.PositionLat)
+	}
+	if r.PositionLong != nil {
+		rec.PositionLong = kit.Ptr(*r.PositionLong)
+	}
+	if r.Distance != nil {
+		rec.Distance = kit.Ptr(*r.Distance)
+	}
+	if r.Altitude != nil {
+		rec.Altitude = kit.Ptr(*r.Altitude)
+	}
+	if r.SmoothedAltitude != nil {
+		rec.SmoothedAltitude = kit.Ptr(*r.SmoothedAltitude)
+	}
+	if r.HeartRate != nil {
+		rec.HeartRate = kit.Ptr(*r.HeartRate)
+	}
+	if r.Cadence != nil {
+		rec.Cadence = kit.Ptr(*r.Cadence)
+	}
+	if r.Speed != nil {
+		rec.Speed = kit.Ptr(*r.Speed)
+	}
+	if r.Power != nil {
+		rec.Power = kit.Ptr(*r.Power)
+	}
+	if r.Temperature != nil {
+		rec.Temperature = kit.Ptr(*r.Temperature)
+	}
+	if r.Pace != nil {
+		rec.Pace = kit.Ptr(*r.Pace)
+	}
+	if r.Grade != nil {
+		rec.Grade = kit.Ptr(*r.Grade)
+	}
+
+	return rec
 }

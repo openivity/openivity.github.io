@@ -97,7 +97,7 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 	if value := totalMovingTimeAccumu.Sum(); value != nil {
 		ses.TotalMovingTime = *value
 	}
-	if value := totalDistanceAccumu.Max(); value != nil {
+	if value := totalDistanceAccumu.Sum(); value != nil {
 		ses.TotalDistance = *value
 	}
 	if value := totalAscentAccumu.Sum(); value != nil {
@@ -121,18 +121,8 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 	ses.MaxTemperature = temperatureMaxAccumu.Max()
 
 	if HasPace(sport) {
-		var (
-			paceAvgAccumu        = new(accumulator.Accumulator[float64])
-			paceAvgElapsedAccumu = new(accumulator.Accumulator[float64])
-		)
-		for i := range laps {
-			lap := laps[i]
-
-			paceAvgAccumu.Collect(lap.AvgPace)
-			paceAvgElapsedAccumu.Collect(lap.AvgElapsedPace)
-		}
-		ses.AvgPace = paceAvgAccumu.Avg()
-		ses.AvgElapsedPace = paceAvgElapsedAccumu.Avg()
+		ses.AvgPace = kit.Ptr(ses.TotalMovingTime / (ses.TotalDistance / 1000))
+		ses.AvgElapsedPace = kit.Ptr(ses.TotalElapsedTime / (ses.TotalDistance / 1000))
 	}
 
 	return ses
@@ -253,6 +243,76 @@ func (s *Session) PutRecords(records ...*Record) (remainings []*Record) {
 	return remainings
 }
 
+func (s *Session) Clone() *Session {
+	ses := &Session{
+		Timestamp:        s.Timestamp,
+		StartTime:        s.StartTime,
+		EndTime:          s.EndTime,
+		Sport:            s.Sport,
+		TotalMovingTime:  s.TotalMovingTime,
+		TotalElapsedTime: s.TotalElapsedTime,
+		TotalDistance:    s.TotalDistance,
+		TotalAscent:      s.TotalAscent,
+		TotalDescent:     s.TotalDescent,
+		TotalCalories:    s.TotalCalories,
+	}
+
+	if s.AvgSpeed != nil {
+		ses.AvgSpeed = kit.Ptr(*s.AvgSpeed)
+	}
+	if s.MaxSpeed != nil {
+		ses.MaxSpeed = kit.Ptr(*s.MaxSpeed)
+	}
+	if s.AvgHeartRate != nil {
+		ses.AvgHeartRate = kit.Ptr(*s.AvgHeartRate)
+	}
+	if s.MaxHeartRate != nil {
+		ses.MaxHeartRate = kit.Ptr(*s.MaxHeartRate)
+	}
+	if s.AvgCadence != nil {
+		ses.AvgCadence = kit.Ptr(*s.AvgCadence)
+	}
+	if s.MaxCadence != nil {
+		ses.MaxCadence = kit.Ptr(*s.MaxCadence)
+	}
+	if s.AvgPower != nil {
+		ses.AvgPower = kit.Ptr(*s.AvgPower)
+	}
+	if s.MaxPower != nil {
+		ses.MaxPower = kit.Ptr(*s.MaxPower)
+	}
+	if s.AvgTemperature != nil {
+		ses.AvgTemperature = kit.Ptr(*s.AvgTemperature)
+	}
+	if s.MaxTemperature != nil {
+		ses.MaxTemperature = kit.Ptr(*s.MaxTemperature)
+	}
+	if s.AvgAltitude != nil {
+		ses.AvgAltitude = kit.Ptr(*s.AvgAltitude)
+	}
+	if s.MaxAltitude != nil {
+		ses.MaxAltitude = kit.Ptr(*s.MaxAltitude)
+	}
+	if s.AvgPace != nil {
+		ses.AvgPace = kit.Ptr(*s.AvgPace)
+	}
+	if s.AvgElapsedPace != nil {
+		ses.AvgElapsedPace = kit.Ptr(*s.AvgElapsedPace)
+	}
+
+	ses.Records = make([]*Record, len(s.Records))
+	for i := range s.Records {
+		ses.Records[i] = s.Records[i].Clone()
+	}
+
+	ses.Laps = make([]*Lap, len(s.Laps))
+	for i := range s.Laps {
+		ses.Laps[i] = s.Laps[i].Clone()
+	}
+
+	return ses
+}
+
 // CombineSession combines sesssion's values into targetSession.
 // Every zero value in targetSession will be replaced with the corresponding value in session.
 func CombineSession(targetSession, session *Session) {
@@ -284,4 +344,33 @@ func CombineSession(targetSession, session *Session) {
 	targetSession.MaxAltitude = kit.PickNonZeroValuePtr(targetSession.MaxAltitude, session.MaxAltitude)
 	targetSession.AvgPace = kit.PickNonZeroValuePtr(targetSession.AvgPace, session.AvgPace)
 	targetSession.AvgElapsedPace = kit.PickNonZeroValuePtr(targetSession.AvgElapsedPace, session.AvgElapsedPace)
+}
+
+// AccumulateSession combines sesssion's values into targetSession.
+// While MergeSession is picking the first non-zero value, AccumulateSession accumulate values between two sesions.
+func AccumulateSession(targetSession, session *Session) {
+	targetSession.TotalMovingTime += session.TotalMovingTime
+	targetSession.TotalElapsedTime += session.TotalElapsedTime
+	gap := session.StartTime.Sub(targetSession.EndTime).Seconds()
+	targetSession.TotalElapsedTime += gap
+	targetSession.TotalDistance += session.TotalDistance
+	targetSession.TotalAscent += session.TotalAscent
+	targetSession.TotalDescent += session.TotalDescent
+	targetSession.TotalCalories += session.TotalCalories
+	targetSession.EndTime = session.EndTime
+
+	targetSession.AvgSpeed = kit.Avg(targetSession.AvgSpeed, session.AvgSpeed)
+	targetSession.MaxSpeed = kit.Max(targetSession.MaxSpeed, session.MaxSpeed)
+	targetSession.AvgHeartRate = kit.Avg(targetSession.AvgHeartRate, session.AvgHeartRate)
+	targetSession.MaxHeartRate = kit.Max(targetSession.MaxHeartRate, session.MaxHeartRate)
+	targetSession.AvgCadence = kit.Avg(targetSession.AvgCadence, session.AvgCadence)
+	targetSession.MaxCadence = kit.Max(targetSession.MaxCadence, session.MaxCadence)
+	targetSession.AvgPower = kit.Avg(targetSession.AvgPower, session.AvgPower)
+	targetSession.MaxPower = kit.Max(targetSession.MaxPower, session.MaxPower)
+	targetSession.AvgTemperature = kit.Avg(targetSession.AvgTemperature, session.AvgTemperature)
+	targetSession.MaxTemperature = kit.Max(targetSession.MaxTemperature, session.MaxTemperature)
+	targetSession.AvgAltitude = kit.Avg(targetSession.AvgAltitude, session.AvgAltitude)
+	targetSession.MaxAltitude = kit.Max(targetSession.MaxAltitude, session.MaxAltitude)
+	targetSession.AvgPace = kit.Avg(targetSession.AvgPace, session.AvgPace)
+	targetSession.AvgElapsedPace = kit.Avg(targetSession.AvgElapsedPace, session.AvgElapsedPace)
 }

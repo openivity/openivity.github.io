@@ -9,6 +9,7 @@ import (
 )
 
 type Lap struct {
+	Sport            string
 	Timestamp        time.Time
 	StartTime        time.Time
 	EndTime          time.Time
@@ -215,6 +216,66 @@ func (l *Lap) ToMap() map[string]any {
 
 func (l *Lap) IsBelongToThisLap(t time.Time) bool {
 	return isBelong(t, l.StartTime, l.EndTime)
+}
+
+func (l *Lap) Clone() *Lap {
+	lap := &Lap{
+		Sport:            l.Sport,
+		Timestamp:        l.Timestamp,
+		StartTime:        l.StartTime,
+		EndTime:          l.EndTime,
+		TotalMovingTime:  l.TotalMovingTime,
+		TotalElapsedTime: l.TotalElapsedTime,
+		TotalDistance:    l.TotalDistance,
+		TotalAscent:      l.TotalAscent,
+		TotalDescent:     l.TotalDescent,
+		TotalCalories:    l.TotalCalories,
+	}
+
+	if l.AvgSpeed != nil {
+		lap.AvgSpeed = kit.Ptr(*l.AvgSpeed)
+	}
+	if l.MaxSpeed != nil {
+		lap.MaxSpeed = kit.Ptr(*l.MaxSpeed)
+	}
+	if l.AvgHeartRate != nil {
+		lap.AvgHeartRate = kit.Ptr(*l.AvgHeartRate)
+	}
+	if l.MaxHeartRate != nil {
+		lap.MaxHeartRate = kit.Ptr(*l.MaxHeartRate)
+	}
+	if l.AvgCadence != nil {
+		lap.AvgCadence = kit.Ptr(*l.AvgCadence)
+	}
+	if l.MaxCadence != nil {
+		lap.MaxCadence = kit.Ptr(*l.MaxCadence)
+	}
+	if l.AvgPower != nil {
+		lap.AvgPower = kit.Ptr(*l.AvgPower)
+	}
+	if l.MaxPower != nil {
+		lap.MaxPower = kit.Ptr(*l.MaxPower)
+	}
+	if l.AvgTemperature != nil {
+		lap.AvgTemperature = kit.Ptr(*l.AvgTemperature)
+	}
+	if l.MaxTemperature != nil {
+		lap.MaxTemperature = kit.Ptr(*l.MaxTemperature)
+	}
+	if l.AvgAltitude != nil {
+		lap.AvgAltitude = kit.Ptr(*l.AvgAltitude)
+	}
+	if l.MaxAltitude != nil {
+		lap.MaxAltitude = kit.Ptr(*l.MaxAltitude)
+	}
+	if l.AvgPace != nil {
+		lap.AvgPace = kit.Ptr(*l.AvgPace)
+	}
+	if l.AvgElapsedPace != nil {
+		lap.AvgElapsedPace = kit.Ptr(*l.AvgElapsedPace)
+	}
+
+	return lap
 }
 
 // CombineLap combines lap's values into targetLap.

@@ -1,10 +1,13 @@
 package fit
 
 import (
+	"github.com/muktihari/fit/factory"
 	"github.com/muktihari/fit/kit/datetime"
+	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/kit/semicircles"
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/untyped/fieldnum"
+	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/kit"
@@ -82,4 +85,61 @@ func NewRecord(mesg proto.Message) *activity.Record {
 	}
 
 	return rec
+}
+
+func convertRecordToMesg(rec *activity.Record) proto.Message {
+	mesg := factory.CreateMesgOnly(mesgnum.Record)
+
+	if !rec.Timestamp.IsZero() {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordTimestamp)
+		field.Value = datetime.ToUint32(rec.Timestamp)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.PositionLat != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordPositionLat)
+		field.Value = semicircles.ToSemicircles(*rec.PositionLat)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.PositionLong != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordPositionLong)
+		field.Value = semicircles.ToSemicircles(*rec.PositionLong)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Distance != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordDistance)
+		field.Value = scaleoffset.DiscardAny(*rec.Distance, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Altitude != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordAltitude)
+		field.Value = scaleoffset.DiscardAny(*rec.Altitude, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.HeartRate != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordHeartRate)
+		field.Value = *rec.HeartRate
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Cadence != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordCadence)
+		field.Value = *rec.Cadence
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Speed != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordSpeed)
+		field.Value = scaleoffset.DiscardAny(*rec.Speed, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Power != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordPower)
+		field.Value = *rec.Power
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if rec.Temperature != nil {
+		field := factory.CreateField(mesgnum.Record, fieldnum.RecordTemperature)
+		field.Value = *rec.Temperature
+		mesg.Fields = append(mesg.Fields, field)
+	}
+
+	return mesg
 }

@@ -21,3 +21,17 @@ func (a *Activity) ToMap() map[string]any {
 
 	return m
 }
+
+func (a *Activity) Clone() *Activity {
+	act := &Activity{
+		Creator:  *a.Creator.Clone(),
+		Timezone: a.Timezone,
+	}
+
+	act.Sessions = make([]*Session, len(a.Sessions))
+	for i := range a.Sessions {
+		act.Sessions[i] = a.Sessions[i].Clone()
+	}
+
+	return act
+}
