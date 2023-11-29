@@ -66,6 +66,12 @@
 /* scrollbar */
 @import './scrollbar.scss';
 
+// DO NOT REMOVE
+// For finding overflow element
+// * {
+//     outline: 1px solid #f00 !important;
+// }
+
 /* Global overrides */
 body {
   color: var(--color-text);

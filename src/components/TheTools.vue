@@ -1,5 +1,5 @@
 <template>
-  <div class="row px-3 text-start">
+  <div class="row m-0 px-3 text-start">
     <label>We have few useful tools to edit your Activity Files.</label>
     <p>
       Some tools may be disabled depending on the number of activities or sessions you have open.
