@@ -509,8 +509,10 @@ export default {
       console.debug('Total elapsed:\t\t', elapsed, 'ms')
       console.groupEnd()
 
-      this.preprocessing(result)
-      this.scrollTop()
+      requestAnimationFrame(() => {
+        this.preprocessing(result)
+        this.scrollTop()
+      })
     },
     encodeHandler(result: EncodeResult, elapsed: number) {
       result = new EncodeResult(result)
