@@ -354,9 +354,24 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 			continue
 		}
 
+		// Adjust distance since ses.Records[marker.StartN] will be the beginning of record, its distance should be zero.
+		// Find the exact or nearest distance as the substraction number.
+		var distanceAdjustment float64
+		for i := marker.StartN; i >= 0; i-- {
+			rec := ses.Records[i]
+			if rec.Distance != nil {
+				distanceAdjustment = *rec.Distance
+				break
+			}
+		}
+
 		records := make([]*activity.Record, 0, marker.EndN-marker.StartN)
 		for i := marker.StartN; i <= marker.EndN; i++ {
-			records = append(records, ses.Records[i])
+			rec := ses.Records[i]
+			if rec.Distance != nil {
+				*rec.Distance -= distanceAdjustment
+			}
+			records = append(records, rec)
 		}
 
 		ses.Records = records
