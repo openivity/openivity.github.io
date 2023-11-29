@@ -1,4 +1,10 @@
-import { DateTime, Duration, type ToHumanDurationOptions, type DurationLikeObject, type DurationUnit } from 'luxon'
+import {
+  DateTime,
+  Duration,
+  type ToHumanDurationOptions,
+  type DurationLikeObject,
+  type DurationUnit
+} from 'luxon'
 
 export function toTimezone(s: string, timezoneOffsetHours: number = 0): DateTime {
   let d = DateTime.fromISO(s)
@@ -67,7 +73,15 @@ export function toHuman(
   smallestUnit: DurationUnit = 'seconds',
   opts?: ToHumanDurationOptions
 ): string {
-  const units: DurationUnit[] = ['years', 'months', 'days', 'hours', 'minutes', 'seconds', 'milliseconds']
+  const units: DurationUnit[] = [
+    'years',
+    'months',
+    'days',
+    'hours',
+    'minutes',
+    'seconds',
+    'milliseconds'
+  ]
   const smallestIdx = units.indexOf(smallestUnit)
   const entries = Object.entries(
     dur
@@ -107,6 +121,33 @@ export function formatMillis(d: number): String {
   }
   if (seconds > 0) {
     formattedTime += seconds + 's'
+  }
+
+  return formattedTime
+}
+
+/**
+ * Format hour to hh:mm:ss with hh as optional "1:00:22", "21:55", "0:00"
+ * Zero value will be omitted (expect minute & second).
+ */
+export function formatMillisToHours(d: number): String {
+  if (d <= 0) {
+    return '0:00'
+  }
+
+  const hours = Math.floor(d / (1000 * 60 * 60))
+  const minutes = Math.floor((d % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((d % (1000 * 60)) / 1000)
+
+  let formattedTime = ''
+  if (hours > 0) {
+    formattedTime += hours + ':'
+  }
+  if (minutes > 0) {
+    formattedTime += minutes + ':'
+  }
+  if (seconds > 0) {
+    formattedTime += seconds + ''
   }
 
   return formattedTime

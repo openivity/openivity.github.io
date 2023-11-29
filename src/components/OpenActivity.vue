@@ -2,6 +2,7 @@
 import CadenceGraph from '@/components/CadenceGraph.vue'
 import ElevationGraph from '@/components/ElevationGraph.vue'
 import HeartRateGraph from '@/components/HeartRateGraph.vue'
+import HeartRateZoneGraph from '@/components/HeartRateZoneGraph.vue'
 import PaceGraph from '@/components/PaceGraph.vue'
 import PowerGraph from '@/components/PowerGraph.vue'
 import SpeedGraph from '@/components/SpeedGraph.vue'
@@ -134,6 +135,14 @@ import { Summary } from '@/spec/summary'
                   role="tabpanel"
                   aria-labelledby="tab1-tab"
                 >
+                  <div class="graph" v-if="hasHeartRate">
+                    <HeartRateZoneGraph
+                      :selected-session="selectedSessions"
+                      :age="20"
+                      :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
+                    ></HeartRateZoneGraph>
+                  </div>
                   <div class="graph" v-if="hasPace">
                     <PaceGraph
                       :records="selectedRecords"
