@@ -1,7 +1,9 @@
-import { activityService } from '@/workers/wasm-services'
+import { activityService, go } from '@/workers/wasm-services'
 
 onmessage = async (e) => {
   await activityService
+
+  if (go.exited) return
 
   const begin = new Date()
 
@@ -39,5 +41,18 @@ onmessage = async (e) => {
       })
       break
     }
+    case 'sportList': {
+      // @ts-ignore
+      const sports = sportList(e.data.input)
+      postMessage({
+        type: e.data.type,
+        result: sports,
+        elapsed: new Date().getTime() - begin.getTime()
+      })
+      break
+    }
+    case 'shutdown':
+      // @ts-ignore
+      shutdown()
   }
 }

@@ -12,6 +12,7 @@ import TheMap from '@/components/TheMap.vue'
 import TheNavigatorInput from '@/components/TheNavigatorInput.vue'
 import TheSession from '@/components/TheSession.vue'
 import TheSummary, { MULTIPLE, NONE } from '@/components/TheSummary.vue'
+import TheTools from '@/components/TheTools.vue'
 import { Summary } from '@/spec/summary'
 </script>
 
@@ -227,7 +228,15 @@ import { Summary } from '@/spec/summary'
                   role="tabpanel"
                   aria-labelledby="tab3-tab"
                 >
-                  <div class="pt-3">Coming Soon</div>
+                  <div class="pt-3">
+                    <TheTools
+                      :manufacturers="manufacturers"
+                      :sports="sports"
+                      :activities="activities"
+                      :sessions="sessions"
+                      v-on:encodeSpecifications="onEncodeSpecifications"
+                    ></TheTools>
+                  </div>
                 </div>
               </div>
               <!-- Tab Content Ends -->
@@ -293,7 +302,15 @@ import { Summary } from '@/spec/summary'
 
 <script lang="ts">
 import { ActivityFile, Lap, Record, SPORT_GENERIC, Session } from '@/spec/activity'
-import { DecodeResult, EncodeResult, ManufacturerListResult } from '@/spec/activity-service'
+import {
+  DecodeResult,
+  EncodeResult,
+  EncodeSpecifications,
+  FileType,
+  Manufacturer,
+  ManufacturerListResult,
+  SportListResult
+} from '@/spec/activity-service'
 import { Feature } from 'ol'
 import { GeoJSON } from 'ol/format'
 import { shallowRef } from 'vue'
@@ -304,6 +321,8 @@ const isWebAssemblySupported =
 if (isWebAssemblySupported == false) {
   alert('Sorry, it appears that your browser does not support WebAssembly :(')
 }
+
+const textEncoder = new TextEncoder()
 
 // shallowRef
 const sessions = shallowRef(new Array<Session>())
@@ -320,7 +339,8 @@ const selectedSessions = shallowRef(new Array<Session>())
 const selectedLaps = shallowRef(new Array<Lap>())
 const selectedFeatures = shallowRef(new Array<Feature>())
 const selectedGraphRecords = shallowRef(new Array<Record>())
-const manufacturerList = shallowRef(new ManufacturerListResult())
+const manufacturers = shallowRef(new Array<Manufacturer>())
+const sports = shallowRef(new Array<Manufacturer>())
 
 export default {
   data() {
@@ -401,11 +421,11 @@ export default {
       const parts = s.split('.')
       return parts[parts.length - 1].toLocaleLowerCase()
     },
-    getExtentionIdentifier(ext: string): number {
-      if (ext == 'fit') return 1
-      if (ext == 'gpx') return 2
-      if (ext == 'tcx') return 3
-      return 0
+    getFileType(ext: string): FileType {
+      if (ext == 'fit') return FileType.FIT
+      if (ext == 'gpx') return FileType.GPX
+      if (ext == 'tcx') return FileType.TCX
+      return FileType.Unsupported
     },
     fileInputEventListener(e: Event) {
       const fileInput = e.target as HTMLInputElement
@@ -422,8 +442,8 @@ export default {
             }
 
             const ext = this.getExtention(selectedFile.name)
-            const extentionIdentifier = this.getExtentionIdentifier(ext)
-            if (extentionIdentifier == 0) {
+            const fileType = this.getFileType(ext)
+            if (fileType == FileType.Unsupported) {
               reject(`file '${selectedFile.name}' (type: ${ext}) is not supported`)
               return
             }
@@ -431,7 +451,7 @@ export default {
             const reader = new FileReader()
             reader.onload = (e: ProgressEvent<FileReader>) => {
               const fileData = e.target!.result as ArrayBuffer
-              resolve(new Uint8Array([extentionIdentifier, ...new Uint8Array(fileData)]))
+              resolve(new Uint8Array([fileType, ...new Uint8Array(fileData)]))
             }
             reader.onerror = reject
             reader.readAsArrayBuffer(selectedFile as File)
@@ -464,6 +484,9 @@ export default {
         case 'manufacturerList':
           this.manufacturerListHandler(result)
           break
+        case 'sportList':
+          this.sportListHandler(result)
+          break
       }
     },
     decodeHandler(result: DecodeResult, elapsed: number) {
@@ -486,10 +509,8 @@ export default {
       console.debug('Total elapsed:\t\t', elapsed, 'ms')
       console.groupEnd()
 
-      requestAnimationFrame(() => {
-        this.preprocessing(result)
-        this.scrollTop()
-      })
+      this.preprocessing(result)
+      this.scrollTop()
     },
     encodeHandler(result: EncodeResult, elapsed: number) {
       result = new EncodeResult(result)
@@ -499,9 +520,43 @@ export default {
         this.loading = false
         return
       }
+
+      // Instrumenting...
+      console.group('Encoding:')
+      console.group('Spent on WASM:')
+      console.debug('Encode took:\t\t', result.encodeTook, 'ms')
+      console.debug('Serialization took:\t', result.serializationTook, 'ms')
+      console.debug('Total elapsed:\t\t', result.totalElapsed, 'ms')
+      console.groupEnd()
+      console.debug('Interop WASM to JS:\t', elapsed - result.totalElapsed, 'ms')
+      console.debug('Total elapsed:\t\t', elapsed, 'ms')
+      console.groupEnd()
+
+      for (let i = 0; i < result.filesBytes.length; i++) {
+        const uint8Array = new Uint8Array(result.filesBytes[i])
+        const blob = new Blob([uint8Array])
+
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+
+        let name = result.fileName
+        if (result.filesBytes.length > 1) {
+          name += `-${i + 1}`
+        }
+
+        link.download = `${name}.${result.fileType}`
+        document.body.appendChild(link)
+
+        link.click()
+      }
+
+      this.loading = false
     },
     manufacturerListHandler(result: ManufacturerListResult) {
-      manufacturerList.value = new ManufacturerListResult(result)
+      manufacturers.value = result.manufacturers as Manufacturer[]
+    },
+    sportListHandler(result: SportListResult) {
+      sports.value = result.sports as Manufacturer[]
     },
     preprocessing(result: DecodeResult) {
       console.time('Preprocessing')
@@ -770,6 +825,15 @@ export default {
     onSessionSelected(sessionSelected: number) {
       this.sessionSelected = sessionSelected
       this.selectSession(sessionSelected)
+    },
+    onEncodeSpecifications(spec: EncodeSpecifications) {
+      const input = textEncoder.encode(JSON.stringify(spec))
+
+      this.loading = true
+      this.activityService.postMessage({
+        type: 'encode',
+        input: input
+      })
     }
   },
   mounted() {
@@ -777,7 +841,16 @@ export default {
     this.activityService.onmessage = this.activityServiceOnMessage
     this.activityService.postMessage({ type: 'isReady' })
     this.activityService.postMessage({ type: 'manufacturerList' })
+    this.activityService.postMessage({ type: 'sportList' })
     this.selectSession(this.sessionSelected)
+
+    // Make WebAssembly's lifecycle inline with browser's tab lifecycle
+    window.addEventListener('beforeunload', () =>
+      this.activityService.postMessage({ type: 'shutdown' })
+    )
+  },
+  unmounted() {
+    this.activityService.postMessage({ type: 'shutdown' })
   }
 }
 </script>
@@ -894,5 +967,21 @@ export default {
 
 @media (pointer: fine) and (any-pointer: coarse) {
   /* touch desktop */
+}
+
+/* Override Reduce Motion */
+@media (prefers-reduced-motion: reduce) {
+  .fa-spin {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
 }
 </style>

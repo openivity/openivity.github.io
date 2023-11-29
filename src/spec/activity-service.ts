@@ -20,22 +20,72 @@ export class DecodeResult {
 
 export class EncodeResult {
   err: string | null = null
+  deserializeInputTook: number
   encodeTook: number
   serializationTook: number
   totalElapsed: number
   fileName: string
   fileType: string
-  fileBytes: Uint8Array
+  filesBytes: Uint8Array
 
   constructor(data?: any) {
     const casted = data as EncodeResult
     this.err = casted?.err
+    this.deserializeInputTook = casted?.deserializeInputTook
     this.encodeTook = casted?.encodeTook
     this.serializationTook = casted?.serializationTook
     this.totalElapsed = casted?.totalElapsed
     this.fileName = casted?.fileName
     this.fileType = casted?.fileType
-    this.fileBytes = casted?.fileBytes
+    this.filesBytes = casted?.filesBytes
+  }
+}
+
+export class EncodeSpecifications {
+  encodeMode: number = 0
+  targetFileType: FileType = 0
+  manufacturerId: number = 0
+  productId: number = 0
+  deviceName: string = 'Unknown'
+  sports: (string | null)[] = []
+  trimMarkers?: Marker[] | null = []
+  concealMarkers?: Marker[] | null = []
+  removeFields?: string[] | null = []
+
+  constructor(data: EncodeSpecifications) {
+    this.encodeMode = data.encodeMode
+    this.targetFileType = data.targetFileType
+    this.manufacturerId = data.manufacturerId
+    this.productId = data.productId
+    this.deviceName = data.deviceName
+    this.sports = data.sports
+    this.trimMarkers = data.trimMarkers
+    this.concealMarkers = data.concealMarkers
+    this.removeFields = data.removeFields
+  }
+}
+
+export enum EncodeMode {
+  Unknown = 0,
+  Edit,
+  Combine,
+  SplitPerSession
+}
+
+export enum FileType {
+  Unsupported = 0,
+  FIT,
+  GPX,
+  TCX
+}
+
+export class Marker {
+  startN: number = 0
+  endN: number = 0
+
+  constructor(data?: Marker) {
+    this.startN = data?.startN ?? 0
+    this.endN = data?.endN ?? 0
   }
 }
 
@@ -58,6 +108,26 @@ export class Manufacturer {
     this.id = casted?.id
     this.name = casted?.name
     this.products = casted?.products
+  }
+}
+
+export class SportListResult {
+  sports: Sport[] = []
+
+  constructor(data?: any) {
+    const casted = data as SportListResult
+    this.sports = casted?.sports
+  }
+}
+
+export class Sport {
+  id: number = 0
+  name: string = ''
+
+  constructor(data?: any) {
+    const casted = data as Manufacturer
+    this.id = casted?.id
+    this.name = casted?.name
   }
 }
 
