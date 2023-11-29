@@ -5,12 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/activity/fit"
+	"github.com/muktihari/openactivity-fit/kit"
 	"github.com/muktihari/openactivity-fit/service/result"
+	"github.com/muktihari/openactivity-fit/service/spec"
 	"golang.org/x/exp/slices"
 )
 
@@ -18,19 +22,11 @@ var (
 	ErrFileTypeUnsupported = errors.New("file type is unsupported")
 )
 
-type FileType byte
-
-const (
-	FileTypeUnsupported FileType = iota
-	FileTypeFIT
-	FileTypeGPX
-	FileTypeTCX
-)
-
 type Service interface {
 	Decode(ctx context.Context, rs []io.Reader) result.Decode
-	Encode(ctx context.Context, activities []activity.Activity) result.Encode
+	Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode
 	ManufacturerList() result.ManufacturerList
+	SportList() result.SportList
 }
 
 type service struct {
@@ -129,28 +125,419 @@ func (s *service) decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	}
 
 	switch fileType {
-	case FileTypeFIT:
+	case spec.FileTypeFIT:
 		return s.fitService.Decode(ctx, r)
-	case FileTypeGPX:
+	case spec.FileTypeGPX:
 		return s.gpxService.Decode(ctx, r)
-	case FileTypeTCX:
+	case spec.FileTypeTCX:
 		return s.tcxService.Decode(ctx, r)
 	default:
 		return nil, ErrFileTypeUnsupported
 	}
 }
 
-func (s *service) readType(r io.Reader) (FileType, error) {
+func (s *service) readType(r io.Reader) (spec.FileType, error) {
 	b := make([]byte, 1)
 	_, err := io.ReadFull(r, b)
 	if err != nil {
-		return FileTypeUnsupported, err
+		return spec.FileTypeUnsupported, err
 	}
-	return FileType(b[0]), nil
+	return spec.FileType(b[0]), nil
 }
 
-func (s *service) Encode(ctx context.Context, activities []activity.Activity) result.Encode {
-	return result.Encode{Err: fmt.Errorf("encode: Not yet implemented")}
+func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode {
+	begin := time.Now()
+
+	activities, err := s.preprocessEncode(ctx, encodeSpec)
+	if err != nil {
+		return result.Encode{Err: err}
+	}
+
+	var bs [][]byte
+	switch encodeSpec.TargetFileType {
+	case spec.FileTypeFIT:
+		bs, err = s.fitService.Encode(ctx, activities)
+	case spec.FileTypeGPX:
+		bs, err = s.gpxService.Encode(ctx, activities)
+	case spec.FileTypeTCX:
+		bs, err = s.tcxService.Encode(ctx, activities)
+	default:
+		return result.Encode{Err: fmt.Errorf("encode: invalid filetype")}
+	}
+
+	return result.Encode{
+		FileName:   fmt.Sprintf("openivity-%d-%s", begin.Unix(), encodeSpec.EncodeMode),
+		FileType:   encodeSpec.TargetFileType.String(),
+		FilesBytes: bs,
+		Err:        err,
+		EncodeTook: time.Since(begin),
+	}
+}
+
+func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) ([]activity.Activity, error) {
+	activities := encodeSpec.Activities
+	if len(activities) == 0 {
+		return nil, fmt.Errorf("no activity is retrieved")
+	}
+
+	if _, ok := s.manufacturers[encodeSpec.ManufacturerID]; !ok {
+		return nil, fmt.Errorf("manufacturer %d does not exist", encodeSpec.ManufacturerID)
+	}
+
+	if encodeSpec.EncodeMode == spec.EncodeModeUnknown {
+		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.EncodeMode)
+	}
+
+	removeFields := make(map[string]struct{})
+	for _, v := range encodeSpec.RemoveFields {
+		removeFields[v] = struct{}{}
+	}
+
+	// Preprocess data before encoding
+	for i := range activities {
+		activity := &activities[i]
+		n := len(activities[i].Sessions) + i // markers is based on session across activities.
+
+		s.changeSport(activities, encodeSpec.Sports)
+		if err := s.concealGPSPositions(activity, encodeSpec.ConcealMarkers[i:n]); err != nil {
+			return nil, err
+		}
+		if err := s.trimRecords(activity, encodeSpec.TrimMarkers[i:n]); err != nil {
+			return nil, err
+		}
+		s.RemoveFields(activity, removeFields)
+	}
+
+	var newActivities []activity.Activity
+	switch encodeSpec.EncodeMode {
+	case spec.EncodeModeEdit:
+		for i := range activities {
+			activities[i].Creator.Manufacturer = &encodeSpec.ManufacturerID
+			activities[i].Creator.Product = &encodeSpec.ProductID
+		}
+		newActivities = activities
+	case spec.EncodeModeCombine:
+		newActivity := s.combineActivity(encodeSpec.Activities, encodeSpec.ManufacturerID, encodeSpec.ProductID)
+		newActivities = []activity.Activity{newActivity}
+	case spec.EncodeModeSplitPerSession:
+		newActivities = s.splitActivityPerSession(activities, encodeSpec.ManufacturerID, encodeSpec.ProductID)
+	}
+
+	return newActivities, nil
+}
+
+func (s *service) combineActivity(activities []activity.Activity, manufacturer, product uint16) activity.Activity {
+	newActivity := activity.Activity{
+		Creator: activity.Creator{
+			Manufacturer: &manufacturer,
+			Product:      &product,
+			TimeCreated:  activities[0].Creator.TimeCreated,
+		},
+		Timezone: activities[0].Timezone,
+	}
+
+	var prevSessionSport string
+	var prevSessionDistance float64
+	for i := range activities {
+		act := &activities[i]
+
+		for j := range act.Sessions {
+			ses := act.Sessions[j]
+
+			if ses.Sport == "" {
+				ses.Sport = activity.SportGeneric
+			}
+
+			for k := range ses.Laps {
+				ses.Laps[k].Sport = ses.Sport
+			}
+
+			if ses.Sport != prevSessionSport {
+				if len(ses.Records) == 0 {
+					continue
+				}
+
+				newActivity.Sessions = append(newActivity.Sessions, ses)
+				prevSessionSport = ses.Sport
+
+				// Find previous session distance for distance accumulation
+				for k := len(ses.Records) - 1; k >= 0; k-- {
+					rec := ses.Records[k]
+					if rec.Distance != nil {
+						prevSessionDistance = *rec.Distance
+						break
+					}
+				}
+				continue
+			}
+
+			// Accumulate distance and add records and laps into previous session of the same sport
+			prevSes := newActivity.Sessions[len(newActivity.Sessions)-1]
+			for k := range ses.Records {
+				rec := ses.Records[k]
+				if rec.Distance != nil {
+					*rec.Distance += prevSessionDistance
+				}
+				prevSes.Records = append(prevSes.Records, rec)
+			}
+
+			prevSes.Laps = append(prevSes.Laps, ses.Laps...)
+
+			// Update summary
+			activity.AccumulateSession(prevSes, ses)
+		}
+	}
+
+	return newActivity
+}
+
+func (s *service) splitActivityPerSession(activities []activity.Activity, manufacturer, product uint16) []activity.Activity {
+	newActivities := make([]activity.Activity, 0)
+
+	for i := range activities {
+		act := &activities[i]
+
+		for j := range act.Sessions {
+			ses := act.Sessions[j]
+
+			newActivity := activity.Activity{
+				Creator: activity.Creator{
+					Manufacturer: &manufacturer,
+					Product:      &product,
+					TimeCreated:  act.Creator.TimeCreated,
+				},
+				Timezone: act.Timezone,
+			}
+			newActivity.Sessions = []*activity.Session{ses}
+			newActivities = append(newActivities, newActivity)
+		}
+	}
+	return newActivities
+}
+
+func (s *service) changeSport(activities []activity.Activity, sports []string) {
+	var cur int
+	for i := range activities {
+		act := &activities[i]
+		for j := range act.Sessions {
+			ses := act.Sessions[j]
+			ses.Sport = sports[cur]
+			cur++
+		}
+	}
+}
+
+// trimRecords trims Records based on the markers (1 marker correspond to 1 session) and recalculate the summary since the records is trimmed.
+func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker) error {
+	if len(markers) == 0 {
+		return nil
+	}
+	if len(markers) < len(a.Sessions) {
+		return fmt.Errorf("trim: marker size is less than sessions size")
+	}
+
+	for i := range a.Sessions {
+		ses := a.Sessions[i]
+		marker := markers[i]
+
+		if marker.StartN == 0 && marker.EndN == len(ses.Records)-1 { // no data to be trimmed
+			continue
+		}
+
+		if marker.StartN >= len(ses.Records)-1 {
+			ses.Records = nil
+			continue
+		}
+
+		if marker.EndN == 0 {
+			ses.Records = nil
+			continue
+		}
+
+		records := make([]*activity.Record, 0, marker.EndN-marker.StartN)
+		for i := marker.StartN; i <= marker.EndN; i++ {
+			records = append(records, ses.Records[i])
+		}
+
+		ses.Records = records
+
+		// Recalculate Lap and Session Summary
+		remainingRecords := make([]*activity.Record, 0)
+		sesRecords := ses.Records
+		newLaps := make([]*activity.Lap, 0)
+		for j := range ses.Laps {
+			lap := ses.Laps[j]
+			lapRecords := make([]*activity.Record, 0)
+
+			for k := range sesRecords {
+				rec := sesRecords[k]
+				if lap.IsBelongToThisLap(rec.Timestamp) {
+					lapRecords = append(lapRecords, rec)
+				} else {
+					remainingRecords = append(remainingRecords, rec)
+				}
+			}
+
+			lapFromRecords := activity.NewLapFromRecords(lapRecords, ses.Sport)
+			if lapFromRecords != nil {
+				newLaps = append(newLaps, lapFromRecords)
+			}
+			sesRecords = remainingRecords
+		}
+
+		newSes := activity.NewSessionFromLaps(newLaps, ses.Sport)
+		newSes.Laps = newLaps
+		newSes.Records = ses.Records
+		*ses = *newSes
+	}
+
+	return nil
+}
+
+// concealGPSPositions conceal positions from the records by removing PositionLat and PositionLong.
+func (s *service) concealGPSPositions(a *activity.Activity, markers []spec.EncodeMarker) error {
+	if len(markers) == 0 {
+		return nil
+	}
+	if len(markers) < len(a.Sessions) {
+		return fmt.Errorf("conceal: marker size is less than sessions size")
+	}
+
+	for i := range a.Sessions {
+		ses := a.Sessions[i]
+		marker := markers[i]
+
+		if marker.StartN == 0 && marker.EndN == 0 {
+			continue
+		}
+
+		if marker.StartN >= len(ses.Records)-1 {
+			marker.StartN = len(ses.Records) - 1
+		}
+
+		if marker.EndN == 0 {
+			marker.EndN = len(ses.Records) - 1
+		}
+
+		for j := 0; j < marker.StartN+1; j++ {
+			ses.Records[j].PositionLat = nil
+			ses.Records[j].PositionLong = nil
+		}
+
+		for j := marker.EndN + 1; j < len(ses.Records); j++ {
+			ses.Records[j].PositionLat = nil
+			ses.Records[j].PositionLong = nil
+		}
+	}
+
+	return nil
+}
+
+// RemoveFields removes field from the entire records as well as the summary of it.
+func (s *service) RemoveFields(a *activity.Activity, fields map[string]struct{}) {
+	if len(fields) == 0 {
+		return
+	}
+
+	for i := range a.Sessions {
+		ses := a.Sessions[i]
+
+		if _, ok := fields["distance"]; ok {
+			ses.TotalDistance = 0
+		}
+		if _, ok := fields["altitude"]; ok {
+			ses.TotalAscent = 0
+			ses.TotalDescent = 0
+			ses.AvgAltitude = nil
+			ses.MaxAltitude = nil
+		}
+		if _, ok := fields["heartRate"]; ok {
+			ses.AvgHeartRate = nil
+			ses.MaxHeartRate = nil
+		}
+		if _, ok := fields["cadence"]; ok {
+			ses.AvgCadence = nil
+			ses.MaxCadence = nil
+		}
+		if _, ok := fields["speed"]; ok {
+			ses.AvgSpeed = nil
+			ses.MaxSpeed = nil
+		}
+		if _, ok := fields["power"]; ok {
+			ses.AvgPower = nil
+			ses.MaxPower = nil
+		}
+		if _, ok := fields["temperature"]; ok {
+			ses.AvgTemperature = nil
+			ses.MaxTemperature = nil
+		}
+
+		for j := range ses.Laps {
+			lap := ses.Laps[j]
+
+			if _, ok := fields["distance"]; ok {
+				lap.TotalDistance = 0
+			}
+			if _, ok := fields["altitude"]; ok {
+				lap.TotalAscent = 0
+				lap.TotalDescent = 0
+				lap.AvgAltitude = nil
+				lap.MaxAltitude = nil
+			}
+			if _, ok := fields["heartRate"]; ok {
+				lap.AvgHeartRate = nil
+				lap.MaxHeartRate = nil
+			}
+			if _, ok := fields["cadence"]; ok {
+				lap.AvgCadence = nil
+				lap.MaxCadence = nil
+			}
+			if _, ok := fields["speed"]; ok {
+				lap.AvgSpeed = nil
+				lap.MaxSpeed = nil
+			}
+			if _, ok := fields["power"]; ok {
+				lap.AvgPower = nil
+				lap.MaxPower = nil
+			}
+			if _, ok := fields["temperature"]; ok {
+				lap.AvgTemperature = nil
+				lap.MaxTemperature = nil
+			}
+		}
+
+		for j := range ses.Records {
+			rec := ses.Records[j]
+
+			if _, ok := fields["positionLat"]; ok {
+				rec.PositionLat = nil
+			}
+			if _, ok := fields["positionLong"]; ok {
+				rec.PositionLong = nil
+			}
+			if _, ok := fields["distance"]; ok {
+				rec.Distance = nil
+			}
+			if _, ok := fields["altitude"]; ok {
+				rec.Altitude = nil
+			}
+			if _, ok := fields["heartRate"]; ok {
+				rec.HeartRate = nil
+			}
+			if _, ok := fields["cadence"]; ok {
+				rec.Cadence = nil
+			}
+			if _, ok := fields["speed"]; ok {
+				rec.Speed = nil
+			}
+			if _, ok := fields["power"]; ok {
+				rec.Power = nil
+			}
+			if _, ok := fields["temperature"]; ok {
+				rec.Temperature = nil
+			}
+		}
+	}
 }
 
 func (s *service) ManufacturerList() result.ManufacturerList {
@@ -159,10 +546,35 @@ func (s *service) ManufacturerList() result.ManufacturerList {
 		manufacturers = append(manufacturers, v)
 	}
 	slices.SortFunc(manufacturers, func(a, b fit.Manufacturer) int {
-		if a.Name < b.Name {
+		if strings.ToLower(a.Name) < strings.ToLower(b.Name) {
 			return -1
 		}
 		return 1
 	})
 	return result.ManufacturerList{Manufacturers: manufacturers}
+}
+
+func (s *service) SportList() result.SportList {
+	rawSports := typedef.ListSport()
+	sports := make([]result.Sport, 0, len(rawSports)-1)
+
+	for i := range rawSports {
+		rs := rawSports[i]
+		if rs == typedef.SportInvalid {
+			continue
+		}
+		sports = append(sports, result.Sport{
+			ID:   uint8(rs),
+			Name: kit.FormatTitle(rs.String()),
+		})
+	}
+
+	slices.SortFunc(sports, func(a, b result.Sport) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		return 1
+	})
+
+	return result.SportList{Sports: sports}
 }
