@@ -77,14 +77,10 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		for j := range trk.TrackSegments { // Laps
 			trkseg := trk.TrackSegments[j]
 
-			var prevRec *activity.Record
 			lapRecords := make([]*activity.Record, 0, len(trkseg.Trackpoints))
 			for k := range trkseg.Trackpoints { // Records
-				trkpt := trkseg.Trackpoints[k]
-
-				rec := NewRecord(&trkpt, prevRec)
-				prevRec = rec
-
+				trkpt := &trkseg.Trackpoints[k]
+				rec := NewRecord(trkpt)
 				lapRecords = append(lapRecords, rec)
 			}
 
@@ -93,6 +89,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			}
 
 			// Preprocessing...
+			s.preprocessor.CalculateDistanceAndSpeed(lapRecords)
 			if activity.HasPace(sport) {
 				s.preprocessor.CalculatePace(sport, lapRecords)
 			}
@@ -127,4 +124,8 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	act.Sessions = sessions
 
 	return []activity.Activity{*act}, nil
+}
+
+func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
+	return nil, fmt.Errorf("gpx: encode: not yet implemented")
 }
