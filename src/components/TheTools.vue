@@ -392,22 +392,6 @@ export default {
         if (this.sessionSports[i] == null) return false
       }
 
-      if (this.isTrimSelected) {
-        for (let i = 0; i < this.trimMarkers.length; i++) {
-          const m = this.trimMarkers[i]
-          if (m.startN) return true
-          if (m.endN != this.sessions[i].records.length - 1) return true
-        }
-        return false
-      }
-      if (this.isConcealSelected) {
-        for (let i = 0; i < this.concealMarkers.length; i++) {
-          const m = this.concealMarkers[i]
-          if (m.startN) return true
-          if (m.endN != this.sessions[i].records.length - 1) return true
-        }
-        return false
-      }
       return true
     },
     hasCadence(): boolean {
