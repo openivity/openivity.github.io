@@ -201,7 +201,7 @@ export default {
       // Creating Scales
       const xScaleDistance = d3
         .scaleLinear()
-        .domain(d3.extent(graphRecords, (d) => d.distance! / 1000) as number[])
+        .domain(d3.extent(graphRecords, (d) => (d.distance ?? 0) / 1000) as number[])
         .range([marginLeft, width - marginRight])
 
       const xScaleTimestamp = d3
@@ -211,7 +211,7 @@ export default {
 
       const xScale = this.hasDistance ? xScaleDistance : xScaleTimestamp
       this.scaleByDistanceOrTimestamp = (rec: Record): number => {
-        if (this.hasDistance) return xScale(rec.distance! / 1000)
+        if (this.hasDistance) return xScale((rec.distance ?? 0) / 1000)
         return xScale(new Date(rec.timestamp!).getTime())
       }
 

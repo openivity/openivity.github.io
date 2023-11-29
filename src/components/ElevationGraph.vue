@@ -20,7 +20,7 @@
           <i class="fa-solid fa-road"></i>
           {{
             typeof recordView.distance === 'number'
-              ? (recordView.distance! / 1000).toFixed(2)
+              ? ((recordView.distance ?? 0) / 1000).toFixed(2)
               : '0.00'
           }}
           km
@@ -119,7 +119,7 @@ export default {
           return
         }
         pointer.style('opacity', 1)
-        pointer.attr('transform', `translate(${this.xScale(record.distance! / 1000)}, 0)`)
+        pointer.attr('transform', `translate(${this.xScale((record.distance ?? 0) / 1000)}, 0)`)
       }
     },
     receivedRecordFreeze: {
@@ -189,7 +189,7 @@ export default {
       // Creating Scales
       const xScale = d3
         .scaleLinear()
-        .domain(d3.extent(graphRecords, (d) => d.distance! / 1000) as Number[])
+        .domain(d3.extent(graphRecords, (d) => (d.distance ?? 0) / 1000) as Number[])
         .range([marginLeft, width - marginRight])
 
       this.xScale = xScale
@@ -298,7 +298,7 @@ export default {
       const area = d3
         .area<Record>()
         .curve(d3.curveBasis)
-        .x((d: Record) => xScale(d.distance! / 1000) as number)
+        .x((d: Record) => xScale((d.distance ?? 0) / 1000) as number)
         .y0(yScale(d3.min(yScale.domain())!))
         .y1((d) => yScale(d.altitude ?? 0))
 
@@ -322,14 +322,14 @@ export default {
         .selectAll('stop')
         .data(graphRecords)
         .join('stop')
-        .attr('offset', (d) => xScale(d.distance! / 1000) / width)
+        .attr('offset', (d) => xScale((d.distance ?? 0) / 1000) / width)
         .attr('stop-color', (d) => this.color(d.grade ?? 0))
 
       // Add Line
       const line = d3
         .line<Record>()
         .curve(d3.curveBasis)
-        .x((d: Record) => xScale(d.distance! / 1000) as number)
+        .x((d: Record) => xScale((d.distance ?? 0) / 1000) as number)
         .y((d) => yScale(d.altitude ?? 0))
 
       svg
@@ -388,9 +388,9 @@ export default {
         let nearestRecord: Record = new Record()
         let dx = Number.MAX_VALUE
         // let counter = 0 // TODO: remove after debug (currently it's the fastest lookup)
-        if (xScale(this.records[lookupIndex].distance! / 1000) <= px) {
+        if (xScale((this.records[lookupIndex].distance ?? 0) / 1000) <= px) {
           for (let i = lookupIndex; i < this.records.length; i++) {
-            const delta = Math.abs(px - xScale(this.records[i].distance! / 1000)!)
+            const delta = Math.abs(px - xScale((this.records[i].distance ?? 0) / 1000)!)
             if (delta > dx) break
             nearestRecord = this.records[i]
             dx = delta
@@ -399,7 +399,7 @@ export default {
           //   console.debug(`look forward for ${counter} records`)
         } else {
           for (let i = lookupIndex; i >= 0; i--) {
-            const delta = Math.abs(px - xScale(this.records[i].distance! / 1000)!)
+            const delta = Math.abs(px - xScale((this.records[i].distance ?? 0) / 1000)!)
             if (delta > dx) break
             nearestRecord = this.records[i]
             dx = delta
