@@ -1,4 +1,9 @@
 {
+  "1": {
+    "id": 1,
+    "name": "Garmin",
+    "products": [{ "id": 2976, "name": "Connect Api" }]
+  },
   "23": {
     "id": 23,
     "name": "Suunto",
@@ -60,22 +65,120 @@
       { "id": 56, "name": "5 Peak" }
     ]
   },
+  "32": {
+    "id": 32,
+    "name": "Wahoo Fitness",
+    "products": [
+      { "id": 1, "name": "RFLKT+" },
+      { "id": 3, "name": "Elemnt" },
+      { "id": 31, "name": "Elemnt Bolt" },
+      { "id": 33, "name": "Elemnt Rival" },
+      { "id": 37, "name": "Elemnt Roam" },
+      { "id": 43, "name": "Elemnt Bolt V2" }
+    ]
+  },
+  "70": {
+    "id": 70,
+    "name": "SigmaSport",
+    "products": [
+      { "id": 39, "name": "BC 23.16 STS" },
+      { "id": 44, "name": "Rox 12.0" },
+      { "id": 49, "name": "Rox 11.1 EVO" }
+    ]
+  },
+  "89": {
+    "id": 89,
+    "name": "Tacx",
+    "products": [{ "id": 20533, "name": "Tacx" }]
+  },
+  "107": {
+    "id": 107,
+    "name": "Magene",
+    "products": [{ "id": 96, "name": "C406" }]
+  },
+  "108": {
+    "id": 108,
+    "name": "Giant Manufacturing CO",
+    "products": [{ "id": 1606, "name": "Neostrack" }]
+  },
+  "115": {
+    "id": 115,
+    "name": "iGPSPORT",
+    "products": [
+      { "id": 51, "name": "iGS50E" },
+      { "id": 60, "name": "iGS60" },
+      { "id": 65, "name": "iGS618" },
+      { "id": 500, "name": "iGS50" },
+      { "id": 600, "name": "iGS620" },
+      { "id": 630, "name": "iGS630" }
+    ]
+  },
+  "260": {
+    "id": 260,
+    "name": "Zwift",
+    "products": [{ "id": 1, "name": "Run" }]
+  },
   "265": {
     "id": 265,
     "name": "Strava",
-    "products": [{ "id": 101, "name": "Web" }]
+    "products": [
+      { "id": 101, "name": "for IPhone" },
+      { "id": 102, "name": "for Android" },
+      { "id": 200, "name": "Wear OS by Google" },
+      { "id": 1156, "name": "Apple Watch Series 5" },
+      { "id": 1158, "name": "Apple Watch Series 6" },
+      { "id": 1161, "name": "Apple Watch Series 8" },
+      { "id": 1162, "name": "Apple Watch Ultra" }
+    ]
   },
   "267": {
     "id": 267,
     "name": "Bryton",
-    "products": [{ "id": 1901, "name": "Rider 420" }]
+    "products": [
+      { "id": 2, "name": "Rider 20" },
+      { "id": 1504, "name": "Rider 100" },
+      { "id": 1505, "name": "Rider 310" },
+      { "id": 1508, "name": "Rider 530" },
+      { "id": 1509, "name": "Rider 330" },
+      { "id": 1703, "name": "Aero 60" },
+      { "id": 1704, "name": "Rider 450" },
+      { "id": 1706, "name": "Rider 410" },
+      { "id": 1803, "name": "Rider 15" },
+      { "id": 1901, "name": "Rider 420" }
+    ]
+  },
+  "289": {
+    "id": 289,
+    "name": "Hammerhead",
+    "products": [
+      { "id": 1, "name": "Karoo" },
+      { "id": 2, "name": "Karoo 2" }
+    ]
   },
   "292": {
     "id": 292,
     "name": "XOSS",
     "products": [
-      { "id": 11, "name": "G+" },
-      { "id": 100, "name": "G+" }
+      { "id": 1, "name": "SPRINT" },
+      { "id": 2, "name": "G+ (2)" },
+      { "id": 11, "name": "G+ (11)" },
+      { "id": 100, "name": "G+ (100)" }
     ]
+  },
+  "294": {
+    "id": 294,
+    "name": "COROS",
+    "products": [
+      { "id": 802, "name": "Pace 2" },
+      { "id": 811, "name": "Apex" },
+      { "id": 822, "name": "Apex 2 Pro" },
+      { "id": 831, "name": "Vertix" },
+      { "id": 841, "name": "Apex Pro" }
+    ]
+  },
+  "309": {
+    "id": 309,
+    "name": "FORM",
+    "products": [{ "id": 1000, "name": "Swim Goggles" }]
   }
 }
