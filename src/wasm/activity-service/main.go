@@ -198,7 +198,7 @@ func createEncodeFunc(s service.Service) js.Func {
 
 		var encodeSpec spec.Encode
 		if err := json.Unmarshal(b, &encodeSpec); err != nil {
-			return result.Encode{Err: fmt.Errorf("could not unmarshal input: %v", err)}
+			return result.Encode{Err: fmt.Errorf("could not unmarshal input: %v", err)}.ToMap()
 		}
 
 		encodeSpec.Activities = retrieveCache(pointer)

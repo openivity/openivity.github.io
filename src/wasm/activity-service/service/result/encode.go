@@ -1,6 +1,8 @@
 package result
 
-import "time"
+import (
+	"time"
+)
 
 type Encode struct {
 	Err                  error

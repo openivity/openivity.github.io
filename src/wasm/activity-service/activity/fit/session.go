@@ -197,7 +197,7 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.TotalDistance != 0 {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionTotalDistance)
-		field.Value = scaleoffset.DiscardAny(ses.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(ses.TotalDistance, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.TotalAscent != 0 {

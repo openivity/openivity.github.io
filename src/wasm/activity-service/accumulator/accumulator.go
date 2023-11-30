@@ -3,10 +3,10 @@ package accumulator
 import (
 	"math"
 
-	"golang.org/x/exp/constraints"
+	"github.com/muktihari/openactivity-fit/kit"
 )
 
-type Accumulator[T constraints.Integer | constraints.Float] struct {
+type Accumulator[T kit.Numeric] struct {
 	min     *T
 	max     *T
 	sum     float64 // we don't need that precision

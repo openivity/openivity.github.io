@@ -5,7 +5,7 @@ import (
 )
 
 type Encode struct {
-	EncodeMode     EncodeMode          `json:"encodeMode"`     // Selected Encode Mode
+	ToolMode       EncodeToolMode      `json:"toolMode"`       // Selected Encode Mode
 	TargetFileType FileType            `json:"targetFileType"` // Either fit, gpx, or tcx
 	ManufacturerID uint16              `json:"manufacturerId"` // Only for FIT FileType
 	ProductID      uint16              `json:"productId"`      // Only for FIT FileType
@@ -17,22 +17,22 @@ type Encode struct {
 	Activities     []activity.Activity `json:"-"`
 }
 
-type EncodeMode byte
+type EncodeToolMode byte
 
 const (
-	EncodeModeUnknown EncodeMode = iota
-	EncodeModeEdit
-	EncodeModeCombine
-	EncodeModeSplitPerSession
+	ToolModeUnknown EncodeToolMode = iota
+	ToolModeEdit
+	ToolModeCombine
+	ToolModeSplitPerSession
 )
 
-func (e EncodeMode) String() string {
+func (e EncodeToolMode) String() string {
 	switch e {
-	case EncodeModeEdit:
+	case ToolModeEdit:
 		return "edit"
-	case EncodeModeCombine:
+	case ToolModeCombine:
 		return "combine"
-	case EncodeModeSplitPerSession:
+	case ToolModeSplitPerSession:
 		return "split"
 	default:
 		return "unknown"

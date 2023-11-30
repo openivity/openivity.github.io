@@ -166,7 +166,7 @@ func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Enc
 	}
 
 	return result.Encode{
-		FileName:   fmt.Sprintf("openivity-%d-%s", begin.Unix(), encodeSpec.EncodeMode),
+		FileName:   fmt.Sprintf("openivity-%d-%s", begin.Unix(), encodeSpec.ToolMode),
 		FileType:   encodeSpec.TargetFileType.String(),
 		FilesBytes: bs,
 		Err:        err,
@@ -184,8 +184,8 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 		return nil, fmt.Errorf("manufacturer %d does not exist", encodeSpec.ManufacturerID)
 	}
 
-	if encodeSpec.EncodeMode == spec.EncodeModeUnknown {
-		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.EncodeMode)
+	if encodeSpec.ToolMode == spec.ToolModeUnknown {
+		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.ToolMode)
 	}
 
 	removeFields := make(map[string]struct{})
@@ -194,32 +194,43 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 	}
 
 	// Preprocess data before encoding
+	var validActivityCounter int
 	for i := range activities {
 		activity := &activities[i]
 		n := len(activities[i].Sessions) + i // markers is based on session across activities.
 
-		s.changeSport(activities, encodeSpec.Sports)
 		if err := s.concealGPSPositions(activity, encodeSpec.ConcealMarkers[i:n]); err != nil {
 			return nil, err
 		}
 		if err := s.trimRecords(activity, encodeSpec.TrimMarkers[i:n]); err != nil {
 			return nil, err
 		}
+
+		if len(activity.Sessions) == 0 {
+			continue
+		}
+
+		validActivityCounter++
+		s.changeSport(activities, encodeSpec.Sports)
 		s.RemoveFields(activity, removeFields)
 	}
 
+	if validActivityCounter == 0 {
+		return nil, fmt.Errorf("no activity data after processed")
+	}
+
 	var newActivities []activity.Activity
-	switch encodeSpec.EncodeMode {
-	case spec.EncodeModeEdit:
+	switch encodeSpec.ToolMode {
+	case spec.ToolModeEdit:
 		for i := range activities {
 			activities[i].Creator.Manufacturer = &encodeSpec.ManufacturerID
 			activities[i].Creator.Product = &encodeSpec.ProductID
 		}
 		newActivities = activities
-	case spec.EncodeModeCombine:
+	case spec.ToolModeCombine:
 		newActivity := s.combineActivity(encodeSpec.Activities, encodeSpec.ManufacturerID, encodeSpec.ProductID)
 		newActivities = []activity.Activity{newActivity}
-	case spec.EncodeModeSplitPerSession:
+	case spec.ToolModeSplitPerSession:
 		newActivities = s.splitActivityPerSession(activities, encodeSpec.ManufacturerID, encodeSpec.ProductID)
 	}
 
@@ -374,6 +385,10 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 			records = append(records, rec)
 		}
 
+		if len(records) == 0 {
+			continue
+		}
+
 		ses.Records = records
 
 		// Recalculate Lap and Session Summary
@@ -405,6 +420,17 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 		newSes.Records = ses.Records
 		*ses = *newSes
 	}
+
+	// Validate Records in Sessions
+	validSessions := make([]*activity.Session, 0, len(a.Sessions))
+	for i := range a.Sessions {
+		if len(a.Sessions[i].Records) == 0 {
+			continue
+		}
+		validSessions = append(validSessions, a.Sessions[i])
+	}
+
+	a.Sessions = validSessions
 
 	return nil
 }

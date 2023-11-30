@@ -9,11 +9,15 @@ import (
 	"golang.org/x/text/language"
 )
 
+type Numeric interface {
+	constraints.Integer | constraints.Float
+}
+
 // Ptr returns pointer of v
 func Ptr[T any](v T) *T { return &v }
 
 // PickNonZeroValue returns x if x != 0, otherwise return y.
-func PickNonZeroValue[T constraints.Integer | constraints.Float](x, y T) T {
+func PickNonZeroValue[T Numeric](x, y T) T {
 	if x == 0 {
 		return y
 	}
@@ -21,7 +25,7 @@ func PickNonZeroValue[T constraints.Integer | constraints.Float](x, y T) T {
 }
 
 // PickNonZeroValuePtr same as PickNonZeroValue but for pointers and return a pointer.
-func PickNonZeroValuePtr[T constraints.Integer | constraints.Float](x, y *T) *T {
+func PickNonZeroValuePtr[T Numeric](x, y *T) *T {
 	if x == nil {
 		return y
 	}
@@ -56,7 +60,7 @@ func FormatToLowerSnakeCase(s string) string {
 }
 
 // Avg returns average of two non-nil values. Otherwise, return any non-nil value if possible.
-func Avg[T constraints.Integer | constraints.Float](a, b *T) *T {
+func Avg[T Numeric](a, b *T) *T {
 	if a == nil {
 		return b
 	}
@@ -67,8 +71,8 @@ func Avg[T constraints.Integer | constraints.Float](a, b *T) *T {
 	return a
 }
 
-// Avg returns max of two non-nil values. Otherwise, return any non-nil value if possible.
-func Max[T constraints.Integer | constraints.Float](x, y *T) *T {
+// Max returns max of two non-nil values. Otherwise, return any non-nil value if possible.
+func Max[T Numeric](x, y *T) *T {
 	if x == nil {
 		return y
 	}
