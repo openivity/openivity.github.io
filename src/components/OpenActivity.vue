@@ -535,24 +535,36 @@ export default {
       console.groupEnd()
 
       for (let i = 0; i < result.filesBytes.length; i++) {
-        const uint8Array = new Uint8Array(result.filesBytes[i])
-        const blob = new Blob([uint8Array])
-
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-
         let name = result.fileName
         if (result.filesBytes.length > 1) {
           name += `-${i + 1}`
         }
-
-        link.download = `${name}.${result.fileType}`
-        document.body.appendChild(link)
-
-        link.click()
+        if (this.isMobile()) {
+          setTimeout(() => {
+            this.downloadFile(name, result.fileType, new Uint8Array(result.filesBytes[i]))
+          }, i * 1000) // Add delay otherwise the download may be rejected.
+        } else {
+          this.downloadFile(name, result.fileType, new Uint8Array(result.filesBytes[i]))
+        }
       }
 
       this.loading = false
+    },
+    isMobile(): boolean {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      )
+    },
+    async downloadFile(fileName: string, fileType: string, bytes: Uint8Array) {
+      const blob = new Blob([bytes])
+
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${fileName}.${fileType}`
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     },
     manufacturerListHandler(result: ManufacturerListResult) {
       manufacturers.value = result.manufacturers as Manufacturer[]
