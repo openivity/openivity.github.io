@@ -55,6 +55,7 @@ export class DeviceOption {
   heading?: boolean = false
   manufacturerId?: number | null = null
   manufacturerName: string = ''
+  isManualInputProduct?: boolean = false
   productId?: number | null = null
   productName?: string | null = null
 
@@ -63,6 +64,7 @@ export class DeviceOption {
     this.heading = data?.heading ?? false
     this.manufacturerId = data?.manufacturerId ?? null
     this.manufacturerName = data?.manufacturerName ?? ''
+    this.isManualInputProduct = data?.isManualInputProduct ?? false
     this.productId = data?.productId ?? null
     this.productName = data?.productName ?? null
   }
@@ -139,7 +141,8 @@ export default {
           new DeviceOption({
             label: `${m.name} <manual input>`,
             manufacturerId: m.id,
-            manufacturerName: m.name
+            manufacturerName: m.name,
+            isManualInputProduct: true
           })
         )
       })
@@ -164,8 +167,7 @@ export default {
     isManualInputProduct(): boolean {
       if (this.selected.manufacturerId == null) return false
       if (!this.isManufacturerHasProduct) return true
-      if (this.selected.productId == null) return true
-      return false
+      return this.selected.isManualInputProduct ?? false
     }
   },
   watch: {
