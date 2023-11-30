@@ -4,7 +4,7 @@ import ToolDeviceSelector, { DeviceOption } from './ToolDeviceSelector.vue'
 import ToolFieldsRemover from './ToolFieldsRemover.vue'
 import ToolModeSelector from './ToolModeSelector.vue'
 import ToolSportChanger from './ToolSportChanger.vue'
-import ToolTrackpointsConcealerVue from './ToolTrackpointsConcealer.vue'
+import ToolTrackpointsConcealer from './ToolTrackpointsConcealer.vue'
 import ToolTrackpointsTrimmer from './ToolTrackpointsTrimmer.vue'
 
 import { ActivityFile, Record, Session } from '@/spec/activity'
@@ -56,11 +56,11 @@ import { toRaw } from 'vue'
       ></ToolTrackpointsTrimmer>
     </div>
     <div class="pt-3">
-      <ToolTrackpointsConcealerVue
+      <ToolTrackpointsConcealer
         :sessions="sessions"
         :tool-mode="toolMode"
         v-on:markers="onConcealMarkers"
-      ></ToolTrackpointsConcealerVue>
+      ></ToolTrackpointsConcealer>
     </div>
     <div class="pt-3">
       <ToolFieldsRemover
