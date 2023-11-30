@@ -38,25 +38,42 @@ import { Marker, ToolMode } from '@/spec/activity-service'
     <div v-if="selected?.value">
       <div class="pt-2" v-for="(marker, index) in markers" :key="index">
         <div class="row px-1">
-          <label class="sub-label">Session {{ index + 1 }}: {{ sessions[index].sport }} </label>
+          <div class="d-flex">
+            <div class="col">
+              <label class="sub-label">Session {{ index + 1 }}: {{ sessions[index].sport }} </label>
+            </div>
+            <div class="col-auto text-end fs-legend">
+              <span>
+                New dist.
+                {{
+                  (
+                    ((sessions[index].records[marker.endN].distance ?? 0) -
+                      (sessions[index].records[marker.startN].distance ?? 0)) /
+                    1000
+                  ).toFixed(2)
+                }}
+                km
+              </span>
+              <span>
+                ({{
+                  (
+                    (sessions[index].records[sessions[index].records.length - 1].distance ?? 0) /
+                    1000
+                  ).toFixed(2)
+                }}
+                km)
+              </span>
+            </div>
+          </div>
           <div class="col text-start"><p>Distance from the Start</p></div>
           <div class="col text-end">
             <span>
               {{ ((sessions[index].records[marker.startN].distance ?? 0) / 1000).toFixed(2) }} km
             </span>
-            <span>
-              of
-              {{
-                (
-                  (sessions[index].records[sessions[index].records.length - 1].distance ?? 0) / 1000
-                ).toFixed(2)
-              }}
-              km
-            </span>
           </div>
           <div class="ps-2">
             <input
-              class="form-range"
+              class="form-range openivity-form-range"
               type="range"
               :min="0"
               :max="sessions[index].records.length - 1"
@@ -77,19 +94,10 @@ import { Marker, ToolMode } from '@/spec/activity-service'
               }}
               km
             </span>
-            <span>
-              of
-              {{
-                (
-                  (sessions[index].records[sessions[index].records.length - 1].distance ?? 0) / 1000
-                ).toFixed(2)
-              }}
-              km
-            </span>
           </div>
           <div class="ps-2">
             <input
-              class="form-range"
+              class="form-range openivity-form-range"
               type="range"
               :min="0"
               :max="sessions[index].records.length - 1"

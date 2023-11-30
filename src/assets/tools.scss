@@ -1,8 +1,11 @@
 label {
+  font-weight: 500;
   color: var(--bs-heading-color);
 }
 
 .sub-label {
+  color: var(--color-text);
+  font-weight: 700;
   font-size: 0.8em;
 }
 
@@ -14,4 +17,23 @@ label {
 p {
   font-size: 0.8em;
   margin-bottom: 0;
+}
+
+.fs-legend {
+  font-size: 0.8em;
+}
+
+.openivity-form-range::-webkit-slider-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
+}
+
+.openivity-form-range::-moz-range-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
+}
+
+.openivity-form-range::-ms-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
 }
