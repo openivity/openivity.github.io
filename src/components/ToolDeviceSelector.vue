@@ -179,9 +179,11 @@ export default {
       }
     },
     selected: {
-      handler(value) {
+      handler(value: DeviceOption) {
+        if (isNaN(parseInt(value?.productId as unknown as string))) value.productId = null
         this.$emit('selectedDevice', value)
-      }
+      },
+      deep: true
     }
   },
   methods: {
