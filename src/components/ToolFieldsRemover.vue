@@ -22,13 +22,13 @@ import type { PropType } from 'vue'
       <p>Select any field you wish to remove from the entire trackpoints.</p>
     </div>
     <div v-for="(item, index) in dataSource" :key="index">
-      <div class="form-check" v-show="show(item.value)">
+      <div class="form-check">
         <input
           class="form-check-input"
           type="checkbox"
           :id="item.value"
           :value="item.value"
-          :disabled="toolMode == ToolMode.Unknown"
+          :disabled="toolMode == ToolMode.Unknown || !show(item.value)"
           v-model="selectedFields"
         />
         <label class="form-check-label" style="color: var(--color-text)" :for="item.value">
@@ -36,6 +36,7 @@ import type { PropType } from 'vue'
         </label>
       </div>
     </div>
+    <div v-if="isNoFieldsData"><p>(No available fields to be removed.)</p></div>
   </div>
 </template>
 <script lang="ts">
@@ -56,6 +57,9 @@ export default {
     }
   },
   computed: {
+    isNoFieldsData(): boolean {
+      return !(this.hasCadence || this.hasHeartRate || this.hasPower || this.hasTemperature)
+    },
     hasCadence(): boolean {
       for (let i = 0; i < this.sessions.length; i++) {
         const ses = this.sessions[i]
@@ -98,8 +102,13 @@ export default {
     }
   },
   watch: {
+    sessions: {
+      handler() {
+        this.selectedFields = []
+      }
+    },
     selectedFields: {
-      handler(value) {
+      handler() {
         this.$emit('selectedFields', this.selectedFields)
       }
     }

@@ -73,6 +73,11 @@ export default {
     }
   },
   watch: {
+    sessions: {
+      handler() {
+        this.selected = null
+      }
+    },
     selected: {
       handler(value) {
         this.$emit('toolMode', value?.value ?? ToolMode.Unknown)
@@ -83,6 +88,9 @@ export default {
     isSelectable(option: any) {
       return option.selectable
     }
+  },
+  mounted() {
+    this.$emit('toolMode', this.selected ?? ToolMode.Unknown)
   }
 }
 </script>

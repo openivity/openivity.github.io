@@ -20,11 +20,11 @@ import { toRaw } from 'vue'
 <template>
   <div class="row m-0 px-2 text-start">
     <label>We have few useful tools to edit your Activity Files.</label>
-    <p>
-      Some tools may be disabled depending on the number of activities or sessions you have open.
-      Again, the entire process is performed locally, so there's no need to worry about privacy.
-      <span class="emoji">😉</span>
-    </p>
+    <p>Some tools may be disabled depending on these factors:</p>
+    <ul class="ps-4 m-0" style="font-size: 0.8em">
+      <li>You need at least two activity files to combine them.</li>
+      <li>You need at least two sessions (in one or multiple activity files) to split.</li>
+    </ul>
     <div class="pt-3">
       <ToolModeSelector
         :activities="activities"
