@@ -27,7 +27,8 @@
     "ol": "^8.1.0",
     "pinia": "^2.1.6",
     "vue": "^3.3.4",
-    "vue-router": "^4.2.4"
+    "vue-router": "^4.2.4",
+    "vue-select": "^4.0.0-beta.6"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.3.3",
@@ -37,6 +38,7 @@
     "@types/kdbush": "^3.0.5",
     "@types/luxon": "^3.3.2",
     "@types/node": "^20.6.3",
+    "@types/vue-select": "^3.16.8",
     "@vitejs/plugin-vue": "^4.3.4",
     "@vue/eslint-config-prettier": "^8.0.0",
     "@vue/eslint-config-typescript": "^12.0.0",

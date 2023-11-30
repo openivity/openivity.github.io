@@ -36,6 +36,7 @@
 
   --color-heading: var(--vt-c-text-light-1);
   --color-text: var(--vt-c-text-light-1);
+  --color-text-soft: var(--vt-c-black-soft);
   --color-title: var(--vt-c-text-light-1);
 
   --green-text: var(--palm-springs-splash);
@@ -54,6 +55,7 @@
 
     --color-heading: var(--vt-c-text-dark-1);
     --color-text: var(--vt-c-text-dark-2);
+    --color-text-soft: var(--vt-c-white);
     --color-title: var(--open-activity-color-vivid);
 
     --green-text: var(--medium-sea-green);
@@ -65,6 +67,8 @@
 
 /* scrollbar */
 @import './scrollbar.scss';
+
+@import './v-select.scss';
 
 // DO NOT REMOVE
 // For finding overflow element

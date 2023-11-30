@@ -42,7 +42,7 @@ export class EncodeResult {
 }
 
 export class EncodeSpecifications {
-  encodeMode: number = 0
+  toolMode: number = 0
   targetFileType: FileType = 0
   manufacturerId: number = 0
   productId: number = 0
@@ -53,7 +53,7 @@ export class EncodeSpecifications {
   removeFields?: string[] | null = []
 
   constructor(data: EncodeSpecifications) {
-    this.encodeMode = data.encodeMode
+    this.toolMode = data.toolMode
     this.targetFileType = data.targetFileType
     this.manufacturerId = data.manufacturerId
     this.productId = data.productId
@@ -65,7 +65,7 @@ export class EncodeSpecifications {
   }
 }
 
-export enum EncodeMode {
+export enum ToolMode {
   Unknown = 0,
   Edit,
   Combine,
