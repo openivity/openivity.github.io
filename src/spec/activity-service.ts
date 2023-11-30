@@ -26,7 +26,7 @@ export class EncodeResult {
   totalElapsed: number
   fileName: string
   fileType: string
-  filesBytes: Uint8Array
+  filesBytes: Uint8Array[]
 
   constructor(data?: any) {
     const casted = data as EncodeResult
