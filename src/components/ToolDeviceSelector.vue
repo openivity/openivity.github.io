@@ -31,7 +31,9 @@ import type { PropType } from 'vue'
           <i>product_id</i>, the resulting FIT file may not be recognized by other platforms.
         </p>
         <div class="col">
-          <label for="product" class="form-label sub-label">Product ID</label>
+          <label for="product" class="form-label sub-label"
+            >Product ID <span class="d-inline color-mandatory fs-6">*</span></label
+          >
           <input
             id="product"
             type="number"

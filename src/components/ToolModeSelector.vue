@@ -8,7 +8,7 @@ import { ToolMode } from '@/spec/activity-service'
     <div class="col-12 pt-1">
       <v-select
         label="label"
-        placeholder="-- Please select a tool --"
+        placeholder="-- Please select a tool first --"
         :selectable="isSelectable"
         :clearable="false"
         :searchable="false"

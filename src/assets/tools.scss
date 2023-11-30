@@ -23,6 +23,10 @@ p {
   font-size: 0.8em;
 }
 
+.color-mandatory {
+    color: rgba(255,0,0,0.8)
+}
+
 .openivity-form-range::-webkit-slider-thumb {
   background-color: var(--color-title) !important;
   border: 2px solid var(--color-title) !important;
