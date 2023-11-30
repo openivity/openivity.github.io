@@ -139,6 +139,7 @@ export default {
     sessions: {
       handler() {
         this.selected = this.dataSource[0]
+        this.updateMarkers()
       }
     },
     markers: {

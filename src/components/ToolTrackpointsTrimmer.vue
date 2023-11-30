@@ -128,9 +128,10 @@ export default {
   },
   computed: {},
   watch: {
-    session: {
+    sessions: {
       handler() {
         this.selected = this.dataSource[0]
+        this.updateMarkers()
       }
     },
     markers: {
