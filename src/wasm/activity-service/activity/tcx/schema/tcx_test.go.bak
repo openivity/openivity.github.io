@@ -1,0 +1,48 @@
+package schema_test
+
+import (
+	"bufio"
+	"encoding/xml"
+	"os"
+	"testing"
+
+	"github.com/muktihari/openactivity-fit/activity/tcx/schema"
+	"github.com/pkg/profile"
+)
+
+func TestUnmarshal(t *testing.T) {
+	name := "/Users/mukti/Downloads/Morning_Run_Bryton.tcx"
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	dec := xml.NewDecoder(bufio.NewReaderSize(f, 10000<<10))
+
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+
+	// Find start element
+	var start *xml.StartElement
+	if start == nil {
+		for {
+			tok, err := dec.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if t, ok := tok.(xml.StartElement); ok {
+				start = &t
+				break
+			}
+		}
+	}
+
+	if start == nil { // In case we got invalid xml, avoid panic.
+		t.Fatalf("start nil")
+	}
+
+	var tcx schema.TCX
+	if err := tcx.UnmarshalXML(dec, *start); err != nil {
+		t.Fatal(err)
+	}
+}

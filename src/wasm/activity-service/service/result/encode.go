@@ -1,15 +1,18 @@
 package result
 
-import "time"
+import (
+	"time"
+)
 
 type Encode struct {
-	Err               error
-	EncodeTook        time.Duration
-	SerializationTook time.Duration
-	TotalElapsed      time.Duration
-	FileName          string
-	FileType          string
-	FileBytes         []byte
+	Err                  error
+	DeserializeInputTook time.Duration
+	EncodeTook           time.Duration
+	SerializationTook    time.Duration
+	TotalElapsed         time.Duration
+	FileName             string
+	FileType             string
+	FilesBytes           [][]byte
 }
 
 func (e Encode) ToMap() map[string]any {
@@ -19,22 +22,27 @@ func (e Encode) ToMap() map[string]any {
 
 	begin := time.Now()
 
-	fileBytes := make([]any, len(e.FileBytes))
-	for i := range e.FileBytes {
-		fileBytes[i] = e.FileBytes[i]
+	filesBytes := make([]any, len(e.FilesBytes))
+	for i := range e.FilesBytes {
+		fileBytes := make([]any, len(e.FilesBytes[i]))
+		for j := range e.FilesBytes[i] {
+			fileBytes[j] = e.FilesBytes[i][j]
+		}
+		filesBytes[i] = fileBytes
 	}
 
 	e.SerializationTook = time.Since(begin)
-	e.TotalElapsed = e.EncodeTook + e.SerializationTook
+	e.TotalElapsed = e.DeserializeInputTook + e.EncodeTook + e.SerializationTook
 
 	m := map[string]any{
-		"err":               nil,
-		"fileName":          e.FileName,
-		"fileType":          e.FileType,
-		"fileBytes":         fileBytes,
-		"decodeTook":        e.EncodeTook.Milliseconds(),
-		"serializationTook": e.SerializationTook.Milliseconds(),
-		"totalElapsed":      e.TotalElapsed.Milliseconds(),
+		"err":                  nil,
+		"fileName":             e.FileName,
+		"fileType":             e.FileType,
+		"filesBytes":           filesBytes,
+		"deserializeInputTook": e.DeserializeInputTook.Milliseconds(),
+		"encodeTook":           e.EncodeTook.Milliseconds(),
+		"serializationTook":    e.SerializationTook.Milliseconds(),
+		"totalElapsed":         e.TotalElapsed.Milliseconds(),
 	}
 
 	return m

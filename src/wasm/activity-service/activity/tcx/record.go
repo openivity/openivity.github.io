@@ -5,7 +5,7 @@ import (
 	"github.com/muktihari/openactivity-fit/activity/tcx/schema"
 )
 
-func NewRecord(trackpoint *schema.Trackpoint, prevRec *activity.Record) *activity.Record {
+func NewRecord(trackpoint *schema.Trackpoint) *activity.Record {
 	if trackpoint == nil {
 		return nil
 	}
@@ -26,19 +26,6 @@ func NewRecord(trackpoint *schema.Trackpoint, prevRec *activity.Record) *activit
 	if trackpoint.Extensions != nil {
 		if trackpoint.Extensions.Speed != nil {
 			rec.Speed = trackpoint.Extensions.Speed
-		}
-	}
-
-	var pointDistance float64
-	if prevRec != nil && prevRec.Distance != nil && rec.Distance != nil {
-		pointDistance = *rec.Distance - *prevRec.Distance
-	}
-
-	if pointDistance != 0 {
-		elapsed := rec.Timestamp.Sub(prevRec.Timestamp).Seconds()
-		if elapsed > 0 {
-			speed := pointDistance / elapsed
-			rec.Speed = &speed
 		}
 	}
 

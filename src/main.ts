@@ -12,8 +12,12 @@ import router from './router'
 // Import all of Bootstrap's JS
 import 'bootstrap'
 
+// Enable vselect globally
+import vSelect from 'vue-select'
+
 const app = createApp(App)
 
+app.component('v-select', vSelect)
 app.use(createPinia())
 app.use(router)
 

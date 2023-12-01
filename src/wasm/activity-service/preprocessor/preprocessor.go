@@ -4,7 +4,6 @@ import (
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/geomath"
 	"github.com/muktihari/openactivity-fit/kit"
-	"golang.org/x/exp/constraints"
 )
 
 type Preprocessor struct {
@@ -83,13 +82,13 @@ func (p *Preprocessor) AggregateByTimestamp(records []*activity.Record) []*activ
 				rec.PositionLong = can.PositionLong
 			}
 
-			rec.Altitude = avg(rec.Altitude, can.Altitude)
-			rec.Cadence = avg(rec.Cadence, can.Cadence)
-			rec.Speed = avg(rec.Speed, can.Speed)
-			rec.Distance = avg(rec.Distance, can.Distance)
-			rec.HeartRate = avg(rec.HeartRate, can.HeartRate)
-			rec.Power = avg(rec.Power, can.Power)
-			rec.Temperature = avg(rec.Temperature, can.Temperature)
+			rec.Altitude = kit.Avg(rec.Altitude, can.Altitude)
+			rec.Cadence = kit.Avg(rec.Cadence, can.Cadence)
+			rec.Speed = kit.Avg(rec.Speed, can.Speed)
+			rec.Distance = kit.Avg(rec.Distance, can.Distance)
+			rec.HeartRate = kit.Avg(rec.HeartRate, can.HeartRate)
+			rec.Power = kit.Avg(rec.Power, can.Power)
+			rec.Temperature = kit.Avg(rec.Temperature, can.Temperature)
 		}
 
 		newRecords = append(newRecords, rec)
@@ -141,16 +140,24 @@ func (p *Preprocessor) CalculateDistanceAndSpeed(records []*activity.Record) {
 
 // SmoothingElev smoothing elevation values using simple moving average.
 func (p *Preprocessor) SmoothingElev(records []*activity.Record) {
+	// Copy altitude value
 	for i := range records {
 		rec := records[i]
-		if rec.Distance == nil || rec.Altitude == nil {
+		if rec.Altitude != nil {
+			rec.SmoothedAltitude = kit.Ptr(*rec.Altitude)
+		}
+	}
+
+	for i := range records {
+		rec := records[i]
+		if rec.Distance == nil || rec.SmoothedAltitude == nil {
 			continue
 		}
 
 		var sum, counter float64
 		for j := i; j >= 0; j-- {
 			prev := records[j]
-			if prev.Distance == nil || prev.Altitude == nil {
+			if prev.Distance == nil || prev.SmoothedAltitude == nil {
 				continue
 			}
 
@@ -158,12 +165,12 @@ func (p *Preprocessor) SmoothingElev(records []*activity.Record) {
 			if d > p.options.smoothingElevDistance {
 				break
 			}
-			sum += *prev.Altitude
+			sum += *prev.SmoothedAltitude
 			counter++
 		}
 
-		altitude := sum / counter
-		rec.Altitude = &altitude
+		smoothedAltitude := sum / counter
+		rec.SmoothedAltitude = &smoothedAltitude
 	}
 }
 
@@ -171,14 +178,26 @@ func (p *Preprocessor) SmoothingElev(records []*activity.Record) {
 func (p *Preprocessor) CalculateGrade(records []*activity.Record) {
 	for i := range records {
 		rec := records[i]
-		if rec.Distance == nil || rec.Altitude == nil {
+
+		altitude := rec.SmoothedAltitude
+		if altitude == nil {
+			altitude = rec.Altitude
+		}
+
+		if rec.Distance == nil || altitude == nil {
 			continue
 		}
 
 		var run, rise float64
 		for j := i + 1; j < len(records); j++ {
 			next := records[j]
-			if next.Distance == nil || next.Altitude == nil {
+
+			nextAltitude := next.SmoothedAltitude
+			if nextAltitude == nil {
+				nextAltitude = next.Altitude
+			}
+
+			if next.Distance == nil || nextAltitude == nil {
 				continue
 			}
 
@@ -186,7 +205,7 @@ func (p *Preprocessor) CalculateGrade(records []*activity.Record) {
 			if d > p.options.calculateGradeDistance {
 				break
 			}
-			rise = *next.Altitude - *rec.Altitude
+			rise = *nextAltitude - *altitude
 			run = d
 		}
 
@@ -228,16 +247,4 @@ func (p *Preprocessor) CalculatePace(sport string, records []*activity.Record) {
 			rec.Pace = kit.Ptr((1 / speedkph) * 60 * 60)
 		}
 	}
-}
-
-// avg returns average of two non-nil values. Otherwise, return any non-nil value if possible.
-func avg[T constraints.Integer | constraints.Float](a, b *T) *T {
-	if a == nil {
-		return b
-	}
-	if b != nil {
-		c := T((float64(*a) + float64(*b)) / 2)
-		return &c
-	}
-	return a
 }

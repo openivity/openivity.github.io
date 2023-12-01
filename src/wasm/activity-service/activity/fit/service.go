@@ -1,12 +1,16 @@
 package fit
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"strconv"
 
 	"github.com/muktihari/fit/decoder"
+	"github.com/muktihari/fit/encoder"
+	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/fit/proto"
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/preprocessor"
 )
@@ -254,4 +258,78 @@ func (s *service) creatorName(manufacturerID, productID uint16) string {
 	}
 
 	return manufacturer.Name + " " + productName
+}
+
+func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
+	bs := make([][]byte, len(activities))
+	w := bytes.NewBuffer(nil)
+
+	for i := range activities {
+		fit := s.convertActivityToFit(&activities[i])
+
+		enc := encoder.New(w, encoder.WithProtocolVersion(2))
+		if err := enc.EncodeWithContext(ctx, fit); err != nil {
+			return nil, fmt.Errorf("could not encode: %w", err)
+		}
+
+		bs[i] = w.Bytes()
+		w.Reset()
+	}
+
+	return bs, nil
+}
+
+func (s *service) convertActivityToFit(act *activity.Activity) *proto.Fit {
+	var lapCount, recordCount int
+	sessionCount := len(act.Sessions)
+
+	for i := range act.Sessions {
+		lapCount += len(act.Sessions[i].Laps)
+		recordCount += len(act.Sessions[i].Records)
+	}
+
+	fit := new(proto.Fit)
+	fit.Messages = make([]proto.Message, 0, sessionCount+lapCount+recordCount+2) // +2 for FileId and Activity messages
+
+	filedIdMesg := convertCreatorToMesg(&act.Creator) // Must be first the message
+	fit.Messages = append(fit.Messages, filedIdMesg)
+
+	eventStart := &activity.Event{
+		Timestamp: act.Sessions[0].Records[0].Timestamp,
+		Event:     uint8(typedef.EventTimer),
+		EventType: uint8(typedef.EventTypeStart),
+	}
+
+	fit.Messages = append(fit.Messages, convertEventToMesg(eventStart)) // add event start
+
+	for i := range act.Sessions {
+		ses := act.Sessions[i]
+
+		for j := range ses.Records {
+			recMesg := convertRecordToMesg(ses.Records[j])
+			fit.Messages = append(fit.Messages, recMesg)
+		}
+
+		if i == len(act.Sessions)-1 { // before last session add event stop all
+			eventStopAll := &activity.Event{
+				Timestamp: ses.Records[len(ses.Records)-1].Timestamp,
+				Event:     uint8(typedef.EventTimer),
+				EventType: uint8(typedef.EventTypeStopAll),
+			}
+			fit.Messages = append(fit.Messages, convertEventToMesg(eventStopAll))
+		}
+
+		for j := range ses.Laps {
+			lapMesg := convertLapToMesg(ses.Laps[j])
+			fit.Messages = append(fit.Messages, lapMesg)
+		}
+
+		sessionMesg := convertSessionToMesg(ses)
+		fit.Messages = append(fit.Messages, sessionMesg)
+	}
+
+	activityMesg := createActivityMesg(act.Creator.TimeCreated, act.Timezone, uint16(sessionCount))
+	fit.Messages = append(fit.Messages, activityMesg)
+
+	return fit
 }

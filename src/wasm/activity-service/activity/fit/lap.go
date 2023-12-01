@@ -1,11 +1,16 @@
 package fit
 
 import (
+	"github.com/muktihari/fit/factory"
 	"github.com/muktihari/fit/kit/datetime"
+	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/profile/untyped/fieldnum"
+	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
 	"github.com/muktihari/openactivity-fit/activity"
+	"github.com/muktihari/openactivity-fit/kit"
 )
 
 func NewLap(mesg proto.Message) *activity.Lap {
@@ -109,4 +114,132 @@ func NewLap(mesg proto.Message) *activity.Lap {
 	}
 
 	return lap
+}
+
+func convertLapToMesg(lap *activity.Lap) proto.Message {
+	mesg := factory.CreateMesgOnly(mesgnum.Lap)
+
+	if !lap.Timestamp.IsZero() {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTimestamp)
+		field.Value = datetime.ToUint32(lap.Timestamp)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if !lap.StartTime.IsZero() {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapStartTime)
+		field.Value = datetime.ToUint32(lap.StartTime)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.Sport != "" {
+		sport := typedef.SportFromString(kit.FormatToLowerSnakeCase(lap.Sport))
+		if sport == typedef.SportInvalid {
+			sport = typedef.SportGeneric
+		}
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapSport)
+		field.Value = uint8(sport)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.TotalMovingTime != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalMovingTime)
+		field.Value = scaleoffset.DiscardAny(lap.TotalMovingTime, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.TotalElapsedTime != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalElapsedTime)
+		field.Value = scaleoffset.DiscardAny(lap.TotalElapsedTime, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+
+		totalTimerTimeField := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalTimerTime)
+		totalTimerTimeField.Value = field.Value
+		mesg.Fields = append(mesg.Fields, totalTimerTimeField)
+	}
+	if lap.TotalDistance != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalDistance)
+		field.Value = scaleoffset.DiscardAny(lap.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.TotalAscent != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalAscent)
+		field.Value = lap.TotalAscent
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.TotalDescent != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalDescent)
+		field.Value = lap.TotalDescent
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.TotalCalories != 0 {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalCalories)
+		field.Value = lap.TotalCalories
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgSpeed != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgSpeed)
+		field.Value = scaleoffset.DiscardAny(*lap.AvgSpeed, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxSpeed != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxSpeed)
+		field.Value = scaleoffset.DiscardAny(*lap.MaxSpeed, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgHeartRate != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgHeartRate)
+		field.Value = *lap.AvgHeartRate
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxHeartRate != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxHeartRate)
+		field.Value = *lap.MaxHeartRate
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgCadence != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgCadence)
+		field.Value = *lap.AvgCadence
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxCadence != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxCadence)
+		field.Value = *lap.MaxCadence
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgPower != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgPower)
+		field.Value = *lap.AvgPower
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxPower != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxPower)
+		field.Value = *lap.MaxPower
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgTemperature != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgTemperature)
+		field.Value = *lap.AvgTemperature
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxTemperature != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxTemperature)
+		field.Value = *lap.MaxTemperature
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.AvgAltitude != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgAltitude)
+		field.Value = scaleoffset.DiscardAny(lap.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+	if lap.MaxAltitude != nil {
+		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxAltitude)
+		field.Value = scaleoffset.DiscardAny(lap.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		mesg.Fields = append(mesg.Fields, field)
+	}
+
+	eventField := factory.CreateField(mesgnum.Lap, fieldnum.LapEvent)
+	eventField.Value = uint8(typedef.EventLap)
+	mesg.Fields = append(mesg.Fields, eventField)
+
+	eventTypeField := factory.CreateField(mesgnum.Lap, fieldnum.LapEventType)
+	eventTypeField.Value = uint8(typedef.EventTypeStop)
+	mesg.Fields = append(mesg.Fields, eventTypeField)
+
+	return mesg
 }
