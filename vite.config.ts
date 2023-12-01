@@ -3,10 +3,33 @@ import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'wasm/activity-service.wasm'],
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: new RegExp('/assets/.*\\.ttf'),
+            handler: 'CacheFirst'
+          },
+          {
+            urlPattern: new RegExp('/assets/.*\\.woff2'),
+            handler: 'CacheFirst'
+          },
+          {
+            urlPattern: new RegExp('/assets/.*\\.svg'),
+            handler: 'CacheFirst'
+          }
+        ]
+      }
+    })
+  ],
   css: {
     preprocessorOptions: {
       scss: {
