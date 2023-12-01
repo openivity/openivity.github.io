@@ -15,15 +15,11 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [
           {
-            urlPattern: new RegExp('/assets/.*\\.ttf'),
+            urlPattern: new RegExp('/assets/.*\\.(svg|ttf|woff2)$'), // cache assets that don't automatically included.
             handler: 'CacheFirst'
           },
           {
-            urlPattern: new RegExp('/assets/.*\\.woff2'),
-            handler: 'CacheFirst'
-          },
-          {
-            urlPattern: new RegExp('/assets/.*\\.svg'),
+            urlPattern: new RegExp('^https://.*\\.openstreetmap.org/.*\\.png$'), // cache osm tiles.
             handler: 'CacheFirst'
           }
         ]
