@@ -6,6 +6,7 @@ import HeartRateZoneGraph from '@/components/HeartRateZoneGraph.vue'
 import PaceGraph from '@/components/PaceGraph.vue'
 import PowerGraph from '@/components/PowerGraph.vue'
 import SpeedGraph from '@/components/SpeedGraph.vue'
+import SplitPaceGraph from './SplitPaceGraph.vue'
 import TemperatureGraph from '@/components/TemperatureGraph.vue'
 import TheLap from '@/components/TheLap.vue'
 import TheLoading from '@/components/TheLoading.vue'
@@ -142,6 +143,14 @@ import { Summary } from '@/spec/summary'
                       :received-record="hoveredRecord"
                       :received-record-freeze="hoveredRecordFreeze"
                     ></HeartRateZoneGraph>
+                  </div>
+                  <div class="graph" v-if="hasPace">
+                    <SplitPaceGraph
+                      :selected-session="selectedSessions"
+                      :age="20"
+                      :received-record="hoveredRecord"
+                      :received-record-freeze="hoveredRecordFreeze"
+                    ></SplitPaceGraph>
                   </div>
                   <div class="graph" v-if="hasPace">
                     <PaceGraph
