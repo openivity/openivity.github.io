@@ -20,7 +20,9 @@ import { Duration } from 'luxon'
       </div>
       <div class="col-auto text-end">
         <div class="row g-0">
-          <label for="splitDistance" class="col-auto col-form-label col-form-label-sm me-2">Distance</label>
+          <label for="splitDistance" class="col-auto col-form-label col-form-label-sm me-2"
+            >Split By</label
+          >
           <div class="col-auto">
             <select
               class="form-select form-select-sm"
@@ -38,7 +40,7 @@ import { Duration } from 'luxon'
     </div>
     <div class="row collapse show" id="hrzone-graph-content">
       <div class="col-12 pt-2">
-        <table class="table table-sm">
+        <table class="table table-sm table-">
           <thead>
             <tr>
               <th scope="col" class="small col-2 text-start">KM</th>
@@ -48,39 +50,43 @@ import { Duration } from 'luxon'
             </tr>
           </thead>
           <tbody class="table-group-divider">
-            <tr v-for="(splitSummary, i) in summaries" :key="i">
-              <td scope="row" class="fw-bold small text-start" v-if="i == summaries.length - 1">
-                {{ (splitSummary.totalDistance / 1000).toFixed(1) }}
-              </td>
-              <td scope="row" class="fw-bold small text-start" v-else>
-                {{ (splitSummary.overallDistance / 1000).toFixed(1) }}
-              </td>
-              <td class="small text-start">
-                {{ formatPace(splitSummary.pace) }}
-              </td>
-              <td class="">
-                <div
-                  class="progress"
-                  role="progressbar"
-                  :aria-valuenow="isLoading ? 100 : formamtProsen(splitSummary.prosen).toFixed(0)"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                >
+            <template v-for="(splitSummary, i) in summaries" :key="i">
+              <tr :class="[isBoldByKm(splitSummary) ? 'table-active' : '']">
+                <td scope="row" class="fw-bold small text-start">
+                  <template v-if="splitSummary.isLeftover">
+                    {{ (splitSummary.totalDistance / 1000).toFixed(1) }}
+                  </template>
+                  <template v-else>
+                    {{ (splitSummary.overallDistance / 1000).toFixed(0) }}
+                  </template>
+                </td>
+                <td class="small text-start">
+                  {{ formatPace(splitSummary.pace) }}
+                </td>
+                <td class="">
                   <div
-                    :class="[
-                      'progress-bar',
-                      isLoading ? 'progress-bar-striped progress-bar-animated' : ''
-                    ]"
-                    :style="{
-                      width: `${isLoading ? 100 : formamtProsen(splitSummary.prosen).toFixed(0)}%`
-                    }"
-                  ></div>
-                </div>
-              </td>
-              <td class="small text-end">
-                {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
-              </td>
-            </tr>
+                    class="progress"
+                    role="progressbar"
+                    :aria-valuenow="isLoading ? 100 : formatProsen(splitSummary.prosen).toFixed(0)"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    <div
+                      :class="[
+                        'progress-bar',
+                        isLoading ? 'progress-bar-striped progress-bar-animated' : ''
+                      ]"
+                      :style="{
+                        width: `${isLoading ? 100 : formatProsen(splitSummary.prosen).toFixed(0)}%`
+                      }"
+                    ></div>
+                  </div>
+                </td>
+                <td class="small text-end">
+                  {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -90,13 +96,13 @@ import { Duration } from 'luxon'
 
 <script lang="ts">
 import { Record, Session } from '@/spec/activity'
-import { Tooltip } from 'bootstrap'
 
-class SplitRecord {
+class SplitSummary {
   overallDistance: number = 0 // record.totalDistance
 
   prosen: number = 0
   pace: number = 0
+  isLeftover: boolean = false
 
   totalDistance: number = 0
   totalDuration: number = 0
@@ -123,13 +129,14 @@ export default {
   data() {
     return {
       isLoading: false,
-      summaries: Array<SplitRecord>(),
+      summaries: Array<SplitSummary>(),
       splitByDistanceInMeter: 1000,
       splitByOptions: [
-        { text: '1 Km', value: 1000 },
-        { text: '5 Km', value: 5000 },
-        { text: '10 Km', value: 10000 }
-      ]
+        { text: '1 KM', value: 1000 },
+        { text: '5 KM', value: 5000 },
+        { text: '10 KM', value: 10000 }
+      ],
+      listBoldByKm: [5, 10, 21, 42]
     }
   },
   watch: {
@@ -144,7 +151,13 @@ export default {
   },
   computed: {},
   methods: {
-    formamtProsen(prosen: number): Number {
+    isBoldByKm(splitSummary: SplitSummary): boolean {
+      if (splitSummary.isLeftover) {
+        return this.listBoldByKm.includes(Math.ceil(splitSummary.overallDistance / 1000))
+      }
+      return this.listBoldByKm.includes(Math.round(splitSummary.overallDistance / 1000))
+    },
+    formatProsen(prosen: number): Number {
       return prosen >= 0 && prosen <= 100 ? prosen : prosen > 100 ? 100 : 0 // invalid number will be 0
     },
     formatElev(ascent: number, descent: number): String {
@@ -159,8 +172,9 @@ export default {
       console.time('Splits')
       this.isLoading = true
       this.summaries.length = 0
-      let splitSummary = new SplitRecord()
+      let splitSummary = new SplitSummary()
 
+      // local process var.
       let _prevRecord: Record = new Record()
       let _loopDistance = 0
       let _currentDuration = 0
@@ -191,27 +205,18 @@ export default {
           if ((record.distance ?? 0) - _loopDistance >= this.splitByDistanceInMeter) {
             _loopDistance = record.distance ?? 0
 
-            splitSummary.totalDistance =
-              _loopDistance -
-              (this.summaries.length > 0
-                ? this.summaries[this.summaries.length - 1].overallDistance
-                : 0)
-            splitSummary.totalDuration = _currentDuration
-            splitSummary.overallDistance = record.distance ?? 0
-            splitSummary.pace =
-              splitSummary.totalDuration /
-              (splitSummary.totalDistance == 0 ? 1 : splitSummary.totalDistance)
-            splitSummary.lastRecord = record
+            this.recordSplitSummary(splitSummary, record, _currentDuration)
 
             _maxPace = splitSummary.pace > _maxPace ? splitSummary.pace : _maxPace
 
             this.summaries.push(splitSummary)
-            splitSummary = new SplitRecord()
+            splitSummary = new SplitSummary()
 
-            // reset
+            // Reset local process var.
             _summarized = true
             _currentDuration = 0
           }
+
           _prevRecord = record
         }
       }
@@ -219,17 +224,10 @@ export default {
       // last split by distance (if any)
       if (!_summarized && _prevRecord != null) {
         _loopDistance = _prevRecord.distance ?? 0
-        splitSummary.totalDistance =
-          _loopDistance -
-          (this.summaries.length > 0
-            ? this.summaries[this.summaries.length - 1].overallDistance
-            : 0)
-        splitSummary.totalDuration = _currentDuration
-        splitSummary.overallDistance = _prevRecord.distance ?? 0
-        splitSummary.pace =
-          splitSummary.totalDuration /
-          (splitSummary.totalDistance == 0 ? 1 : splitSummary.totalDistance)
-        splitSummary.lastRecord = _prevRecord
+
+        this.recordSplitSummary(splitSummary, _prevRecord, _currentDuration)
+
+        splitSummary.isLeftover = true // flag as leftover
 
         _maxPace = splitSummary.pace > _maxPace ? splitSummary.pace : _maxPace
 
@@ -244,13 +242,21 @@ export default {
 
       this.isLoading = false
       console.timeEnd('Splits')
+    },
+    recordSplitSummary(splitSummary: SplitSummary, lastRecord: Record, _currentDuration: number) {
+      splitSummary.totalDistance =
+        (lastRecord.distance ?? 0) -
+        (this.summaries.length > 0 ? this.summaries[this.summaries.length - 1].overallDistance : 0)
+      splitSummary.totalDuration = _currentDuration
+      splitSummary.overallDistance = lastRecord.distance ?? 0
+      splitSummary.pace =
+        splitSummary.totalDuration /
+        (splitSummary.totalDistance == 0 ? 1 : splitSummary.totalDistance)
+      splitSummary.lastRecord = lastRecord
     }
   },
   mounted() {
     this.summarize(this.selectedSession)
-    new Tooltip(document.body, {
-      selector: "[data-bs-toggle='tooltip']"
-    })
   }
 }
 </script>
@@ -266,5 +272,8 @@ export default {
 
 tbody td {
   border: none;
+}
+.table-sm > :not(caption) > * > * {
+  padding: 0.1rem 0rem;
 }
 </style>
