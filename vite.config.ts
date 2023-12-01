@@ -11,16 +11,14 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'wasm/activity-service.wasm'],
       workbox: {
+        globDirectory: 'dist',
+        globPatterns: ['**/*.{js,css,html,ico,wasm,svg,ttf,woff2}'],
+        maximumFileSizeToCacheInBytes: (1000 * 10) << 10, // 10MB per file
         runtimeCaching: [
           {
-            urlPattern: new RegExp('/assets/.*\\.(svg|ttf|woff2)$'), // cache assets that don't automatically included.
-            handler: 'CacheFirst'
-          },
-          {
             urlPattern: new RegExp('^https://.*\\.openstreetmap.org/.*\\.png$'), // cache osm tiles.
-            handler: 'CacheFirst'
+            handler: 'StaleWhileRevalidate'
           }
         ]
       }
