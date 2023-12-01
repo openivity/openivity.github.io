@@ -10,6 +10,7 @@
   --bs-body-bg: #ffffff;
   --bs-body-color: var(--color-text);
   --bs-danger-rgb: 255, 0, 0;
+  --bs-primary-rgb: 30, 144, 255;
 }
 
 table {
@@ -22,6 +23,7 @@ table {
   --bs-body-bg: #181818;
   --bs-body-color: rgba(235, 235, 235, 0.64);
   --bs-danger-rgb: 255, 0, 0;
+  --bs-primary-rgb: 30, 144, 255;
 
   table {
     --bs-table-color: var(--bs-body-color); // make it same table color = body color

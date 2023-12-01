@@ -73,7 +73,7 @@ import { Duration } from 'luxon'
                   >
                     <div
                       :class="[
-                        'progress-bar bg-danger',
+                        'progress-bar bg-primary',
                         isLoading ? 'progress-bar-striped progress-bar-animated' : ''
                       ]"
                       :style="{
