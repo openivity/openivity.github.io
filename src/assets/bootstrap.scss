@@ -9,10 +9,11 @@
   --bs-heading-color: #e14a12;
   --bs-body-bg: #ffffff;
   --bs-body-color: var(--color-text);
+  --bs-danger-rgb: 255, 0, 0;
 }
 
 table {
-  --bs-table-color: var(--bs-body-color);
+  --bs-table-color: var(--bs-body-color); // make it same table color = body color
 }
 
 [data-bs-theme='dark'] {
@@ -20,8 +21,10 @@ table {
   --bs-heading-color: #f15a22;
   --bs-body-bg: #181818;
   --bs-body-color: rgba(235, 235, 235, 0.64);
+  --bs-danger-rgb: 255, 0, 0;
+
   table {
-    --bs-table-color: var(--bs-body-color);
+    --bs-table-color: var(--bs-body-color); // make it same table color = body color
   }
 }
 

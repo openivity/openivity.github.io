@@ -51,7 +51,7 @@ import { Duration } from 'luxon'
           </thead>
           <tbody class="table-group-divider">
             <template v-for="(splitSummary, i) in summaries" :key="i">
-              <tr :class="[isBoldByKm(splitSummary) ? 'table-active' : '']">
+              <tr :class="[isRowBold(splitSummary) ? 'table-active' : '']">
                 <td scope="row" class="fw-bold small text-start">
                   <template v-if="splitSummary.isLeftover">
                     {{ (splitSummary.totalDistance / 1000).toFixed(1) }}
@@ -73,7 +73,7 @@ import { Duration } from 'luxon'
                   >
                     <div
                       :class="[
-                        'progress-bar',
+                        'progress-bar bg-danger',
                         isLoading ? 'progress-bar-striped progress-bar-animated' : ''
                       ]"
                       :style="{
@@ -96,7 +96,9 @@ import { Duration } from 'luxon'
 
 <script lang="ts">
 import { Record, Session } from '@/spec/activity'
+import { sessionHasPace } from '@/toolkit/activity'
 
+const emptyRecord = new Record()
 class SplitSummary {
   overallDistance: number = 0 // record.totalDistance
 
@@ -136,7 +138,12 @@ export default {
         { text: '5 KM', value: 5000 },
         { text: '10 KM', value: 10000 }
       ],
-      listBoldByKm: [5, 10, 21, 42]
+      listRowBoldBy: [
+        {
+          splitBy: 1000,
+          boldIns: [5, 10, 21, 42]
+        }
+      ]
     }
   },
   watch: {
@@ -151,11 +158,19 @@ export default {
   },
   computed: {},
   methods: {
-    isBoldByKm(splitSummary: SplitSummary): boolean {
-      if (splitSummary.isLeftover) {
-        return this.listBoldByKm.includes(Math.ceil(splitSummary.overallDistance / 1000))
+    isRowBold(splitSummary: SplitSummary): boolean {
+      const criteria = this.listRowBoldBy.find((criteria) => {
+        return this.splitByDistanceInMeter == criteria.splitBy
+      })
+      if (criteria) {
+        let calc = Math.round
+        if (splitSummary.isLeftover) {
+          calc = Math.ceil
+        }
+
+        return criteria.boldIns.includes(calc(splitSummary.overallDistance / 1000))
       }
-      return this.listBoldByKm.includes(Math.round(splitSummary.overallDistance / 1000))
+      return false
     },
     formatProsen(prosen: number): Number {
       return prosen >= 0 && prosen <= 100 ? prosen : prosen > 100 ? 100 : 0 // invalid number will be 0
@@ -175,15 +190,16 @@ export default {
       let splitSummary = new SplitSummary()
 
       // local process var.
-      let _prevRecord: Record = new Record()
+      let _prevRecord: Record = emptyRecord
       let _loopDistance = 0
       let _currentDuration = 0
       let _maxPace = 0
       let _summarized = false
 
       for (const session of sessions) {
-        if (session.records == null) return
-
+        if (session.records == null) continue
+        if (!sessionHasPace(session)) continue
+        
         for (const record of session.records) {
           _summarized = false
 
@@ -222,7 +238,7 @@ export default {
       }
 
       // last split by distance (if any)
-      if (!_summarized && _prevRecord != null) {
+      if (!_summarized && _prevRecord != emptyRecord) {
         _loopDistance = _prevRecord.distance ?? 0
 
         this.recordSplitSummary(splitSummary, _prevRecord, _currentDuration)
@@ -261,9 +277,6 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
-.progress-bar {
-  background-color: var(--color-title);
-}
 .progress {
   border-radius: 0px;
   height: 20px;
