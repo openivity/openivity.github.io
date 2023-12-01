@@ -111,3 +111,13 @@ body {
     font-size: 13px;
   }
 }
+
+/* Collapse indicator with transition */
+.collapsible.collapsed .collapse-indicator {
+  transition: transform 300ms;
+  transform: rotate(0deg);
+}
+.collapsible:not(.collapsed) .collapse-indicator {
+  transition: transform 300ms;
+  transform: rotate(90deg);
+}
