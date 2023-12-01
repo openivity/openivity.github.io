@@ -18,7 +18,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: new RegExp('^https://.*\\.openstreetmap.org/.*\\.png$'), // cache osm tiles.
-            handler: 'StaleWhileRevalidate'
+            handler: 'CacheFirst'
           }
         ]
       }
