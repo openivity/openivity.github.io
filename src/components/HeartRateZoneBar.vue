@@ -16,7 +16,7 @@ import { Duration } from 'luxon'
         <div
           class="progress flex-fill"
           role="progressbar"
-          aria-label="Success example"
+          aria-label=""
           aria-valuenow="{{ validProsen }}"
           aria-valuemin="0"
           aria-valuemax="100"
