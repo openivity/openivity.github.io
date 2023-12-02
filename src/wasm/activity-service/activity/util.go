@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	SportCycling    = "Cycling"
 	SportGeneric    = "Generic"
 	SportHiking     = "Hiking"
 	SportWalking    = "Walking"
@@ -13,20 +14,30 @@ const (
 	SportTransition = "Transition" // Multisport transition
 )
 
+const (
+	ToleranceMovingSpeedSlowMovingSport  = 0.1388 // = 0.5km/h
+	ToleranceMovingSpeedRunningLikeSport = 0.7916 // = 2.85 km/h
+	ToleranceMovingSpeedCyclingLikeSport = 1.41   // = 5.07 km/h
+)
+
 func IsConsideredMoving(sport string, speed *float64) bool {
 	if speed == nil {
 		return false
 	}
 
+	return *speed > ToleranceMovingSpeed(sport)
+}
+
+func ToleranceMovingSpeed(sport string) float64 {
 	switch sport {
-	case SportGeneric:
-		fallthrough // Since we don't know the specific sport, let's assume the slowest possible speed as our tolerance.
-	case SportHiking, SportWalking, SportSwimming, SportTransition: // slow moving exercise
-		return *speed > 0.1388 // = 0.5km/h
 	case SportRunning:
-		return *speed > 0.7916 // = 2.85 km/h
+		return ToleranceMovingSpeedRunningLikeSport
+	case SportCycling:
+		return ToleranceMovingSpeedCyclingLikeSport
 	default:
-		return *speed > 1.41 // 5.07 km/h
+		// Generic: since we don't know the specific sport, let's assume the slowest possible speed as our tolerance.
+		// Included in this category: SportHiking, SportWalking, SportSwimming, SportTransition
+		return ToleranceMovingSpeedSlowMovingSport
 	}
 }
 

@@ -604,10 +604,15 @@ func (s *service) SportList() result.SportList {
 		if rs == typedef.SportInvalid {
 			continue
 		}
-		sports = append(sports, result.Sport{
+
+		sport := result.Sport{
 			ID:   uint8(rs),
 			Name: kit.FormatTitle(rs.String()),
-		})
+		}
+
+		sport.ToleranceMovingSpeed = activity.ToleranceMovingSpeed(sport.Name)
+
+		sports = append(sports, sport)
 	}
 
 	slices.SortFunc(sports, func(a, b result.Sport) int {

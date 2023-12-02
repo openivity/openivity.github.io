@@ -33,9 +33,17 @@ type Session struct {
 	AvgPace          *float64
 	AvgElapsedPace   *float64
 
-	Laps    []*Lap
-	Records []*Record
+	WorkoutType WorkoutType
+	Laps        []*Lap
+	Records     []*Record
 }
+
+type WorkoutType byte
+
+const (
+	WorkoutTypeMoving WorkoutType = iota
+	WorkoutTypeStationary
+)
 
 func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 	if len(laps) == 0 {
@@ -129,7 +137,9 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 }
 
 func (s *Session) ToMap() map[string]any {
-	m := map[string]any{}
+	m := map[string]any{
+		"workoutType": uint8(s.WorkoutType),
+	}
 
 	if !s.Timestamp.IsZero() {
 		m["timestamp"] = s.Timestamp.Format(time.RFC3339)

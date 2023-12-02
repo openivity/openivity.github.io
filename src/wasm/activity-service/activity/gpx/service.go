@@ -123,6 +123,8 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 
 	act.Sessions = sessions
 
+	s.preprocessor.SetSessionsWorkoutType(act.Sessions...)
+
 	return []activity.Activity{*act}, nil
 }
 

@@ -123,11 +123,12 @@ export class SportListResult {
 export class Sport {
   id: number = 0
   name: string = ''
+  toleranceMovingSpeed: number = 0
 
-  constructor(data?: any) {
-    const casted = data as Manufacturer
-    this.id = casted?.id
-    this.name = casted?.name
+  constructor(data?: Sport) {
+    this.id = data?.id ?? 0
+    this.name = data?.name ?? ''
+    this.toleranceMovingSpeed = data?.toleranceMovingSpeed ?? 0
   }
 }
 
