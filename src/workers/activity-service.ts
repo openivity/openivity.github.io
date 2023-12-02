@@ -44,7 +44,6 @@ onmessage = async (e) => {
     case 'sportList': {
       // @ts-ignore
       const sports = sportList(e.data.input)
-      console.log(sports)
       postMessage({
         type: e.data.type,
         result: sports,
