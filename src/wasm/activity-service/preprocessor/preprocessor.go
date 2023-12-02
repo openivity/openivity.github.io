@@ -248,3 +248,21 @@ func (p *Preprocessor) CalculatePace(sport string, records []*activity.Record) {
 		}
 	}
 }
+
+// SetSessionsWorkoutType bulk sets if a session is a `Moving Workout` or a `Stationary Workout`.
+func (p *Preprocessor) SetSessionsWorkoutType(sessions ...*activity.Session) {
+	for i := range sessions {
+		ses := sessions[i]
+
+		ses.WorkoutType = activity.WorkoutTypeStationary
+		for j := range ses.Records {
+			rec := ses.Records[j]
+			if (rec.PositionLat != nil && rec.PositionLong != nil) ||
+				(rec.Distance != nil && *rec.Distance != 0) ||
+				(rec.Speed != nil && *rec.Speed != 0) {
+				ses.WorkoutType = activity.WorkoutTypeMoving
+				break
+			}
+		}
+	}
+}

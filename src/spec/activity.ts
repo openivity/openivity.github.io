@@ -49,12 +49,18 @@ export class Session {
   avgElapsedPace: number | null = null
 
   timezone: number = 0
+  workoutType: WorkoutType = WorkoutType.Moving
   laps: Lap[] = []
   records: Record[] = []
 
   // additional info
   timeCreated: string | null = null
   creatorName: string = UNKNOWN
+}
+
+export enum WorkoutType {
+  Moving = 0,
+  Stationary
 }
 
 export class Lap {

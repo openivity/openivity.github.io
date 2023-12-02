@@ -236,6 +236,8 @@ func (s *service) finalizeSession(ses *activity.Session) {
 
 	sesFromLaps := activity.NewSessionFromLaps(ses.Laps, ses.Sport)
 	activity.CombineSession(ses, sesFromLaps)
+
+	s.preprocessor.SetSessionsWorkoutType(ses)
 }
 
 func (s *service) creatorName(manufacturerID, productID uint16) string {
