@@ -328,7 +328,7 @@ export default {
   }
 }
 </script>
-<style scoped>
+<style lang="scss" scoped>
 .progress,
 .progress-stacked {
   border-radius: 0px;
