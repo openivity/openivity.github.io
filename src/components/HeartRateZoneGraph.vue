@@ -35,7 +35,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
           <span class="input-group-text pe-1"
             >bpm
             <i
-              class="fa-solid fa-question-circle ps-1 mt-1"
+              class="fa-solid fa-question-circle ps-1 mt-lg-1"
               data-bs-toggle="tooltip"
               data-bs-html="true"
               data-bs-custom-class="openivity-tooltip"
@@ -43,7 +43,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
             <p>Your maximum heart rate can be estimated with a commonly used formula</p>
             <p> 220 - <em>Age</em> = <b>Max HR</b></p>
           "
-            ></i
+            >&nbsp;</i
           ></span>
         </div>
       </div>
