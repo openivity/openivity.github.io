@@ -16,7 +16,6 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
         <h6 class="pt-1 mb-0 title">
           <i class="fa-solid fa-caret-right collapse-indicator"></i>
           Heart Rate Zone
-          <i class="fa-md fa-solid fa-solid fa-heart-circle-check"></i>
         </h6>
       </div>
       <div class="col-auto text-end">
@@ -28,7 +27,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
             placeholder="-"
             inputmode="numeric"
             maxlength="3"
-            style="width: 40px"
+            style="width: calc(1.35em + 3ch)"
             :value="maxHr"
             @change="maxHrOnChange(maxHr, $event)"
             :readonly="isLoading"
