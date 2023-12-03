@@ -4,9 +4,9 @@ import { Duration } from 'luxon'
 
 <template>
   <div class="container">
-    <div class="row collapsible">
+    <div class="row">
       <div
-        class="col text-start"
+        class="col text-start collapsible"
         style="cursor: pointer"
         data-bs-toggle="collapse"
         data-bs-target="#split-pace-graph-content"

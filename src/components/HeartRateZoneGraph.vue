@@ -4,9 +4,9 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 
 <template>
   <div class="container pt-2 pb-3">
-    <div class="row collapsible">
+    <div class="row">
       <div
-        class="col text-start"
+        class="col text-start collapsible"
         style="cursor: pointer"
         data-bs-toggle="collapse"
         data-bs-target="#hrzone-graph-content"
