@@ -62,9 +62,9 @@ import { Duration } from 'luxon'
                   </template>
                 </td>
                 <td class="small text-start">
-                  {{ formatPace(splitSummary.pace) }}
+                  {{ formatPaceTime(splitSummary.pace) }}
                 </td>
-                <td class="">
+                <td class="position-relative">
                   <div
                     class="progress"
                     role="progressbar"
@@ -82,6 +82,11 @@ import { Duration } from 'luxon'
                       }"
                     ></div>
                   </div>
+                  <div class="position-absolute top-50 end-0 translate-middle-y small me-1">
+                    {{ formatDuration(splitSummary.totalDuration) }}
+                  </div>
+
+                  <div class="position-relative"></div>
                 </td>
                 <td class="small text-end">
                   {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
@@ -193,9 +198,13 @@ export default {
     formatElev(ascent: number, descent: number): String {
       return Math.round(ascent - descent).toFixed(0)
     },
-    formatPace(pace: number): String {
-      if (pace >= 60 * 60) return Duration.fromMillis(pace * 1000).toFormat('h:mm:ss')
-      else return Duration.fromMillis(pace * 1000).toFormat('mm:ss')
+    formatDuration(t: number): String {
+      if (t >= 60 * 60 * 1000) return Duration.fromMillis(t).toFormat('h:mm:ss')
+      else return Duration.fromMillis(t).toFormat('mm:ss')
+    },
+    formatPaceTime(t: number): String {
+      if (t >= 60 * 60) return Duration.fromMillis(t * 1000).toFormat('h:mm:ss')
+      else return Duration.fromMillis(t * 1000).toFormat('mm:ss')
     },
     formatAvgHr(hrTotal: number, hrRecord: number): String {
       if (hrRecord <= 0) return '-'
