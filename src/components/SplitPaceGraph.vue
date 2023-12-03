@@ -254,6 +254,9 @@ export default {
             progress.totalHeartRate += record.heartRate
             progress.totalHeartRateRecord++
           }
+          // // test Random HR
+          // progress.totalHeartRate += Math.floor(Math.random() * (1 + 200 - 90)) + 90
+          // progress.totalHeartRateRecord++
 
           // split by distance
           if ((record.distance ?? 0) - progress.loopDistance >= this.splitByDistanceInMeter) {
