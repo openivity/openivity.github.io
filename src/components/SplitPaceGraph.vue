@@ -82,8 +82,8 @@ import { Duration } from 'luxon'
                       }"
                     ></div>
                   </div>
-                  <div class="position-absolute top-50 end-0 translate-middle-y small me-1">
-                    {{ formatDuration(splitSummary.totalDuration) }}
+                  <div class="position-absolute top-50 end-0 translate-middle-y small me-1 d-none">
+                    {{ formatDuration(splitSummary.overallDuration) }}
                   </div>
 
                   <div class="position-relative"></div>
@@ -117,6 +117,7 @@ class SplitSummary {
 
   totalDistance: number = 0
   totalDuration: number = 0
+  overallDuration: number = 0
   totalAscend: number = 0
   totalDescend: number = 0
   totalRecord: number = 0
