@@ -47,6 +47,7 @@ import { Duration } from 'luxon'
               <th scope="col" class="small col-2 text-start">Pace</th>
               <th scope="col"></th>
               <th scope="col" class="small col-2 text-end">Elev</th>
+              <th scope="col" class="small col-2 text-end">HR</th>
             </tr>
           </thead>
           <tbody class="table-group-divider">
@@ -85,6 +86,9 @@ import { Duration } from 'luxon'
                 <td class="small text-end">
                   {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
                 </td>
+                <td class="small text-end">
+                  {{ formatAvgHr(splitSummary.totalHeartRate, splitSummary.totalHeartRateRecord) }}
+                </td>
               </tr>
             </template>
           </tbody>
@@ -108,12 +112,22 @@ class SplitSummary {
 
   totalDistance: number = 0
   totalDuration: number = 0
-
   totalAscend: number = 0
   totalDescend: number = 0
-
   totalRecord: number = 0
+  totalHeartRate: number = 0
+  totalHeartRateRecord: number = 0
   lastRecord: Record | null = null
+}
+
+interface SplitProgress {
+  prevRecord: Record
+  loopDistance: number
+  currentDuration: number
+  maxPace: number
+  totalHeartRate: number
+  totalHeartRateRecord: number
+  summarized: boolean
 }
 
 export default {
@@ -143,7 +157,8 @@ export default {
           splitBy: 1000,
           boldIns: [5, 10, 21, 42]
         }
-      ]
+      ],
+      omitByMeter: 100
     }
   },
   watch: {
@@ -182,6 +197,10 @@ export default {
       if (pace >= 60 * 60) return Duration.fromMillis(pace * 1000).toFormat('h:mm:ss')
       else return Duration.fromMillis(pace * 1000).toFormat('mm:ss')
     },
+    formatAvgHr(hrTotal: number, hrRecord: number): String {
+      if (hrRecord <= 0) return '-'
+      return (hrTotal / hrRecord).toFixed(0)
+    },
     // TODO optimize calculate & performance
     summarize(sessions: Array<Session>) {
       console.time('Splits')
@@ -190,80 +209,113 @@ export default {
       let splitSummary = new SplitSummary()
 
       // local process var.
-      let _prevRecord: Record = emptyRecord
-      let _loopDistance = 0
-      let _currentDuration = 0
-      let _maxPace = 0
-      let _summarized = false
+      const progress: SplitProgress = {
+        prevRecord: emptyRecord,
+        loopDistance: 0,
+        currentDuration: 0,
+        maxPace: 0,
+        totalHeartRate: 0,
+        totalHeartRateRecord: 0,
+        summarized: false
+      }
 
       for (const session of sessions) {
         if (session.records == null) continue
         if (!sessionHasPace(session)) continue
-        
-        for (const record of session.records) {
-          _summarized = false
 
-          if (record.timestamp != null && _prevRecord.timestamp != null) {
+        for (const record of session.records) {
+          progress.summarized = false
+
+          if (record.timestamp != null && progress.prevRecord.timestamp != null) {
             const deltaTime =
-              new Date(record.timestamp).valueOf() - new Date(_prevRecord.timestamp).valueOf()
-            _currentDuration += deltaTime
+              new Date(record.timestamp).valueOf() -
+              new Date(progress.prevRecord.timestamp).valueOf()
+            progress.currentDuration += deltaTime
           }
 
           // elev delta
-          const deltaElev = (record.altitude ?? 0) - (_prevRecord.altitude ?? 0)
+          const deltaElev = (record.altitude ?? 0) - (progress.prevRecord.altitude ?? 0)
           if (deltaElev >= 0) {
             splitSummary.totalAscend += deltaElev
           } else {
             splitSummary.totalDescend -= Math.abs(deltaElev)
           }
 
+          if (record.heartRate != null) {
+            progress.totalHeartRate += record.heartRate
+            progress.totalHeartRateRecord++
+          }
+
           // split by distance
-          if ((record.distance ?? 0) - _loopDistance >= this.splitByDistanceInMeter) {
-            _loopDistance = record.distance ?? 0
+          if ((record.distance ?? 0) - progress.loopDistance >= this.splitByDistanceInMeter) {
+            progress.loopDistance = record.distance ?? 0
 
-            this.recordSplitSummary(splitSummary, record, _currentDuration)
-
-            _maxPace = splitSummary.pace > _maxPace ? splitSummary.pace : _maxPace
+            this.recordSplitSummary(splitSummary, record, progress)
+            progress.maxPace =
+              splitSummary.pace > progress.maxPace ? splitSummary.pace : progress.maxPace
 
             this.summaries.push(splitSummary)
             splitSummary = new SplitSummary()
 
             // Reset local process var.
-            _summarized = true
-            _currentDuration = 0
+            progress.summarized = true
+            progress.currentDuration = 0
+            progress.totalHeartRate = 0
+            progress.totalHeartRateRecord = 0
           }
 
-          _prevRecord = record
+          progress.prevRecord = record
         }
       }
 
       // last split by distance (if any)
-      if (!_summarized && _prevRecord != emptyRecord) {
-        _loopDistance = _prevRecord.distance ?? 0
+      if (!progress.summarized && progress.prevRecord != emptyRecord) {
+        progress.loopDistance = progress.prevRecord.distance ?? 0
 
-        this.recordSplitSummary(splitSummary, _prevRecord, _currentDuration)
+        this.recordSplitSummary(splitSummary, progress.prevRecord, progress)
 
-        splitSummary.isLeftover = true // flag as leftover
+        // // omit merge to last split
+        if (splitSummary.totalDistance < this.omitByMeter && this.summaries.length > 0) {
+          const lastSplitSummary = this.summaries[this.summaries.length - 1]
+          lastSplitSummary.overallDistance = splitSummary.overallDistance
+          lastSplitSummary.totalDistance += splitSummary.totalDistance
+          lastSplitSummary.totalAscend += splitSummary.totalAscend
+          lastSplitSummary.totalDescend += splitSummary.totalDescend
+          lastSplitSummary.totalDuration += splitSummary.totalDuration
+          lastSplitSummary.totalHeartRate += splitSummary.totalHeartRate
+          lastSplitSummary.totalHeartRateRecord += splitSummary.totalHeartRateRecord
+          lastSplitSummary.totalRecord += splitSummary.totalRecord
+          lastSplitSummary.lastRecord = splitSummary.lastRecord
+          lastSplitSummary.pace =
+            lastSplitSummary.totalDuration /
+            (lastSplitSummary.totalDistance == 0 ? 1 : lastSplitSummary.totalDistance)
+          lastSplitSummary.isLeftover = false // omit, not leftover
+        } else {
+          splitSummary.isLeftover = true // flag as leftover
+          this.summaries.push(splitSummary)
+        }
 
-        _maxPace = splitSummary.pace > _maxPace ? splitSummary.pace : _maxPace
-
-        this.summaries.push(splitSummary)
+        const lastSplitSummary = this.summaries[this.summaries.length - 1]
+        progress.maxPace =
+          lastSplitSummary.pace > progress.maxPace ? lastSplitSummary.pace : progress.maxPace
       }
 
       // Calculate percentage of pace from max pace
       for (const [_, summary] of this.summaries.entries()) {
-        const percentage = (summary.pace / _maxPace) * 100
+        const percentage = (summary.pace / progress.maxPace) * 100
         summary.prosen = percentage
       }
 
       this.isLoading = false
       console.timeEnd('Splits')
     },
-    recordSplitSummary(splitSummary: SplitSummary, lastRecord: Record, _currentDuration: number) {
+    recordSplitSummary(splitSummary: SplitSummary, lastRecord: Record, progress: SplitProgress) {
       splitSummary.totalDistance =
         (lastRecord.distance ?? 0) -
         (this.summaries.length > 0 ? this.summaries[this.summaries.length - 1].overallDistance : 0)
-      splitSummary.totalDuration = _currentDuration
+      splitSummary.totalDuration = progress.currentDuration
+      splitSummary.totalHeartRate = progress.totalHeartRate
+      splitSummary.totalHeartRateRecord = progress.totalHeartRateRecord
       splitSummary.overallDistance = lastRecord.distance ?? 0
       splitSummary.pace =
         splitSummary.totalDuration /
@@ -276,11 +328,13 @@ export default {
   }
 }
 </script>
-<style lang="scss" scoped>
-.progress {
+<style scoped>
+.progress,
+.progress-stacked {
   border-radius: 0px;
   height: 20px;
   margin-top: 2px;
+  background-color: var(--bs-progress-bg-focus);
 }
 
 tbody td {
