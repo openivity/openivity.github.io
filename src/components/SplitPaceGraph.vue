@@ -9,9 +9,9 @@ import { Duration } from 'luxon'
         class="col text-start"
         style="cursor: pointer"
         data-bs-toggle="collapse"
-        data-bs-target="#hrzone-graph-content"
+        data-bs-target="#split-pace-graph-content"
         aria-expanded="false"
-        aria-controls="hrzone-graph-content"
+        aria-controls="split-pace-graph-content"
       >
         <h6 class="pt-1 mb-0 title">
           <i class="fa-solid fa-caret-right collapse-indicator"></i>
@@ -38,7 +38,7 @@ import { Duration } from 'luxon'
         </div>
       </div>
     </div>
-    <div class="row collapse show" id="hrzone-graph-content">
+    <div class="row collapse show" id="split-pace-graph-content">
       <div class="col-12 pt-2">
         <table class="table table-sm table-">
           <thead>
