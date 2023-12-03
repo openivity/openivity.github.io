@@ -40,8 +40,8 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
               data-bs-html="true"
               data-bs-custom-class="openivity-tooltip"
               data-bs-title="
-            <p>Your maximum heart rate can be estimated with a commonly used formula</p>
-            <p> 220 - <em>Age</em> = <b>Max HR</b></p>
+            <span>Common formula: </span><br />
+            <b>Max HR = 220 - Age</b>
           "
             >&nbsp;</i
           ></span>
