@@ -11,6 +11,11 @@
   --bs-body-color: var(--color-text);
   --bs-danger-rgb: 255, 0, 0;
   --bs-primary-rgb: 30, 144, 255;
+
+  .progress,
+  .progress-stacked {
+    --bs-progress-bg-focus: #343a4055;
+  }
 }
 
 table {

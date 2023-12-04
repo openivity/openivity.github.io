@@ -3,10 +3,10 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 </script>
 
 <template>
-  <div class="container">
-    <div class="row collapsible">
+  <div class="container pt-2 pb-3">
+    <div class="row">
       <div
-        class="col text-start"
+        class="col text-start collapsible"
         style="cursor: pointer"
         data-bs-toggle="collapse"
         data-bs-target="#hrzone-graph-content"
@@ -16,7 +16,6 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
         <h6 class="pt-1 mb-0 title">
           <i class="fa-solid fa-caret-right collapse-indicator"></i>
           Heart Rate Zone
-          <i class="fa-md fa-solid fa-solid fa-heart-circle-check"></i>
         </h6>
       </div>
       <div class="col-auto text-end">
@@ -28,7 +27,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
             placeholder="-"
             inputmode="numeric"
             maxlength="3"
-            style="width: 40px"
+            style="width: calc(1.35em + 3ch)"
             :value="maxHr"
             @change="maxHrOnChange(maxHr, $event)"
             :readonly="isLoading"
@@ -36,15 +35,15 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
           <span class="input-group-text pe-1"
             >bpm
             <i
-              class="fa-solid fa-question-circle ps-1 mt-1"
+              class="fa-solid fa-question-circle ps-1 mt-lg-1"
               data-bs-toggle="tooltip"
               data-bs-html="true"
               data-bs-custom-class="openivity-tooltip"
               data-bs-title="
-            <p>Your maximum heart rate can be estimated with a commonly used formula</p>
-            <p> 220 - <em>Age</em> = <b>Max HR</b></p>
+            <span>Common formula: </span><br />
+            <b>Max HR = 220 - Age</b>
           "
-            ></i
+            >&nbsp;</i
           ></span>
         </div>
       </div>

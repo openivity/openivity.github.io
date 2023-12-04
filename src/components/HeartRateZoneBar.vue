@@ -5,10 +5,10 @@ import { Duration } from 'luxon'
 <template>
   <div class="col-12 h-100 pt-2">
     <div class="row">
-      <div class="col d-flex flex-row pb-1">
-        <h6 class="p-0 m-0 text-body-secondary">{{ zone }}</h6>
-        <small class="text-body-secondary ms-2 me-1">{{ validMinMax }} bpm</small>
-        <small class="text-body-secondary">&#183; {{ zoneSub }}</small>
+      <div class="col d-flex align-items-end bar-text pb-0">
+        <span class="zone-text fw-bolder text-body-secondary">{{ zone }}</span>
+        <span class="small text-body-secondary ms-2 me-1">{{ validMinMax }} bpm</span>
+        <span class="small text-body-secondary">&#183; {{ zoneSub }}</span>
       </div>
     </div>
     <div class="row">
@@ -115,5 +115,11 @@ export default {
 }
 .hr-prosen {
   width: 45px;
+}
+.bar-text {
+  line-height: normal;
+}
+.zone-text {
+  font-size: 0.85rem;
 }
 </style>
