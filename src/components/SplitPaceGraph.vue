@@ -135,7 +135,6 @@ class SplitProgress {
   totalHeartRateRecord: number = 0
   summarized: boolean = false
   distance: number = 0
-  splitCount: number = 0
 }
 
 export default {
@@ -286,7 +285,6 @@ export default {
 
             this.summaries.push(splitSummary)
             splitSummary = new SplitSummary()
-            progress.splitCount++
 
             // Reset local process var.
             progress.summarized = true
