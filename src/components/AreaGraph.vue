@@ -8,34 +8,32 @@
       aria-expanded="false"
       v-bind:aria-controls="graphContainerName"
     >
-      <div class="col text-start">
-        <h6 class="title">
+      <div class="d-flex pb-1 pe-2">
+        <h6 class="title mb-0 col text-start">
           <i class="fa-solid fa-caret-down when-opened"></i>
           <i class="fa-solid fa-caret-right when-closed"></i>
           {{ name }}
           <i :class="['fa-solid', icon]"></i>
         </h6>
-      </div>
-      <div class="col text-end">
-        <span>
-          <span class="pe-1 fs-6">
-            {{ formatUnit(scaleUnit(recordView[recordField as keyof Record] as number)) }}
-          </span>
+        <span class="lh-sm pe-1 fs-6 col text-end">
+          {{ formatUnit(scaleUnit(recordView[recordField as keyof Record] as number)) }}
           <span>{{ unit }}</span>
         </span>
       </div>
     </div>
     <div class="collapse show" v-bind:id="graphContainerName">
+      <div class="row label mx-0 pt-1 pb-1">
+        <span class="col text-start">↑ {{ yLabel }}</span>
+        <span class="col text-end">{{ xAxisLabel }} →</span>
+      </div>
       <div :ref="graphName"></div>
-      <div class="graph-summary pt-1 pb-1">
-        <div class="row" v-for="(detail, index) in details" v-bind:key="index">
-          <span class="col px-0 text-start">
-            <span style="font-size: 0.9em">{{ detail.title }}</span>
-          </span>
-          <span class="col px-0 text-end">
-            <span class="fs-6 pe-1">{{ detail.value }}</span>
-            <span style="font-size: 0.9em">{{ unit }}</span>
-          </span>
+      <div class="graph-summary pt-2 pb-1 px-0">
+        <div class="row mx-0 px-0" v-for="(detail, index) in details" v-bind:key="index">
+          <div class="d-flex px-0">
+            <span class="col text-start summary-text">{{ detail.title }}</span>
+            <span class="col-auto summary-text fs-6 pe-1">{{ detail.value }}</span>
+            <span class="col-auto summary-text pe-0">{{ unit }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -151,6 +149,9 @@ export default {
     },
     graphContainerName(): string {
       return this.graphName + '-container'
+    },
+    xAxisLabel(): string {
+      return this.hasDistance ? 'Dist. (km)' : 'Time'
     }
   },
   methods: {
@@ -167,13 +168,13 @@ export default {
     renderGraph() {
       const graphRecords = this.graphRecords
 
-      const marginTop = 25
+      const marginTop = 5
       const marginRight = 10
-      const marginBottom = 25
-      const marginLeft = 45
+      const marginBottom = 20
+      const marginLeft = 40
 
       const width = this.elemWidth
-      const height = 230 - marginBottom
+      const height = 190 - marginBottom
 
       const xTicks = width > 720 ? 10 : 5
       const yTicks = 3
@@ -252,29 +253,6 @@ export default {
         .style('font-size', '0.8em')
         .attr('transform', `translate(${marginLeft},0)`)
         .call(d3.axisLeft(yScale).ticks(yTicks).tickFormat(this.formatLabel))
-
-      const xAxisLabel = this.hasDistance ? 'Dist. (km)' : 'Time'
-      let xAxisPosX = width - marginRight - 70
-      if (!this.hasDistance) xAxisPosX += 30
-
-      // Add X-Y Axis Label
-      svg
-        .append('text')
-        .attr('class', 'x-axis-label')
-        .attr('x', xAxisPosX)
-        .attr('y', marginTop - 15)
-        .style('fill', 'currentColor')
-        .style('font-size', '0.9em')
-        .text(`${xAxisLabel} →`)
-
-      svg
-        .append('text')
-        .attr('class', 'y-axis-label')
-        .attr('x', 0)
-        .attr('y', marginTop - 15)
-        .style('fill', 'currentColor')
-        .style('font-size', '0.9em')
-        .text(`↑ ${this.yLabel}`)
 
       // Create Grid Lines
       svg
@@ -361,7 +339,10 @@ export default {
             .attr('stroke-width', 1.5)
         })
         .call((g) => {
-          g.append('polygon').attr('points', '0,30 -5,20 5,20').attr('fill', `${this.pointerColor}`)
+          g.append('polygon')
+            .attr('points', '0,30 -5,20 5,20')
+            .attr('fill', `${this.pointerColor}`)
+            .attr('transform', `translate(0, ${-marginTop - 10})`)
         })
 
       // Add Events
@@ -485,24 +466,33 @@ export default {
 <style scoped>
 .title {
   text-align: left;
-  display: inline-block;
+}
+
+.label {
+  font-size: 0.9em;
 }
 
 .line-graph-hover {
   font-size: 0.9em;
 }
 .graph-summary {
-  margin-left: 45px;
+  margin-left: 40px;
   padding-left: 0px;
   padding-right: 10px;
-  margin-right: 15px;
+  margin-right: 10px;
 }
 
 .graph-summary div {
   padding-bottom: 1px;
   margin-bottom: 3px;
 }
-.graph-summary div:nth-child(odd) {
+.summary-text {
+  font-size: 0.9em;
+  line-height: normal;
+  align-self: center;
+}
+
+.graph-summary > div:nth-child(odd) {
   box-shadow: 0px 0.5px grey;
 }
 

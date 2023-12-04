@@ -6,7 +6,6 @@ import HeartRateZoneGraph from '@/components/HeartRateZoneGraph.vue'
 import PaceGraph from '@/components/PaceGraph.vue'
 import PowerGraph from '@/components/PowerGraph.vue'
 import SpeedGraph from '@/components/SpeedGraph.vue'
-import SplitPaceGraph from './SplitPaceGraph.vue'
 import TemperatureGraph from '@/components/TemperatureGraph.vue'
 import TheLap from '@/components/TheLap.vue'
 import TheLoading from '@/components/TheLoading.vue'
@@ -16,6 +15,7 @@ import TheSession from '@/components/TheSession.vue'
 import TheSummary, { MULTIPLE, NONE } from '@/components/TheSummary.vue'
 import TheTools from '@/components/TheTools.vue'
 import { Summary } from '@/spec/summary'
+import SplitPaceGraph from './SplitPaceGraph.vue'
 </script>
 
 <template>
@@ -989,7 +989,7 @@ export default {
   }
 
   .elevation-section {
-    height: 35vh;
+    height: 40vh;
   }
 }
 
