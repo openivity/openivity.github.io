@@ -43,8 +43,9 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
             <span>Common formula: </span><br />
             <b>Max HR = 220 - Age</b>
           "
-            >&nbsp;</i
-          ></span>
+              >&nbsp;
+            </i>
+          </span>
         </div>
       </div>
     </div>
@@ -265,13 +266,15 @@ export default {
 
       // Process each data point and calculate heart rate zone and total time
       sessions.forEach((session) => {
-        if (!session.records) return
+        if (session.records == null) return
         for (let i = 0; i < session.records.length - 1; i++) {
           const entry = session.records[i]
           const nextEntry = session.records[i + 1]
 
-          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
-          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
+          if (entry.heartRate == null && nextEntry.heartRate == null) continue
+
+          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate ?? 0)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0)
 
           if (entry.timestamp == null || nextEntry.timestamp == null) continue
 
@@ -360,8 +363,10 @@ export default {
           const entry = session.records[i]
           const nextEntry = session.records[i + 1]
 
-          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate || 0)
-          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate || 0)
+          if (entry.heartRate == null || nextEntry.heartRate == null) continue
+
+          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate)
 
           if (entry.timestamp == null || nextEntry.timestamp == null) continue
 
