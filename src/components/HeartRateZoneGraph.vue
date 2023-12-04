@@ -271,7 +271,7 @@ export default {
           const entry = session.records[i]
           const nextEntry = session.records[i + 1]
 
-          if (entry.heartRate == null && nextEntry.heartRate == null) continue
+          if (entry.heartRate == null || nextEntry.heartRate == null) continue
 
           const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate ?? 0)
           const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0)
