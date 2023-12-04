@@ -1,6 +1,6 @@
 <template>
   <div class="col-12 h-100 pt-2">
-    <div class="row" :ref="'title-' + name">
+    <div class="row pb-0 pt-0" :ref="'title-' + name">
       <div class="col-auto">
         <h6 class="pt-1 title">
           Elevation
@@ -38,7 +38,25 @@
     <div v-if="!hasAltitude" class="h-75 d-flex text-center align-middle no-altitude-data">
       No altitude data
     </div>
-    <div :ref="name" v-else></div>
+    <div v-else>
+      <div class="row label mx-0 pb-1">
+        <span class="col-auto px-0">↑ Alt. (m)</span>
+        <span class="col-auto pe-0 fw-bold">
+          <i class="fa-solid fa-solid fa-mountain"></i>
+          {{ summary?.maxAltitude?.toFixed(0) }} m
+        </span>
+        <span class="col-auto pe-0 fw-bold">
+          <i class="fa-solid fa-arrow-trend-up"></i>
+          {{ summary?.totalAscent?.toFixed(0) }} m
+        </span>
+        <span class="col-auto pe-0 fw-bold">
+          <i class="fa-solid fa-arrow-trend-down"></i>
+          {{ summary?.totalDescent?.toFixed(0) }} m
+        </span>
+        <span class="col pe-0 text-end">Dist. (km) →</span>
+      </div>
+      <div :ref="name"></div>
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -152,10 +170,10 @@ export default {
       this.hoveredRecord = new Record()
       this.begin = d3.min(graphRecords.map((d) => new Date(d.timestamp!)))!
 
-      const marginTop = 25
+      const marginTop = 5
       const marginRight = 5
-      const marginBottom = 20
-      const marginLeft = 45
+      const marginBottom = 35
+      const marginLeft = 35
 
       const width = this.elemWidth
 
@@ -229,40 +247,6 @@ export default {
         .style('fill', 'currentColor')
         .style('font-size', '0.9em')
         .text('Dist. (km) →')
-
-      //   svg
-      //     .append('text')
-      //     .attr('class', 'y-axis-label')
-      //     .attr('x', 0)
-      //     .attr('y', marginTop - 15)
-      //     .style('fill', 'currentColor')
-      //     .style('font-size', '0.9em')
-      //     .text('↑ Alt. (m)')
-
-      // Add Summary
-      svg
-        .append('foreignObject')
-        .attr('x', 0)
-        .attr('y', -5)
-        .attr('width', width)
-        .attr('height', 100)
-        .attr('class', 'text-start')
-        .style('font-size', '0.9em')
-        .style('width', '100%').html(`
-            <span>↑ Alt. (m)&nbsp;</span>
-            <span class="fw-bold">
-                <i class="fa-solid fa-solid fa-mountain"></i>
-                ${this.summary?.maxAltitude?.toFixed(0)} m&nbsp;
-            </span>
-            <span class="fw-bold">
-                <i class="fa-solid fa-arrow-trend-up"></i>
-                ${this.summary?.totalAscent?.toFixed(0)} m&nbsp;
-            </span>
-            <span class="fw-bold">
-                <i class="fa-solid fa-arrow-trend-down"></i>
-                ${this.summary?.totalDescent?.toFixed(0)} m&nbsp;
-            </span>
-            `)
 
       // Create Grid Lines
       svg
@@ -357,7 +341,10 @@ export default {
             .attr('stroke-width', 1.5)
         })
         .call((g) => {
-          g.append('polygon').attr('points', '0,30 -5,20 5,20').attr('fill', '#78e08f')
+          g.append('polygon')
+            .attr('points', '0,30 -5,20 5,20')
+            .attr('fill', '#78e08f')
+            .attr('transform', `translate(0, ${-marginTop - 10})`)
         })
 
       // Add Events
@@ -454,7 +441,9 @@ export default {
 .title {
   text-align: left;
 }
-
+.label {
+  font-size: 0.9em;
+}
 .elevation-container {
   display: flex;
   align-items: center;
@@ -464,7 +453,6 @@ export default {
   color: var(--color-text);
   flex: 1 0 0%;
   font-size: 0.9em;
-  padding-bottom: 10px;
 }
 
 .elevation-hover > span {
