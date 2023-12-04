@@ -89,7 +89,7 @@ import { Duration } from 'luxon'
                   <div class="position-relative"></div>
                 </td>
                 <td class="small text-end">
-                  {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
+                  {{ formatElev(splitSummary.totalAscent, splitSummary.totalDescent) }}
                 </td>
                 <td class="small text-end">
                   {{ formatAvgHr(splitSummary.totalHeartRate, splitSummary.totalHeartRateRecord) }}
@@ -118,8 +118,8 @@ class SplitSummary {
   totalDuration: number = 0 // Total duration of current split
   overallDuration: number = 0 // Overall duration from start till this split
 
-  totalAscend: number = 0
-  totalDescend: number = 0
+  totalAscent: number = 0
+  totalDescent: number = 0
   totalRecord: number = 0
   totalHeartRate: number = 0
   totalHeartRateRecord: number = 0
@@ -232,7 +232,7 @@ export default {
         progress = new SplitProgress()
 
         for (const record of session.records) {
-          if (!record.distance) continue
+          if (record.distance == null) continue
           progress.summarized = false
 
           if (progress.firstRecord == emptyRecord) {
@@ -252,17 +252,20 @@ export default {
           }
 
           // elev delta
-          const deltaElev = (record.altitude ?? 0) - (progress.prevRecord.altitude ?? 0)
-          if (deltaElev >= 0) {
-            splitSummary.totalAscend += deltaElev
-          } else {
-            splitSummary.totalDescend -= Math.abs(deltaElev)
+          if (record.altitude != null && progress.prevRecord.altitude != null) {
+            const deltaElev = record.altitude - progress.prevRecord.altitude
+            if (deltaElev > 0) {
+              splitSummary.totalAscent += deltaElev
+            } else {
+              splitSummary.totalDescent += Math.abs(deltaElev)
+            }
           }
 
           if (record.heartRate != null) {
             progress.totalHeartRate += record.heartRate
             progress.totalHeartRateRecord++
           }
+
           // // test Random HR
           // progress.totalHeartRate += Math.floor(Math.random() * (1 + 200 - 90)) + 90
           // progress.totalHeartRateRecord++
@@ -315,8 +318,8 @@ export default {
           const lastSplitSummary = this.summaries[this.summaries.length - 1]
           lastSplitSummary.overallDistance = splitSummary.overallDistance // replace
           lastSplitSummary.totalDistance += splitSummary.totalDistance
-          lastSplitSummary.totalAscend += splitSummary.totalAscend
-          lastSplitSummary.totalDescend += splitSummary.totalDescend
+          lastSplitSummary.totalAscent += splitSummary.totalAscent
+          lastSplitSummary.totalDescent += splitSummary.totalDescent
           lastSplitSummary.totalDuration += splitSummary.totalDuration
           lastSplitSummary.totalHeartRate += splitSummary.totalHeartRate
           lastSplitSummary.totalHeartRateRecord += splitSummary.totalHeartRateRecord
