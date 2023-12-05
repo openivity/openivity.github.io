@@ -3,7 +3,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
 </script>
 
 <template>
-  <div class="container pt-2 pb-3">
+  <div class="container">
     <div class="row">
       <div
         class="col text-start collapsible"
@@ -49,7 +49,7 @@ import HeartRateZoneBar from './HeartRateZoneBar.vue'
         </div>
       </div>
     </div>
-    <div class="row collapse show" id="hrzone-graph-content">
+    <div class="row collapse show pb-3" id="hrzone-graph-content">
       <div class="col-12 pt-2" v-for="hrZone in hrZones" :key="hrZone.zone">
         <HeartRateZoneBar
           :zone="hrZone.zone"
