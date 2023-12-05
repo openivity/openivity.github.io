@@ -56,7 +56,6 @@ func NewLapFromRecords(records []*Record, sport string) *Lap {
 		temperatureAccumu = new(accumulator.Accumulator[int8])
 	)
 
-	var totalAscent, totalDescent float64
 	for i := 0; i < len(records); i++ {
 		rec := records[i]
 
@@ -67,30 +66,51 @@ func NewLapFromRecords(records []*Record, sport string) *Lap {
 		heartRateAccumu.Collect(rec.HeartRate)
 		powerAccumu.Collect(rec.Power)
 		temperatureAccumu.Collect(rec.Temperature)
+	}
 
-		if i == 0 {
+	// Calculate Total Elapsed and Total Moving Time
+	for i := 0; i < len(records); i++ {
+		rec := records[i]
+		if rec.Timestamp.IsZero() {
 			continue
 		}
 
-		prev := records[i-1]
+		// Find next non-zero timestamp
+		for j := i + 1; j < len(records); j++ {
+			next := records[j]
+			if !next.Timestamp.IsZero() {
+				delta := next.Timestamp.Sub(rec.Timestamp).Seconds()
+				lap.TotalElapsedTime += delta
 
-		// Calculate Total Elapsed and Total Moving Time
-		if rec.Distance != nil && prev.Distance != nil {
-			timeDiff := rec.Timestamp.Sub(prev.Timestamp).Seconds()
-			lap.TotalElapsedTime += timeDiff
-
-			if IsConsideredMoving(sport, rec.Speed) {
-				lap.TotalMovingTime += timeDiff
+				if IsConsideredMoving(sport, rec.Speed) {
+					lap.TotalMovingTime += delta
+				}
+				i = j - 1 // move cursor
+				break
 			}
 		}
+	}
 
-		// Calculate Total Ascent and Total Descent
-		if rec.Altitude != nil && prev.Altitude != nil {
-			delta := *rec.Altitude - *prev.Altitude
-			if delta > 0 {
-				totalAscent += delta
-			} else {
-				totalDescent += math.Abs(delta)
+	// Calculate Total Ascent and Total Descent
+	var totalAscent, totalDescent float64
+	for i := 0; i < len(records)-1; i++ {
+		rec := records[i]
+		if rec.SmoothedAltitude == nil {
+			continue
+		}
+
+		// Find next non-nil altitude
+		for j := i + 1; j < len(records); j++ {
+			next := records[j]
+			if next.SmoothedAltitude != nil {
+				delta := *next.SmoothedAltitude - *rec.SmoothedAltitude
+				if delta > 0 {
+					totalAscent += delta
+				} else {
+					totalDescent += math.Abs(delta)
+				}
+				i = j - 1 // move cursor
+				break
 			}
 		}
 	}
