@@ -269,19 +269,21 @@ export default {
         if (session.records == null) return
         for (let i = 0; i < session.records.length - 1; i++) {
           const entry = session.records[i]
-          const nextEntry = session.records[i + 1]
+          if (entry == null || entry.heartRate == null) continue
 
-          if (entry.heartRate == null || nextEntry.heartRate == null) continue
+          let { nextEntry, nextIndex } = this.getNextValidEntry(session, entry, i)
+          i = nextIndex // skip loop to latest valid entry
 
-          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate ?? 0)
-          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0)
+          const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0) // should be valid, but tslinter can't check
 
           if (entry.timestamp == null || nextEntry.timestamp == null) continue
 
-          const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
-          const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
+          const timestamp1 = new Date(entry.timestamp)
+          const timestamp2 = new Date(nextEntry.timestamp)
           let secondsDiff: number = (timestamp2.valueOf() - timestamp1.valueOf()) / 1000
-          if (secondsDiff > 30) secondsDiff = 1
+          if (secondsDiff > 30 || secondsDiff < 0) secondsDiff = 1
+          if (entry == nextEntry) secondsDiff = 1
 
           totalSeconds += secondsDiff
 
@@ -299,10 +301,10 @@ export default {
       // Calculate percentage of time in each zone and assign to hr zone
       const zonePercentages: any = {}
       for (const [zoneIndex, zoneSeconds] of zoneTotals.entries()) {
-        const percentage = (zoneSeconds / totalSeconds) * 100
-        zonePercentages[zoneIndex] = percentage
-
         if (this.hrZones[zoneIndex]) {
+          const percentage = (zoneSeconds / totalSeconds) * 100
+          zonePercentages[zoneIndex] = percentage
+
           this.hrZones[zoneIndex].prosen = percentage || 0
           this.hrZones[zoneIndex].timeInSecond = zoneSeconds
         }
@@ -357,23 +359,27 @@ export default {
       let totalSeconds = 0
 
       // Process each data point and calculate heart rate zone and total time
+      // TODO optimize calculation
       sessions.forEach((session) => {
         if (session.records == null) return
+        console.time('totalSteps')
         for (let i = 0; i < session.records.length - 1; i++) {
           const entry = session.records[i]
-          const nextEntry = session.records[i + 1]
+          if (entry == null || entry.heartRate == null) continue
 
-          if (entry.heartRate == null || nextEntry.heartRate == null) continue
+          let { nextEntry, nextIndex } = this.getNextValidEntry(session, entry, i)
+          i = nextIndex // skip loop to latest valid entry
 
           const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate)
-          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate)
+          const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0) // should be valid, but tslinter can't check
 
           if (entry.timestamp == null || nextEntry.timestamp == null) continue
 
-          const timestamp1 = new Date(entry.timestamp || nextEntry.timestamp)
-          const timestamp2 = new Date(nextEntry.timestamp || nextEntry.timestamp)
+          const timestamp1 = new Date(entry.timestamp)
+          const timestamp2 = new Date(nextEntry.timestamp)
           let secondsDiff: number = (timestamp2.valueOf() - timestamp1.valueOf()) / 1000
-          if (secondsDiff > 30) secondsDiff = 1
+          if (secondsDiff > 30 || secondsDiff < 0) secondsDiff = 1
+          if (entry == nextEntry) secondsDiff = 1
 
           totalSeconds += secondsDiff
 
@@ -386,14 +392,20 @@ export default {
             // calculate the bpm step
             const zonesInvolved = this.determineZonesInvolved(hrZoneIndex, nextHrZoneIndex)
             const totalSteps = zonesInvolved.reduce((total, zoneIndex) => {
-              const start = Math.min(
-                Math.max(this.hrZones[zoneIndex].minmax[0], entry.heartRate || 0),
-                this.hrZones[zoneIndex].minmax[1]
-              )
-              const end = Math.min(
-                Math.max(this.hrZones[zoneIndex].minmax[0], nextEntry.heartRate || 0),
-                this.hrZones[zoneIndex].minmax[1]
-              )
+              const start =
+                zoneIndex == -1
+                  ? entry.heartRate ?? 0
+                  : Math.min(
+                      Math.max(this.hrZones[zoneIndex].minmax[0], entry.heartRate ?? 0),
+                      this.hrZones[zoneIndex].minmax[1]
+                    )
+              const end =
+                zoneIndex == -1
+                  ? nextEntry.heartRate ?? 0
+                  : Math.min(
+                      Math.max(this.hrZones[zoneIndex].minmax[0], nextEntry.heartRate ?? 0),
+                      this.hrZones[zoneIndex].minmax[1]
+                    )
               return 1 + total + (Math.max(end, start) - Math.min(end, start))
             }, 0)
 
@@ -401,14 +413,20 @@ export default {
             for (let j = 0; j < zonesInvolved.length; j++) {
               const zIndex = zonesInvolved[j]
               zoneTotals[zIndex] = zoneTotals[zIndex] || 0
-              const start = Math.min(
-                Math.max(this.hrZones[zIndex].minmax[0], entry.heartRate || 0),
-                this.hrZones[zIndex].minmax[1]
-              )
-              const end = Math.min(
-                Math.max(this.hrZones[zIndex].minmax[0], nextEntry.heartRate || 0),
-                this.hrZones[zIndex].minmax[1]
-              )
+              const start =
+                zIndex == -1
+                  ? entry.heartRate ?? 0
+                  : Math.min(
+                      Math.max(this.hrZones[zIndex].minmax[0], entry.heartRate || 0),
+                      this.hrZones[zIndex].minmax[1]
+                    )
+              const end =
+                zIndex == -1
+                  ? nextEntry.heartRate ?? 0
+                  : Math.min(
+                      Math.max(this.hrZones[zIndex].minmax[0], nextEntry.heartRate || 0),
+                      this.hrZones[zIndex].minmax[1]
+                    )
               const fraction = 1 + (Math.max(end, start) - Math.min(end, start))
               zoneTotals[zIndex] += secondsDiff * (fraction / totalSteps)
             }
@@ -417,15 +435,17 @@ export default {
             zoneTotals[hrZoneIndex] += secondsDiff
           }
         }
+        console.timeEnd('totalSteps')
       })
 
       // Calculate percentage of time in each zone and assign to hr zone
       const zonePercentages: any = {}
+      const invalidTotalSeconds = zoneTotals[-1] ?? 0
       for (const [zoneIndex, zoneSeconds] of zoneTotals.entries()) {
-        const percentage = (zoneSeconds / totalSeconds) * 100
-        zonePercentages[zoneIndex] = percentage
-
         if (this.hrZones[zoneIndex]) {
+          const percentage = (zoneSeconds / (totalSeconds - invalidTotalSeconds)) * 100
+          zonePercentages[zoneIndex] = percentage
+
           this.hrZones[zoneIndex].prosen = percentage || 0
           this.hrZones[zoneIndex].timeInSecond = zoneSeconds
         }
@@ -443,6 +463,16 @@ export default {
 
       console.log(`> Total Time: ${totalSeconds.toFixed(2)} seconds`)
     },
+    getNextValidEntry(session: Session, currentEntry: Record, currentIndex: number) {
+      // findout next record with valid HR
+      for (let index = currentIndex + 1; index < session.records.length; index++) {
+        const r = session.records[index]
+        // r.heartRate = (Math.floor(Math.random() * (10 + 1)) + 1) % 2 == 0 ? r.heartRate : 55 // Test random null HR
+        if (r.heartRate != null) return { nextEntry: r, nextIndex: index }
+      }
+      // no next entry, use current entry as last comparator
+      return { nextEntry: currentEntry, nextIndex: session.records.length - 1 }
+    },
     // get hr this.hrZones index based on hr
     getHeartRateZoneIndex(heartRate: number) {
       for (const [i, d] of this.hrZones.entries()) {
@@ -454,16 +484,14 @@ export default {
     },
     // get hrzones involved between calculate transition 2 data hr
     determineZonesInvolved(startIndex: number, endIndex: number) {
-      if (startIndex === -1 || endIndex === -1) {
-        return []
-      }
-
       const direction = startIndex < endIndex ? 1 : -1
       const zonesInvolved = []
 
+      if (startIndex == -1) zonesInvolved.push(-1)
       for (let i = startIndex; i !== endIndex + direction; i += direction) {
         zonesInvolved.push(i)
       }
+      if (endIndex == -1) zonesInvolved.push(-1)
 
       return zonesInvolved
     }
