@@ -95,15 +95,15 @@ func NewLapFromRecords(records []*Record, sport string) *Lap {
 	var totalAscent, totalDescent float64
 	for i := 0; i < len(records)-1; i++ {
 		rec := records[i]
-		if rec.Altitude == nil {
+		if rec.SmoothedAltitude == nil {
 			continue
 		}
 
 		// Find next non-nil altitude
 		for j := i + 1; j < len(records); j++ {
 			next := records[j]
-			if next.Altitude != nil {
-				delta := *next.Altitude - *rec.Altitude
+			if next.SmoothedAltitude != nil {
+				delta := *next.SmoothedAltitude - *rec.SmoothedAltitude
 				if delta > 0 {
 					totalAscent += delta
 				} else {
