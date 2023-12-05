@@ -269,10 +269,10 @@ export default {
         if (session.records == null) return
         for (let i = 0; i < session.records.length - 1; i++) {
           const entry = session.records[i]
-          if (entry == null || entry.heartRate == null) continue
+          if (entry.heartRate == null) continue
 
-          let { nextEntry, nextIndex } = this.getNextValidEntry(session, entry, i)
-          i = nextIndex // skip loop to latest valid entry
+          let { nextEntry, nextIndex, noNextEntry } = this.getNextValidEntry(session, entry, i)
+          i = noNextEntry ? nextIndex : nextIndex - 1 // skip loop to latest valid entry
 
           const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate)
           const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0) // should be valid, but tslinter can't check
@@ -362,13 +362,12 @@ export default {
       // TODO optimize calculation
       sessions.forEach((session) => {
         if (session.records == null) return
-        console.time('totalSteps')
-        for (let i = 0; i < session.records.length - 1; i++) {
+        for (let i = 0; i < session.records.length; i++) {
           const entry = session.records[i]
-          if (entry == null || entry.heartRate == null) continue
+          if (entry.heartRate == null) continue
 
-          let { nextEntry, nextIndex } = this.getNextValidEntry(session, entry, i)
-          i = nextIndex // skip loop to latest valid entry
+          let { nextEntry, nextIndex, noNextEntry } = this.getNextValidEntry(session, entry, i)
+          i = noNextEntry ? nextIndex : nextIndex - 1 // skip loop to latest valid entry
 
           const hrZoneIndex = this.getHeartRateZoneIndex(entry.heartRate)
           const nextHrZoneIndex = this.getHeartRateZoneIndex(nextEntry.heartRate ?? 0) // should be valid, but tslinter can't check
@@ -435,7 +434,6 @@ export default {
             zoneTotals[hrZoneIndex] += secondsDiff
           }
         }
-        console.timeEnd('totalSteps')
       })
 
       // Calculate percentage of time in each zone and assign to hr zone
@@ -467,11 +465,11 @@ export default {
       // findout next record with valid HR
       for (let index = currentIndex + 1; index < session.records.length; index++) {
         const r = session.records[index]
-        // r.heartRate = (Math.floor(Math.random() * (10 + 1)) + 1) % 2 == 0 ? r.heartRate : 55 // Test random null HR
-        if (r.heartRate != null) return { nextEntry: r, nextIndex: index }
+        // r.heartRate = (Math.floor(Math.random() * (10 + 1)) + 1) % 2 == 0 ? r.heartRate : null // Test random null HR
+        if (r.heartRate != null) return { nextEntry: r, nextIndex: index, noNextEntry: false }
       }
       // no next entry, use current entry as last comparator
-      return { nextEntry: currentEntry, nextIndex: session.records.length - 1 }
+      return { nextEntry: currentEntry, nextIndex: currentIndex, noNextEntry: true }
     },
     // get hr this.hrZones index based on hr
     getHeartRateZoneIndex(heartRate: number) {
