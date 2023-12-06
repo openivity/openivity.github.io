@@ -130,11 +130,13 @@ class SplitProgress {
   firstRecord: Record = emptyRecord
   prevRecord: Record = emptyRecord
   currentDuration: number = 0
-  maxPace: number = 0
   totalHeartRate: number = 0
   totalHeartRateRecord: number = 0
-  summarized: boolean = false
+  maxPace: number = 0
   distance: number = 0
+  prevAltitude: number | null = null
+
+  summarized: boolean = false
 }
 
 export default {
@@ -232,6 +234,7 @@ export default {
         progress = new SplitProgress()
 
         for (const record of session.records) {
+          // ignore invalid distance
           if (record.distance == null) continue
           progress.summarized = false
 
@@ -251,14 +254,19 @@ export default {
             progress.currentDuration += deltaTime
           }
 
-          // elev delta
-          if (record.altitude != null && progress.prevRecord.altitude != null) {
-            const deltaElev = record.altitude - progress.prevRecord.altitude
-            if (deltaElev > 0) {
-              splitSummary.totalAscent += deltaElev
-            } else {
-              splitSummary.totalDescent += Math.abs(deltaElev)
+          // Elevation Gain, compare current altitude vs latest valid altitude
+          // 1st record always ignored
+          if (record.altitude != null) {
+            if (progress.prevAltitude != null) {
+              const deltaElev = record.altitude - progress.prevAltitude
+              if (deltaElev > 0) {
+                splitSummary.totalAscent += deltaElev
+              } else {
+                splitSummary.totalDescent += Math.abs(deltaElev)
+              }
             }
+
+            progress.prevAltitude = record.altitude
           }
 
           if (record.heartRate != null) {
