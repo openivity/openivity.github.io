@@ -1,6 +1,8 @@
 package fit
 
 import (
+	"time"
+
 	"github.com/muktihari/fit/factory"
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/kit/scaleoffset"
@@ -42,6 +44,7 @@ func NewSession(mesg proto.Message) *activity.Session {
 				continue
 			}
 			ses.TotalElapsedTime = float64(totalElapsedTime) / 1000
+			ses.EndTime = ses.StartTime.Add(time.Duration(ses.TotalElapsedTime) * time.Second)
 		case fieldnum.SessionTotalDistance:
 			totalDistance, ok := field.Value.(uint32)
 			if !ok || totalDistance == basetype.Uint32Invalid {

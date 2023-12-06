@@ -27,10 +27,12 @@ import { ToolMode } from '@/spec/activity-service'
           one at a time.
         </p>
         <p v-show="selected?.value == ToolMode.Combine">
-          We will combine multiple activities into one continuous activity file. Two sequential
-          sessions of the same sport will be merged into one session. If the sport is different, it
-          will be placed in separate sessions. This process will continue until all sessions are
-          combined.
+          We will combine multiple activities into one continuous activity file. This is how we will
+          do it: we will iterate through all activities. Starting from the current activity's
+          iteration, we will pick the last session and combine it with the first session of the next
+          activity only when the sport is a match. If the sport is different, all sessions of the
+          next activity will be appended as they are. This process will continue until all
+          activities are combined.
         </p>
         <p v-show="selected?.value == ToolMode.SplitPerSession">
           We will create new Activity File for every Sessions in all activities.

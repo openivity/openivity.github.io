@@ -44,13 +44,13 @@ func (l *Listener) loop() {
 			l.timezone = CreateTimezone(mesg)
 		case mesgnum.Session:
 			ses := NewSession(mesg)
-			if len(l.sessions) > 0 {
+			if len(l.sessions) > 0 && l.sessions[len(l.sessions)-1].EndTime.IsZero() {
 				l.sessions[len(l.sessions)-1].EndTime = ses.StartTime
 			}
 			l.sessions = append(l.sessions, ses)
 		case mesgnum.Lap:
 			lap := NewLap(mesg)
-			if len(l.laps) > 0 {
+			if len(l.laps) > 0 && l.laps[len(l.laps)-1].EndTime.IsZero() {
 				l.laps[len(l.laps)-1].EndTime = lap.StartTime
 			}
 			l.laps = append(l.laps, lap)
