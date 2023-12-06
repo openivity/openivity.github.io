@@ -89,7 +89,7 @@ import { Duration } from 'luxon'
                   <div class="position-relative"></div>
                 </td>
                 <td class="small text-end">
-                  {{ formatElev(splitSummary.totalAscend, splitSummary.totalDescend) }}
+                  {{ formatElev(splitSummary.totalAscent, splitSummary.totalDescent) }}
                 </td>
                 <td class="small text-end">
                   {{ formatAvgHr(splitSummary.totalHeartRate, splitSummary.totalHeartRateRecord) }}
@@ -118,8 +118,8 @@ class SplitSummary {
   totalDuration: number = 0 // Total duration of current split
   overallDuration: number = 0 // Overall duration from start till this split
 
-  totalAscend: number = 0
-  totalDescend: number = 0
+  totalAscent: number = 0
+  totalDescent: number = 0
   totalRecord: number = 0
   totalHeartRate: number = 0
   totalHeartRateRecord: number = 0
@@ -130,11 +130,13 @@ class SplitProgress {
   firstRecord: Record = emptyRecord
   prevRecord: Record = emptyRecord
   currentDuration: number = 0
-  maxPace: number = 0
   totalHeartRate: number = 0
   totalHeartRateRecord: number = 0
-  summarized: boolean = false
+  maxPace: number = 0
   distance: number = 0
+  prevAltitude: number | null = null
+
+  summarized: boolean = false
 }
 
 export default {
@@ -232,7 +234,8 @@ export default {
         progress = new SplitProgress()
 
         for (const record of session.records) {
-          if (!record.distance) continue
+          // ignore invalid distance
+          if (record.distance == null) continue
           progress.summarized = false
 
           if (progress.firstRecord == emptyRecord) {
@@ -251,18 +254,26 @@ export default {
             progress.currentDuration += deltaTime
           }
 
-          // elev delta
-          const deltaElev = (record.altitude ?? 0) - (progress.prevRecord.altitude ?? 0)
-          if (deltaElev >= 0) {
-            splitSummary.totalAscend += deltaElev
-          } else {
-            splitSummary.totalDescend -= Math.abs(deltaElev)
+          // Elevation Gain, compare current altitude vs latest valid altitude
+          // 1st record always ignored
+          if (record.altitude != null) {
+            if (progress.prevAltitude != null) {
+              const deltaElev = record.altitude - progress.prevAltitude
+              if (deltaElev > 0) {
+                splitSummary.totalAscent += deltaElev
+              } else {
+                splitSummary.totalDescent += Math.abs(deltaElev)
+              }
+            }
+
+            progress.prevAltitude = record.altitude
           }
 
           if (record.heartRate != null) {
             progress.totalHeartRate += record.heartRate
             progress.totalHeartRateRecord++
           }
+
           // // test Random HR
           // progress.totalHeartRate += Math.floor(Math.random() * (1 + 200 - 90)) + 90
           // progress.totalHeartRateRecord++
@@ -315,8 +326,8 @@ export default {
           const lastSplitSummary = this.summaries[this.summaries.length - 1]
           lastSplitSummary.overallDistance = splitSummary.overallDistance // replace
           lastSplitSummary.totalDistance += splitSummary.totalDistance
-          lastSplitSummary.totalAscend += splitSummary.totalAscend
-          lastSplitSummary.totalDescend += splitSummary.totalDescend
+          lastSplitSummary.totalAscent += splitSummary.totalAscent
+          lastSplitSummary.totalDescent += splitSummary.totalDescent
           lastSplitSummary.totalDuration += splitSummary.totalDuration
           lastSplitSummary.totalHeartRate += splitSummary.totalHeartRate
           lastSplitSummary.totalHeartRateRecord += splitSummary.totalHeartRateRecord
