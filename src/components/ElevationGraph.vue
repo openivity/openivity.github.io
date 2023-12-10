@@ -278,13 +278,15 @@ export default {
             .attr('x2', width - marginRight)
         )
 
+      const minDomain = d3.min(yScale.domain())!
+
       // Add Area
       const area = d3
         .area<Record>()
         .curve(d3.curveBasis)
         .x((d: Record) => xScale((d.distance ?? 0) / 1000) as number)
-        .y0(yScale(d3.min(yScale.domain())!))
-        .y1((d) => yScale(d.altitude ?? 0))
+        .y0(yScale(minDomain))
+        .y1((d) => yScale(d.altitude ?? minDomain))
 
       svg
         .append('g')
@@ -314,7 +316,7 @@ export default {
         .line<Record>()
         .curve(d3.curveBasis)
         .x((d: Record) => xScale((d.distance ?? 0) / 1000) as number)
-        .y((d) => yScale(d.altitude ?? 0))
+        .y((d) => yScale(d.altitude ?? minDomain))
 
       svg
         .append('g')

@@ -283,13 +283,15 @@ export default {
             .attr('x2', width - marginRight)
         )
 
+      const minDomain = d3.min(altitudeScale.domain())!
+
       // Add Altitude Area
       const altitudeArea = d3
         .area<Record>()
         .curve(d3.curveBasis)
         .x(this.scaleByDistanceOrTimestamp)
-        .y0(altitudeScale(d3.min(altitudeScale.domain())!))
-        .y1((d) => altitudeScale(d.altitude ?? 0))
+        .y0(altitudeScale(minDomain))
+        .y1((d) => altitudeScale(d.altitude ?? minDomain))
 
       svg
         .append('g')
