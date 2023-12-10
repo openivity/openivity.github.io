@@ -45,13 +45,7 @@ import { Marker, ToolMode } from '@/spec/activity-service'
               <div class="col-auto text-end fs-legend">
                 <span>
                   {{ legendLabel }}
-                  {{
-                    (
-                      ((sessions[index].records[marker.endN].distance ?? 0) -
-                        (sessions[index].records[marker.startN].distance ?? 0)) /
-                      1000
-                    ).toFixed(2)
-                  }}
+                  {{ (distanceByMarkers[index].delta / 1000).toFixed(2) }}
                   km
                 </span>
                 <span>
@@ -63,7 +57,7 @@ import { Marker, ToolMode } from '@/spec/activity-service'
             <div class="col text-start"><p>Distance from the Start</p></div>
             <div class="col text-end">
               <span>
-                {{ ((sessions[index].records[marker.startN].distance ?? 0) / 1000).toFixed(2) }}
+                {{ (distanceByMarkers[index].start / 1000).toFixed(2) }}
                 km
               </span>
             </div>
@@ -81,12 +75,7 @@ import { Marker, ToolMode } from '@/spec/activity-service'
             <div class="col text-start"><p>Distance from the End</p></div>
             <div class="col text-end">
               <span
-                >{{
-                  (
-                    (lastDistance(index) - (sessions[index].records[marker.endN].distance ?? 0)) /
-                    1000
-                  ).toFixed(2)
-                }}
+                >{{ ((lastDistance(index) - distanceByMarkers[index].end) / 1000).toFixed(2) }}
                 km
               </span>
             </div>
@@ -109,6 +98,12 @@ import { Marker, ToolMode } from '@/spec/activity-service'
 import type { Session } from '@/spec/activity'
 import type { PropType } from 'vue'
 
+class DistanceByMarker {
+  start: number = 0
+  end: number = 0
+  delta: number = 0
+}
+
 export default {
   props: {
     name: { type: String, required: true },
@@ -125,7 +120,34 @@ export default {
       markers: Array<Marker>()
     }
   },
-  computed: {},
+  computed: {
+    distanceByMarkers(): DistanceByMarker[] {
+      const distanceByMarkers = new Array<DistanceByMarker>()
+      for (let i = 0; i < this.markers.length; i++) {
+        const distanceByMarker = new DistanceByMarker()
+
+        const startRec = this.sessions[i].records[this.markers[i].startN]
+        if (startRec.distance != null) {
+          distanceByMarker.start = startRec.distance
+        }
+
+        // Find nearest record with non-nil distance relative to marker's endN
+        for (let j = this.markers[i].endN; j >= 0; j--) {
+          const rec = this.sessions[i].records[j]
+          if (rec.distance != null) {
+            distanceByMarker.end = rec.distance
+            break
+          }
+        }
+
+        distanceByMarker.delta = distanceByMarker.end - distanceByMarker.start
+
+        distanceByMarkers.push(distanceByMarker)
+      }
+
+      return distanceByMarkers
+    }
+  },
   watch: {
     sessions: {
       handler() {
