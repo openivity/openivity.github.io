@@ -160,7 +160,7 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 //
 // Study case: FIT Files retrieved from Strava.
 func (s *service) handleAnomalyRecords(result *ListenerResult, lastSession *activity.Session) {
-	// In our study case is the number of anomaly record is 1, but just in case, we add a tolerance threshold to 10.
+	// In our study case, the number of anomaly record is 1, but just in case, we add a tolerance threshold to 10.
 	// There should be no session with less than 10 records, if it's caused by truncated file, let's just add to the last session.
 	// Having less than 10 records in a session doesn't add any value for analytic.
 	const threshold = 10
