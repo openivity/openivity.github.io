@@ -116,6 +116,10 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 		act.Sessions = append(act.Sessions, ses)
 	}
 
+	if len(result.Records) != 0 && len(act.Sessions) != 0 {
+		s.handleAnomalyRecords(result, act.Sessions[len(act.Sessions)-1])
+	}
+
 	if len(result.Records) == 0 {
 		return act
 	}
@@ -144,11 +148,34 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 
 		ses := activity.NewSessionFromLaps(laps, sport)
 		ses.Laps = laps
+		ses.Records = result.Records
 
 		act.Sessions = append(act.Sessions, ses)
 	}
 
 	return act
+}
+
+// handleAnomalyRecords handles anomaly leftover records caused by session's EndTime miscalculation.
+//
+// Study case: FIT Files retrieved from Strava.
+func (s *service) handleAnomalyRecords(result *ListenerResult, lastSession *activity.Session) {
+	// In our study case, the number of anomaly record is 1, but just in case, we add a tolerance threshold to 10.
+	// There should be no session with less than 10 records, if it's caused by truncated file, let's just add to the last session.
+	// Having less than 10 records in a session doesn't add any value for analytic.
+	const threshold = 10
+	if len(result.Records) < threshold {
+		ses := result.Sessions[len(result.Sessions)-1]
+		ses.Records = append(ses.Records, result.Records...)
+		for i := len(result.Records) - 1; i >= 0; i-- {
+			rec := result.Records[i]
+			if rec.Timestamp.After(ses.EndTime) {
+				ses.EndTime = rec.Timestamp
+				break
+			}
+		}
+		result.Records = result.Records[:0]
+	}
 }
 
 // sanitize removes any invalid item from given result.

@@ -2,7 +2,7 @@
   <div class="col-12 h-100" v-if="sessions?.length > 0">
     <div v-for="(session, index) in sessions" :key="index">
       <div
-        class="tab row m-0 mt-2 pt-2"
+        class="tab row m-0 mt-2 pt-2 collapsible"
         style="cursor: pointer"
         data-bs-toggle="collapse"
         v-bind:data-bs-target="'#sessions-' + index"
@@ -12,8 +12,7 @@
         <div class="row text-start">
           <div class="col-auto d-inline-block" style="height: 50px">
             <h6 style="text-align: left" class="mb-0">
-              <i class="fa-solid fa-caret-down"></i>
-              <i class="fa-solid fa-caret-right"></i>
+              <i class="fa-solid fa-caret-right collapse-indicator"></i>
               <span class="px-1">Ses {{ index + 1 }}</span>
             </h6>
             <span>{{ session.sport }}</span>
@@ -146,10 +145,5 @@ export default {
 
 .calories {
   background-color: var(--color-background-soft);
-}
-
-.collapsed > div > div > h6 > .fa-caret-down,
-:not(.collapsed) > div > div > h6 > .fa-caret-right {
-  display: none;
 }
 </style>
