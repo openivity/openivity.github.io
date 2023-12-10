@@ -245,61 +245,55 @@ func (s *service) combineActivity(activities []activity.Activity, manufacturer, 
 			TimeCreated:  activities[0].Creator.TimeCreated,
 		},
 		Timezone: activities[0].Timezone,
+		Sessions: activities[0].Sessions,
 	}
 
-	var prevSessionSport string
-	var prevSessionDistance float64
-	for i := range activities {
-		act := &activities[i]
+	lastDistance := getLastDistanceOfRecords(newActivity.Sessions[0].Records)
 
-		for j := range act.Sessions {
-			ses := act.Sessions[j]
+	for i := 1; i < len(activities); i++ {
+		cur := &activities[i]
 
-			if ses.Sport == "" {
-				ses.Sport = activity.SportGeneric
-			}
+		newActLastSes := newActivity.Sessions[len(newActivity.Sessions)-1]
+		curActFirstSes := cur.Sessions[0]
 
-			for k := range ses.Laps {
-				ses.Laps[k].Sport = ses.Sport
-			}
-
-			if ses.Sport != prevSessionSport {
-				if len(ses.Records) == 0 {
-					continue
-				}
-
-				newActivity.Sessions = append(newActivity.Sessions, ses)
-				prevSessionSport = ses.Sport
-
-				// Find previous session distance for distance accumulation
-				for k := len(ses.Records) - 1; k >= 0; k-- {
-					rec := ses.Records[k]
-					if rec.Distance != nil {
-						prevSessionDistance = *rec.Distance
-						break
-					}
-				}
-				continue
-			}
-
-			// Accumulate distance and add records and laps into previous session of the same sport
-			prevSes := newActivity.Sessions[len(newActivity.Sessions)-1]
-			for k := range ses.Records {
-				rec := ses.Records[k]
-				if rec.Distance != nil {
-					*rec.Distance += prevSessionDistance
-				}
-				prevSes.Records = append(prevSes.Records, rec)
-			}
-
-			prevSes.Laps = append(prevSes.Laps, ses.Laps...)
-
-			// Update summary
-			activity.AccumulateSession(prevSes, ses)
+		if newActLastSes.Sport != curActFirstSes.Sport { // Sport is not match, append as it is
+			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions...)
+			continue
 		}
+
+		// Adjust distance before combine
+		for j := range curActFirstSes.Records {
+			rec := curActFirstSes.Records[j]
+			if rec.Distance != nil {
+				*rec.Distance += lastDistance
+			}
+		}
+
+		// Combine records and laps to newActivity's last session
+		newActLastSes.Records = append(newActLastSes.Records, curActFirstSes.Records...)
+		newActLastSes.Laps = append(newActLastSes.Laps, curActFirstSes.Laps...)
+
+		lastDistance = getLastDistanceOfRecords(newActLastSes.Records)
+
+		if len(cur.Sessions) > 1 {
+			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions[1:]...)
+		}
+
+		// Update summary
+		activity.AccumulateSession(newActLastSes, curActFirstSes)
 	}
 
 	return newActivity
+}
+
+func getLastDistanceOfRecords(records []*activity.Record) float64 {
+	for i := len(records) - 1; i >= 0; i-- {
+		rec := records[i]
+		if rec.Distance != nil {
+			return *rec.Distance
+		}
+	}
+	return 0
 }
 
 func (s *service) splitActivityPerSession(activities []activity.Activity, manufacturer, product uint16) []activity.Activity {
