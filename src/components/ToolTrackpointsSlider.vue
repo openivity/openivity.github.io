@@ -126,13 +126,9 @@ export default {
       for (let i = 0; i < this.markers.length; i++) {
         const distanceByMarker = new DistanceByMarker()
 
-        // Find nearest record with non-nil distance relative to marker's startN
-        for (let j = this.markers[i].startN; j < this.sessions[i].records.length; j++) {
-          const rec = this.sessions[i].records[j]
-          if (rec.distance != null) {
-            distanceByMarker.start = rec.distance
-            break
-          }
+        const startRec = this.sessions[i].records[this.markers[i].startN]
+        if (startRec.distance != null) {
+          distanceByMarker.start = startRec.distance
         }
 
         // Find nearest record with non-nil distance relative to marker's endN
