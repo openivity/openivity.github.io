@@ -1,7 +1,7 @@
 <template>
   <div class="col-12 h-100">
     <div
-      class="line-graph-hover row m-0"
+      class="line-graph-hover row m-0 collapsible"
       style="cursor: pointer"
       data-bs-toggle="collapse"
       v-bind:data-bs-target="`#${graphContainerName}`"
@@ -10,8 +10,7 @@
     >
       <div class="d-flex pb-1 pe-2">
         <h6 class="title mb-0 col text-start">
-          <i class="fa-solid fa-caret-down when-opened"></i>
-          <i class="fa-solid fa-caret-right when-closed"></i>
+          <i class="fa-solid fa-caret-right collapse-indicator"></i>
           {{ name }}
           <i :class="['fa-solid', icon]"></i>
         </h6>
@@ -494,10 +493,5 @@ export default {
 
 .graph-summary > div:nth-child(odd) {
   box-shadow: 0px 0.5px grey;
-}
-
-.collapsed > div > h6 > .fa-caret-down,
-:not(.collapsed) > div > h6 > .fa-caret-right {
-  display: none;
 }
 </style>
