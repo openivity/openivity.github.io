@@ -144,6 +144,7 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 
 		ses := activity.NewSessionFromLaps(laps, sport)
 		ses.Laps = laps
+		ses.Records = result.Records
 
 		act.Sessions = append(act.Sessions, ses)
 	}
