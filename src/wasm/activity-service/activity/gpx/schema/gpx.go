@@ -84,6 +84,11 @@ func (g *GPX) Validate() error {
 	if g == nil {
 		return fmt.Errorf("%T is nil", g)
 	}
+
+	if err := g.Metadata.Validate(); err != nil {
+		return fmt.Errorf("validate metadata: %w", err)
+	}
+
 	for i, track := range g.Tracks {
 		if err := track.Validate(); err != nil {
 			return fmt.Errorf("tracks[%d]: %w", i, err)
@@ -95,13 +100,14 @@ func (g *GPX) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = GPX{}
+var _ xml.Marshaler = &GPX{}
 
-func (g GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+func (g *GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	version := g.Version
 	if version == "" {
 		version = Version
 	}
+
 	se.Name = xml.Name{Local: "gpx"}
 	se.Attr = []xml.Attr{
 		{Name: xml.Name{Local: "creator"}, Value: g.Creator},
@@ -116,15 +122,28 @@ func (g GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
-	if err := enc.EncodeElement(g.Metadata, xml.StartElement{Name: xml.Name{Local: "metadata"}}); err != nil {
-		return err
-	}
-	if err := enc.EncodeElement(g.Tracks, xml.StartElement{Name: xml.Name{Local: "trk"}}); err != nil {
-		return err
-	}
-	if err := enc.EncodeToken(se.End()); err != nil {
-		return err
+
+	if err := g.Metadata.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "metadata"}}); err != nil {
+		return fmt.Errorf("metadata: %w", err)
 	}
 
-	return nil
+	for i := range g.Tracks {
+		if err := g.Tracks[i].MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "trk"}}); err != nil {
+			return fmt.Errorf("trk[%d]: %w", i, err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
+func encodeElement(enc *xml.Encoder, se xml.StartElement, charData xml.CharData) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+	if charData != nil {
+		if err := enc.EncodeToken(charData); err != nil {
+			return err
+		}
+	}
+	return enc.EncodeToken(se.End())
 }

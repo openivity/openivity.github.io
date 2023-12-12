@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strconv"
+
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 type Application struct {
@@ -54,6 +56,33 @@ func (a *Application) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 	}
 }
 
+var _ xml.Marshaler = &Application{}
+
+func (a *Application) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc, kxml.StartElement("Name"), xml.CharData(a.Name)); err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+
+	if a.Build != nil {
+		if err := a.Build.MarshalXML(enc, kxml.StartElement("Build")); err != nil {
+			return fmt.Errorf("build: %w", err)
+		}
+	}
+
+	if err := kxml.EncodeElement(enc, kxml.StartElement("LangID"), xml.CharData(a.LangID)); err != nil {
+		return fmt.Errorf("langID: %w", err)
+	}
+	if err := kxml.EncodeElement(enc, kxml.StartElement("PartNumber"), xml.CharData(a.PartNumber)); err != nil {
+		return fmt.Errorf("partNumber: %w", err)
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 type Build struct {
 	Type    BuildType
 	Version *Version
@@ -93,6 +122,26 @@ func (b *Build) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			}
 		}
 	}
+}
+
+var _ xml.Marshaler = &Build{}
+
+func (b *Build) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc, kxml.StartElement("Type"), xml.CharData(b.Type)); err != nil {
+		return fmt.Errorf("type: %w", err)
+	}
+
+	if b.Version != nil {
+		if err := b.Version.MarshalXML(enc, kxml.StartElement("Version")); err != nil {
+			return fmt.Errorf("version: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }
 
 type BuildType string
@@ -160,6 +209,38 @@ func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
+var _ xml.Marshaler = &Device{}
+
+func (d *Device) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("Name"),
+		xml.CharData(d.Name)); err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("UnitId"),
+		xml.CharData(strconv.FormatUint(uint64(d.UnitId), 10))); err != nil {
+		return fmt.Errorf("unitId: %w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("ProductID"),
+		xml.CharData(strconv.FormatUint(uint64(d.ProductID), 10))); err != nil {
+		return fmt.Errorf("productID: %w", err)
+	}
+
+	if d.Version != nil {
+		if err := d.Version.MarshalXML(enc, kxml.StartElement("Version")); err != nil {
+			return fmt.Errorf("version: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 type Version struct {
 	VersionMajor uint16 `xml:"VersionMajor"`
 	VersionMinor uint16 `xml:"VersionMinor"`
@@ -214,4 +295,35 @@ func (v *Version) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			}
 		}
 	}
+}
+
+var _ xml.Marshaler = &Version{}
+
+func (v *Version) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("VersionMajor"),
+		xml.CharData(strconv.FormatUint(uint64(v.VersionMajor), 10))); err != nil {
+		return fmt.Errorf("versionMajor:%w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("VersionMinor"),
+		xml.CharData(strconv.FormatUint(uint64(v.VersionMinor), 10))); err != nil {
+		return fmt.Errorf("versionMinor:%w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("BuildMajor"),
+		xml.CharData(strconv.FormatUint(uint64(v.BuildMajor), 10))); err != nil {
+		return fmt.Errorf("buildMajor:%w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("BuildMinor"),
+		xml.CharData(strconv.FormatUint(uint64(v.BuildMinor), 10))); err != nil {
+		return fmt.Errorf("buildMinor:%w", err)
+	}
+
+	return enc.EncodeToken(se.End())
 }

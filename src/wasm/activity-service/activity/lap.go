@@ -305,6 +305,10 @@ func CombineLap(targetLap, lap *Lap) {
 		return
 	}
 
+	if targetLap.StartTime.IsZero() {
+		targetLap.StartTime = lap.StartTime
+	}
+
 	if targetLap.EndTime.IsZero() {
 		targetLap.EndTime = lap.EndTime
 	}

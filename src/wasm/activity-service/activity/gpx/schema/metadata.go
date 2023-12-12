@@ -11,6 +11,7 @@ type Metadata struct {
 	Name   string    `xml:"name,omitempty"`
 	Desc   string    `xml:"desc,omitempty"`
 	Author *Author   `xml:"author,omitempty"`
+	Link   *Link     `xml:"link,omitempty"`
 	Time   time.Time `xml:"time,omitempty"`
 }
 
@@ -59,10 +60,59 @@ func (m *Metadata) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 }
 
 func (m *Metadata) Validate() error {
+	if err := m.Link.Validate(); err != nil {
+		return fmt.Errorf("link: %w", err)
+	}
 	if err := m.Author.Validate(); err != nil {
 		return fmt.Errorf("author: %w", err)
 	}
 	return nil
+}
+
+var _ xml.Marshaler = &Metadata{}
+
+func (m *Metadata) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if len(m.Name) != 0 {
+		if err := encodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "name"}},
+			xml.CharData(m.Name)); err != nil {
+			return fmt.Errorf("name: %w", err)
+		}
+	}
+
+	if len(m.Desc) != 0 {
+		if err := encodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "desc"}},
+			xml.CharData(m.Desc)); err != nil {
+			return fmt.Errorf("desc: %w", err)
+		}
+	}
+
+	if m.Author != nil {
+		if err := m.Author.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "author"}}); err != nil {
+			return fmt.Errorf("author: %w", err)
+		}
+	}
+
+	if m.Link != nil {
+		if err := m.Link.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "link"}}); err != nil {
+			return fmt.Errorf("link: %w", err)
+		}
+	}
+
+	if !m.Time.IsZero() {
+		if err := encodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "time"}},
+			xml.CharData(m.Time.Format(time.RFC3339))); err != nil {
+			return fmt.Errorf("time: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }
 
 // Author is Author schema (simplified).
@@ -123,11 +173,32 @@ func (p *Author) Validate() error {
 	return nil
 }
 
+var _ xml.Marshaler = &Author{}
+
+func (a *Author) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := encodeElement(enc,
+		xml.StartElement{Name: xml.Name{Local: "name"}},
+		xml.CharData(a.Name)); err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+
+	if a.Link != nil {
+		if err := a.Link.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "link"}}); err != nil {
+			return fmt.Errorf("marshal link: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 // Link is Link schema.
 type Link struct {
 	XMLName xml.Name `xml:"link"`
 	Href    string   `xml:"href,attr"`
-	Value   string   `xml:",chardata"`
 
 	Text string `xml:"text,omitempty"`
 	Type string `xml:"type,omitempty"`
@@ -161,8 +232,6 @@ func (a *Link) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 				a.Text = string(elem)
 			case "type":
 				a.Type = string(elem)
-			default:
-				a.Value = string(elem)
 			}
 			targetCharData = ""
 		case xml.EndElement:
@@ -181,4 +250,35 @@ func (l *Link) Validate() error {
 		return fmt.Errorf("href should not be empty")
 	}
 	return nil
+}
+
+var _ xml.Marshaler = &Link{}
+
+func (l *Link) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	se.Attr = append(se.Attr, xml.Attr{
+		Name:  xml.Name{Local: "href"},
+		Value: l.Href,
+	})
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if len(l.Text) != 0 {
+		if err := encodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "text"}},
+			xml.CharData(l.Text)); err != nil {
+			return fmt.Errorf("text: %w", err)
+		}
+	}
+
+	if len(l.Type) != 0 {
+		if err := encodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "type"}},
+			xml.CharData(l.Type)); err != nil {
+			return fmt.Errorf("type: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }

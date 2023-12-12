@@ -9,7 +9,12 @@ import (
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/activity/tcx/schema"
 	"github.com/muktihari/openactivity-fit/kit"
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 	"github.com/muktihari/openactivity-fit/preprocessor"
+)
+
+const (
+	applicationName = "openitivy.github.io"
 )
 
 var _ activity.Service = &service{}
@@ -136,20 +141,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			lap := laps[i]
 			lapFromRecords := activity.NewLapFromRecords(recordsByLap[i], sport)
 
-			if lap.StartTime.IsZero() {
-				lap.StartTime = lapFromRecords.StartTime
-			}
-
-			lap.TotalDistance = kit.PickNonZeroValue(lap.TotalDistance, lapFromRecords.TotalDistance)
-			lap.TotalCalories = kit.PickNonZeroValue(lap.TotalCalories, lapFromRecords.TotalCalories)
-			lap.TotalElapsedTime = kit.PickNonZeroValue(lap.TotalElapsedTime, lapFromRecords.TotalElapsedTime)
-
-			if lap.AvgHeartRate == nil {
-				lap.AvgHeartRate = lapFromRecords.AvgHeartRate
-			}
-			if lap.MaxHeartRate == nil {
-				lap.MaxHeartRate = lapFromRecords.MaxHeartRate
-			}
+			activity.CombineLap(lap, lapFromRecords)
 		}
 
 		if len(laps) == 0 {
@@ -185,5 +177,99 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 }
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
-	return nil, fmt.Errorf("tcx: encode: not yet implemented")
+	bs := make([][]byte, len(activities))
+
+	for i := range activities {
+		tcx := s.convertActivityToTCX(&activities[i])
+		b, err := kxml.Marshal(tcx)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal tcx: %w", err)
+		}
+		bs[i] = b
+	}
+
+	return bs, nil
+}
+
+func (s *service) convertActivityToTCX(act *activity.Activity) *schema.TCX {
+	tcx := &schema.TCX{
+		Author: &schema.Application{
+			Name: applicationName,
+		},
+		Activities: make([]schema.ActivityList, 0, len(act.Sessions)),
+	}
+
+	for i := range act.Sessions {
+		ses := act.Sessions[i]
+
+		activityList := schema.ActivityList{
+			Activity: &schema.Activity{
+				ID:    ses.Timestamp,
+				Sport: ses.Sport,
+				Creator: &schema.Device{
+					Name: act.Creator.Name,
+				},
+			},
+		}
+
+		if activityList.Activity.ID.IsZero() {
+			activityList.Activity.ID = ses.StartTime
+		}
+
+		sesRecords := ses.Records
+		for j := range ses.Laps {
+			lap := ses.Laps[j]
+
+			activityLap := schema.ActivityLap{
+				StartTime:           lap.StartTime,
+				TotalTimeSeconds:    lap.TotalElapsedTime,
+				DistanceMeters:      lap.TotalDistance,
+				MaximumSpeed:        lap.MaxSpeed,
+				Calories:            lap.TotalCalories,
+				AverageHeartRateBpm: lap.AvgHeartRate,
+				MaximumHeartRateBpm: lap.MaxHeartRate,
+				Cadence:             lap.AvgCadence,
+			}
+
+			track := schema.Track{}
+			remainingRecords := make([]*activity.Record, 0)
+			for k := range sesRecords {
+				rec := sesRecords[k]
+
+				if lap.IsBelongToThisLap(rec.Timestamp) {
+					trackpoint := schema.Trackpoint{
+						Time:           rec.Timestamp,
+						AltitudeMeters: rec.Altitude,
+						DistanceMeters: rec.Distance,
+						HeartRateBpm:   rec.HeartRate,
+						Cadence:        rec.Cadence,
+					}
+
+					if rec.PositionLat != nil && rec.PositionLong != nil {
+						trackpoint.Position = &schema.Position{
+							LatitudeDegrees:  *rec.PositionLat,
+							LongitudeDegrees: *rec.PositionLong,
+						}
+					}
+
+					if rec.Speed != nil {
+						trackpoint.Extensions = &schema.TrackpointExtension{
+							Speed: rec.Speed,
+						}
+					}
+					track.Trackpoints = append(track.Trackpoints, trackpoint)
+				} else {
+					remainingRecords = append(remainingRecords, rec)
+				}
+			}
+			sesRecords = remainingRecords
+
+			activityLap.Tracks = []schema.Track{track}
+			activityList.Activity.Laps = append(activityList.Activity.Laps, activityLap)
+		}
+
+		tcx.Activities = append(tcx.Activities, activityList)
+	}
+
+	return tcx
 }

@@ -175,17 +175,19 @@ func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Enc
 }
 
 func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) ([]activity.Activity, error) {
+	if encodeSpec.ToolMode == spec.ToolModeUnknown {
+		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.ToolMode)
+	}
+
 	activities := encodeSpec.Activities
 	if len(activities) == 0 {
 		return nil, fmt.Errorf("no activity is retrieved")
 	}
 
-	if _, ok := s.manufacturers[encodeSpec.ManufacturerID]; !ok {
-		return nil, fmt.Errorf("manufacturer %d does not exist", encodeSpec.ManufacturerID)
-	}
-
-	if encodeSpec.ToolMode == spec.ToolModeUnknown {
-		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.ToolMode)
+	if encodeSpec.TargetFileType == spec.FileTypeFIT {
+		if _, ok := s.manufacturers[encodeSpec.ManufacturerID]; !ok {
+			return nil, fmt.Errorf("manufacturer %d does not exist", encodeSpec.ManufacturerID)
+		}
 	}
 
 	removeFields := make(map[string]struct{})
@@ -225,6 +227,7 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 		for i := range activities {
 			activities[i].Creator.Manufacturer = &encodeSpec.ManufacturerID
 			activities[i].Creator.Product = &encodeSpec.ProductID
+			activities[i].Creator.Name = encodeSpec.DeviceName
 		}
 		newActivities = activities
 	case spec.ToolModeCombine:
