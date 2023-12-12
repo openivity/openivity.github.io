@@ -32,7 +32,7 @@ func Marshal(marshaler xml.Marshaler) (b []byte, err error) {
 		b = w.Bytes()
 	}()
 
-	enc.Indent("", strings.Repeat(" ", 2))
+	enc.Indent("", strings.Repeat(" ", 1))
 
 	if err = marshaler.MarshalXML(enc, xml.StartElement{}); err != nil {
 		return nil, err
