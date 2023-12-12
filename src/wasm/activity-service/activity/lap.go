@@ -118,8 +118,8 @@ func NewLapFromRecords(records []*Record, sport string) *Lap {
 	lap.TotalAscent = uint16(math.Round(totalAscent))
 	lap.TotalDescent = uint16(math.Round(totalDescent))
 
-	if value := distanceAccumu.Max(); value != nil {
-		lap.TotalDistance = *value
+	if distanceAccumu.Min() != nil && distanceAccumu.Max() != nil {
+		lap.TotalDistance = *distanceAccumu.Max() - *distanceAccumu.Min()
 	}
 	lap.AvgSpeed = speedAccumu.Avg()
 	lap.MaxSpeed = speedAccumu.Max()

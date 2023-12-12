@@ -74,6 +74,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		}
 		records := make([]*activity.Record, 0, recordCount)
 
+		recordsByLap := make([][]*activity.Record, 0, len(trk.TrackSegments))
 		for j := range trk.TrackSegments { // Laps
 			trkseg := trk.TrackSegments[j]
 
@@ -88,18 +89,22 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 				continue
 			}
 
-			// Preprocessing...
-			s.preprocessor.CalculateDistanceAndSpeed(lapRecords)
-			if activity.HasPace(sport) {
-				s.preprocessor.CalculatePace(sport, lapRecords)
-			}
-			s.preprocessor.SmoothingElev(lapRecords)
-			s.preprocessor.CalculateGrade(lapRecords)
-
-			lap := activity.NewLapFromRecords(lapRecords, sport)
-			laps = append(laps, lap)
-
+			recordsByLap = append(recordsByLap, lapRecords)
 			records = append(records, lapRecords...)
+		}
+
+		// Preprocessing...
+		s.preprocessor.CalculateDistanceAndSpeed(records)
+		if activity.HasPace(sport) {
+			s.preprocessor.CalculatePace(sport, records)
+		}
+		s.preprocessor.SmoothingElev(records)
+		s.preprocessor.CalculateGrade(records)
+
+		// We can only calculate laps' summary after preprocessing.
+		for i := range recordsByLap {
+			lap := activity.NewLapFromRecords(recordsByLap[i], sport)
+			laps = append(laps, lap)
 		}
 
 		if len(laps) == 0 {

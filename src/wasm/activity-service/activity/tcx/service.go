@@ -84,6 +84,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 
 		records := make([]*activity.Record, 0, recordCount)
 
+		recordsByLap := make([][]*activity.Record, 0, len(a.Activity.Laps))
 		for j := range a.Activity.Laps {
 			activityLap := a.Activity.Laps[j]
 
@@ -105,33 +106,50 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 				continue
 			}
 
-			// Preprocessing...
-			s.preprocessor.CalculateDistanceAndSpeed(lapRecords)
-			if activity.HasPace(sport) {
-				s.preprocessor.CalculatePace(sport, lapRecords)
-			}
-
-			s.preprocessor.SmoothingElev(lapRecords)
-			s.preprocessor.CalculateGrade(lapRecords)
-
 			records = append(records, lapRecords...)
 
-			lap := activity.NewLapFromRecords(lapRecords, sport)
-			if !activityLap.StartTime.IsZero() {
-				lap.StartTime = activityLap.StartTime
-			}
-			lap.TotalDistance = kit.PickNonZeroValue(activityLap.DistanceMeters, lap.TotalDistance)
-			lap.TotalCalories = kit.PickNonZeroValue(activityLap.Calories, lap.TotalCalories)
-			lap.TotalElapsedTime = kit.PickNonZeroValue(activityLap.TotalTimeSeconds, lap.TotalElapsedTime)
+			recordsByLap = append(recordsByLap, lapRecords)
 
-			if activityLap.AverageHeartRateBpm != nil {
-				lap.AvgHeartRate = activityLap.AverageHeartRateBpm
-			}
-			if activityLap.MaximumHeartRateBpm != nil {
-				lap.MaxHeartRate = activityLap.MaximumHeartRateBpm
+			lap := &activity.Lap{
+				StartTime:        activityLap.StartTime,
+				TotalDistance:    activityLap.DistanceMeters,
+				TotalCalories:    activityLap.Calories,
+				TotalElapsedTime: activityLap.TotalTimeSeconds,
+				AvgHeartRate:     activityLap.AverageHeartRateBpm,
+				MaxHeartRate:     activityLap.MaximumHeartRateBpm,
 			}
 
 			laps = append(laps, lap)
+		}
+
+		// Preprocessing...
+		s.preprocessor.CalculateDistanceAndSpeed(records)
+		if activity.HasPace(sport) {
+			s.preprocessor.CalculatePace(sport, records)
+		}
+
+		s.preprocessor.SmoothingElev(records)
+		s.preprocessor.CalculateGrade(records)
+
+		// We can only calculate laps' summary after preprocessing
+		for i := range laps {
+			lap := laps[i]
+			lapFromRecords := activity.NewLapFromRecords(recordsByLap[i], sport)
+
+			if lap.StartTime.IsZero() {
+				lap.StartTime = lapFromRecords.StartTime
+			}
+
+			lap.TotalDistance = kit.PickNonZeroValue(lap.TotalDistance, lapFromRecords.TotalDistance)
+			lap.TotalCalories = kit.PickNonZeroValue(lap.TotalCalories, lapFromRecords.TotalCalories)
+			lap.TotalElapsedTime = kit.PickNonZeroValue(lap.TotalElapsedTime, lapFromRecords.TotalElapsedTime)
+
+			if lap.AvgHeartRate == nil {
+				lap.AvgHeartRate = lapFromRecords.AvgHeartRate
+			}
+			if lap.MaxHeartRate == nil {
+				lap.MaxHeartRate = lapFromRecords.MaxHeartRate
+			}
 		}
 
 		if len(laps) == 0 {
