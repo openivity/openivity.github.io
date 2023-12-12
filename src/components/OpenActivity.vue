@@ -327,6 +327,7 @@ import {
   FileType,
   Manufacturer,
   ManufacturerListResult,
+  Sport,
   SportListResult
 } from '@/spec/activity-service'
 import { Feature } from 'ol'
@@ -358,7 +359,7 @@ const selectedLaps = shallowRef(new Array<Lap>())
 const selectedFeatures = shallowRef(new Array<Feature>())
 const selectedGraphRecords = shallowRef(new Array<Record>())
 const manufacturers = shallowRef(new Array<Manufacturer>())
-const sports = shallowRef(new Array<Manufacturer>())
+const sports = shallowRef(new Array<Sport>())
 
 export default {
   data() {
@@ -588,7 +589,7 @@ export default {
       manufacturers.value = result.manufacturers as Manufacturer[]
     },
     sportListHandler(result: SportListResult) {
-      sports.value = result.sports as Manufacturer[]
+      sports.value = result.sports as Sport[]
     },
     preprocessing(result: DecodeResult) {
       console.time('Preprocessing')
@@ -668,7 +669,7 @@ export default {
           type: 'LineString',
           coordinates: coordinates
         }
-      })
+      }) as Feature
     },
     startTime(records: Record[]): string | null {
       let timestamp: string | null = null
