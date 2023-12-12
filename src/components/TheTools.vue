@@ -192,7 +192,6 @@ export default {
         concealMarkers: toRaw(this.concealMarkers),
         removeFields: toRaw(this.selectedFieldRemovers)
       })
-      console.log(spec)
 
       this.$emit('encodeSpecifications', spec)
     }

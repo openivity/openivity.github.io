@@ -135,15 +135,3 @@ func (g *GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 
 	return enc.EncodeToken(se.End())
 }
-
-func encodeElement(enc *xml.Encoder, se xml.StartElement, charData xml.CharData) error {
-	if err := enc.EncodeToken(se); err != nil {
-		return err
-	}
-	if charData != nil {
-		if err := enc.EncodeToken(charData); err != nil {
-			return err
-		}
-	}
-	return enc.EncodeToken(se.End())
-}

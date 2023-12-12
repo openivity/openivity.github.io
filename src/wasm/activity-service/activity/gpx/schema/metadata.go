@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"time"
+
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 // Metadata is GPX's Metadata schema (simplified).
@@ -60,6 +62,7 @@ func (m *Metadata) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 }
 
 func (m *Metadata) Validate() error {
+
 	if err := m.Link.Validate(); err != nil {
 		return fmt.Errorf("link: %w", err)
 	}
@@ -77,36 +80,32 @@ func (m *Metadata) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	if len(m.Name) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "name"}},
-			xml.CharData(m.Name)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("name"), xml.CharData(m.Name)); err != nil {
 			return fmt.Errorf("name: %w", err)
 		}
 	}
 
 	if len(m.Desc) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "desc"}},
-			xml.CharData(m.Desc)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("desc"), xml.CharData(m.Desc)); err != nil {
 			return fmt.Errorf("desc: %w", err)
 		}
 	}
 
 	if m.Author != nil {
-		if err := m.Author.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "author"}}); err != nil {
+		if err := m.Author.MarshalXML(enc, kxml.StartElement("author")); err != nil {
 			return fmt.Errorf("author: %w", err)
 		}
 	}
 
 	if m.Link != nil {
-		if err := m.Link.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "link"}}); err != nil {
+		if err := m.Link.MarshalXML(enc, kxml.StartElement("link")); err != nil {
 			return fmt.Errorf("link: %w", err)
 		}
 	}
 
 	if !m.Time.IsZero() {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "time"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("time"),
 			xml.CharData(m.Time.Format(time.RFC3339))); err != nil {
 			return fmt.Errorf("time: %w", err)
 		}
@@ -180,14 +179,12 @@ func (a *Author) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := encodeElement(enc,
-		xml.StartElement{Name: xml.Name{Local: "name"}},
-		xml.CharData(a.Name)); err != nil {
+	if err := kxml.EncodeElement(enc, kxml.StartElement("name"), xml.CharData(a.Name)); err != nil {
 		return fmt.Errorf("name: %w", err)
 	}
 
 	if a.Link != nil {
-		if err := a.Link.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "link"}}); err != nil {
+		if err := a.Link.MarshalXML(enc, kxml.StartElement("link")); err != nil {
 			return fmt.Errorf("marshal link: %w", err)
 		}
 	}
@@ -265,17 +262,13 @@ func (l *Link) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	if len(l.Text) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "text"}},
-			xml.CharData(l.Text)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("text"), xml.CharData(l.Text)); err != nil {
 			return fmt.Errorf("text: %w", err)
 		}
 	}
 
 	if len(l.Type) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "type"}},
-			xml.CharData(l.Type)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("type"), xml.CharData(l.Type)); err != nil {
 			return fmt.Errorf("type: %w", err)
 		}
 	}

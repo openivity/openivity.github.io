@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 type Track struct {
@@ -66,28 +68,25 @@ func (t *Track) Validate() error {
 var _ xml.Marshaler = &Track{}
 
 func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
 	if len(t.Name) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "name"}},
-			xml.CharData(t.Name)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("name"), xml.CharData(t.Name)); err != nil {
 			return fmt.Errorf("name: %w", err)
 		}
 	}
 
 	if len(t.Type) != 0 {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "type"}},
-			xml.CharData(t.Type)); err != nil {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("type"), xml.CharData(t.Type)); err != nil {
 			return fmt.Errorf("type: %w", err)
 		}
 	}
 
 	for i := range t.TrackSegments {
-		if err := t.TrackSegments[i].MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "trkseg"}}); err != nil {
+		if err := t.TrackSegments[i].MarshalXML(enc, kxml.StartElement("trkseg")); err != nil {
 			return fmt.Errorf("trkseg[%d]: %w", i, err)
 		}
 	}
@@ -146,7 +145,7 @@ func (ts *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error 
 	}
 
 	for i := range ts.Trackpoints {
-		if err := ts.Trackpoints[i].MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "trkpt"}}); err != nil {
+		if err := ts.Trackpoints[i].MarshalXML(enc, kxml.StartElement("trkpt")); err != nil {
 			return fmt.Errorf("trkpt[%d]: %w", i, err)
 		}
 	}
@@ -260,23 +259,23 @@ func (w *Waypoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	if w.Ele != nil {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "ele"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("ele"),
 			xml.CharData(strconv.FormatFloat(*w.Ele, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("ele: %w", err)
 		}
 	}
 
 	if !w.Time.IsZero() {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "time"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("time"),
 			xml.CharData(w.Time.Format(time.RFC3339))); err != nil {
 			return fmt.Errorf("time: %w", err)
 		}
 	}
 
 	if w.TrackPointExtension != nil {
-		if err := w.TrackPointExtension.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "extensions"}}); err != nil {
+		if err := w.TrackPointExtension.MarshalXML(enc, kxml.StartElement("extensions")); err != nil {
 			return fmt.Errorf("extensions: %w", err)
 		}
 	}

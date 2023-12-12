@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/muktihari/openactivity-fit/kit"
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 // TrackPointExtension is a GPX extension for health-related data.
@@ -93,24 +94,24 @@ func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartEl
 	}
 
 	if g.Atemp != nil {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "gpxtpx:atemp"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:atemp"),
 			xml.CharData(strconv.FormatInt(int64(*g.Atemp), 10))); err != nil {
 			return fmt.Errorf("atemp: %w", err)
 		}
 	}
 
 	if g.HR != nil {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "gpxtpx:hr"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:hr"),
 			xml.CharData(strconv.FormatUint(uint64(*g.HR), 10))); err != nil {
 			return fmt.Errorf("hr: %w", err)
 		}
 	}
 
 	if g.Cad != nil {
-		if err := encodeElement(enc,
-			xml.StartElement{Name: xml.Name{Local: "gpxtpx:cad"}},
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:cad"),
 			xml.CharData(strconv.FormatUint(uint64(*g.Cad), 10))); err != nil {
 			return fmt.Errorf("cad: %w", err)
 		}
