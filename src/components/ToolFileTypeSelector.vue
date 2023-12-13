@@ -18,8 +18,8 @@ import type { PropType } from 'vue'
       </v-select>
       <div class="pt-1">
         <p v-show="selected.value == FileType.FIT">
-          FIT, developed by Garmin, is currently the most advanced file format for storing activity
-          data. We strives to comply with the FIT Activity File (FIT_FILE_TYPE = 4) as defined by
+          FIT is currently the most advanced file format for storing activity data developed by
+          Garmin. We strives to comply with the FIT Activity File (FIT_FILE_TYPE = 4) as defined by
           <a href="https://developer.garmin.com/fit" target="_blank" rel="noopener noreferrer"
             >Garmin FIT</a
           >
