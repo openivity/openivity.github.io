@@ -132,7 +132,7 @@ func (a *Activity) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("ID"), xml.CharData(a.ID.Format(time.RFC3339))); err != nil {
+	if err := kxml.EncodeElement(enc, kxml.StartElement("Id"), xml.CharData(a.ID.Format(time.RFC3339))); err != nil {
 		return fmt.Errorf("id: %w", err)
 	}
 
