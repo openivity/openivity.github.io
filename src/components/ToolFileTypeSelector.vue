@@ -40,10 +40,10 @@ import type { PropType } from 'vue'
             >
             with
             <a
-              href="https://www8.garmin.com/xmlschemas/TrackPointExtensionv2.xsd"
+              href="https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd"
               target="_blank"
               rel="noopener noreferrer"
-              >Garmin Trackpoint Extension V2</a
+              >Garmin Trackpoint Extension V1</a
             >
             which does not support the <strong>Power</strong> data field.
           </p>
