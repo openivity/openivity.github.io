@@ -63,6 +63,7 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 		totalDistanceAccumu    = new(accumulator.Accumulator[float64])
 		totalAscentAccumu      = new(accumulator.Accumulator[uint16])
 		totalDescentAccumu     = new(accumulator.Accumulator[uint16])
+		totalCaloriesAccumu    = new(accumulator.Accumulator[uint16])
 		speedAvgAccumu         = new(accumulator.Accumulator[float64])
 		speedMaxAccumu         = new(accumulator.Accumulator[float64])
 		altitudeAvgAccumu      = new(accumulator.Accumulator[float64])
@@ -85,6 +86,7 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 		totalDistanceAccumu.Collect(&lap.TotalDistance)
 		totalAscentAccumu.Collect(&lap.TotalAscent)
 		totalDescentAccumu.Collect(&lap.TotalDescent)
+		totalCaloriesAccumu.Collect(&lap.TotalCalories)
 		speedAvgAccumu.Collect(lap.AvgSpeed)
 		speedMaxAccumu.Collect(lap.MaxSpeed)
 		altitudeAvgAccumu.Collect(lap.AvgAltitude)
@@ -113,6 +115,9 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 	}
 	if value := totalDescentAccumu.Sum(); value != nil {
 		ses.TotalDescent = *value
+	}
+	if value := totalCaloriesAccumu.Sum(); value != nil {
+		ses.TotalCalories = *value
 	}
 
 	ses.AvgSpeed = speedAvgAccumu.Avg()

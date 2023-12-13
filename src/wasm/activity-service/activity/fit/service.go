@@ -98,6 +98,14 @@ func (s *service) convertListenerResultToActivity(result *ListenerResult) *activ
 		act.Sessions = []*activity.Session{ses}
 
 		return act
+	} else if len(result.Laps) == 0 {
+		// Some devices may only create sessions but no laps, to ensure we don't lose any summary data in session
+		// since there are information that only available in session but not in records.
+		// Let's create laps from sessions, 1 session should at least have 1 lap.
+		result.Laps = make([]*activity.Lap, len(result.Sessions))
+		for i := range result.Sessions {
+			result.Laps[i] = activity.NewLapFromSession(result.Sessions[i])
+		}
 	}
 
 	for i := range result.Sessions {
