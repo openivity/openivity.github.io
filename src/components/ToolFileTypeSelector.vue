@@ -15,20 +15,16 @@ import type { PropType } from 'vue'
         v-model="selected"
         :disabled="toolMode == ToolMode.Unknown"
       >
-        <template #option="{ label, heading }">
-          <strong v-if="heading">{{ label }}</strong>
-          <span class="ps-3" v-else>{{ label }}</span>
-        </template>
       </v-select>
       <div class="pt-1">
         <p v-show="selected.value == FileType.FIT">
-          FIT is currently the most advance file format for storing Activity data.
+          FIT is currently the most advanced file format for storing activity data.
         </p>
         <p v-show="selected.value == FileType.GPX">
-          <strong>Note: GPX does not support "Power"</strong>
+          <strong>Note: GPX does not support the 'Power' data field.</strong>
         </p>
         <p v-show="selected.value == FileType.TCX">
-          <strong>Note: TCX does not support "Temperature"</strong>
+          <strong>Note: GPX does not support the 'Temperature' data field.</strong>
         </p>
         <p v-show="selected.value != FileType.Unsupported && selected.value != FileType.FIT">
           If your target platform is Strava, we recommend choosing FIT instead. Strava have shifted
@@ -58,9 +54,9 @@ export default {
   computed: {
     dataSource(): FileTypeOption[] {
       const dataSource: FileTypeOption[] = [
-        { label: 'FIT (Flexible and Interoperable Data Transfer)', value: FileType.FIT },
-        { label: 'GPX (GPS Exchange Format)', value: FileType.GPX },
-        { label: 'TCX (Training Center XML)', value: FileType.TCX }
+        { label: 'FIT - Flexible and Interoperable Data Transfer', value: FileType.FIT },
+        { label: 'GPX - GPS Exchange Format', value: FileType.GPX },
+        { label: 'TCX - Training Center XML', value: FileType.TCX }
       ]
       return dataSource
     }
