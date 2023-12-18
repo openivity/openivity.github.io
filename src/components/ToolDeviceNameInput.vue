@@ -30,12 +30,11 @@ export default {
   },
   computed: {
     deviceNameFromFile(): string {
-      let deviceName = ''
       for (let i = 0; i < this.activities.length; i++) {
-        if (deviceName != '') break
-        deviceName = this.activities[i].creator.name
+        const deviceName = this.activities[i].creator.name
+        if (deviceName != '') return deviceName
       }
-      return deviceName
+      return ''
     }
   },
   watch: {
