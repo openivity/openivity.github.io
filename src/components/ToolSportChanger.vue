@@ -10,7 +10,7 @@ import type { PropType } from 'vue'
       <label class="form-label sub-label">Session {{ index + 1 }}'s sport:</label>
       <v-select
         label="name"
-        placeholder="Please select a device"
+        placeholder="Please select a sport"
         :clearable="false"
         :options="sports"
         v-model="sessionSports[index]"
@@ -61,7 +61,7 @@ export default {
     updateSessionSports(sessions: Session[]) {
       for (let i = 0; i < sessions.length; i++) {
         const ses = sessions[i]
-        this.sessionSports[i] = this.sportMap.get(ses.sport) ?? null
+        this.sessionSports[i] = this.sportMap.get(ses.sport) ?? this.sportMap.get('Generic')!
       }
     }
   },
