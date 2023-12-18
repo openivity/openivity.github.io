@@ -53,9 +53,6 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	}
 
 	act := new(activity.Activity)
-	if tcx.Author != nil {
-		act.Creator.Name = tcx.Author.Name
-	}
 	if len(tcx.Activities) > 0 && tcx.Activities[0].Activity != nil {
 		act.Creator.TimeCreated = tcx.Activities[0].Activity.ID
 	}
@@ -66,6 +63,10 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		a := tcx.Activities[i]
 		if a.Activity == nil {
 			continue
+		}
+
+		if act.Creator.Name == "" && a.Activity.Creator != nil {
+			act.Creator.Name = a.Activity.Creator.Name
 		}
 
 		sport := kit.FormatTitle(a.Activity.Sport)
