@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Marker } from '@/spec/activity-service'
-import ToolDeviceNameInput from './ToolDeviceNameInput.vue'
 import ToolDeviceSelector, { DeviceOption } from './ToolDeviceSelector.vue'
 import ToolFieldsRemover from './ToolFieldsRemover.vue'
 import ToolFileTypeSelector, { FileTypeOption } from './ToolFileTypeSelector.vue'
@@ -40,21 +39,12 @@ import { toRaw } from 'vue'
         v-on:selected-file-type="onSelectedFileType"
       ></ToolFileTypeSelector>
     </div>
-    <div
-      class="pt-3"
-      v-show="selectedFileType != FileType.Unsupported && selectedFileType != FileType.FIT"
-    >
-      <ToolDeviceNameInput
-        :tool-mode="toolMode"
-        :activities="activities"
-        v-on:device-name="onDeviceName"
-      ></ToolDeviceNameInput>
-    </div>
-    <div class="pt-3" v-show="selectedFileType == FileType.FIT">
+    <div class="pt-3">
       <ToolDeviceSelector
         :manufacturers="manufacturers"
         :activities="activities"
         :tool-mode="toolMode"
+        :selected-file-type="selectedFileType"
         v-on:selected-device="onSelectedDevice"
       ></ToolDeviceSelector>
     </div>
@@ -116,7 +106,6 @@ export default {
     return {
       toolMode: ToolMode.Unknown,
       selectedFileType: FileType.Unsupported,
-      deviceName: '',
       selectedDevice: new DeviceOption(),
       sessionSports: new Array<string>(),
       trimMarkers: new Array<Marker>(),
@@ -132,7 +121,7 @@ export default {
         if (this.selectedDevice == null) return false
         if (this.selectedDevice.productId == null) return false
       } else {
-        if (this.deviceName == '') return false
+        if (this.selectedDevice.label == '') return false
       }
       return true
     }
@@ -150,9 +139,6 @@ export default {
     },
     onSelectedFileType(value: FileTypeOption) {
       this.selectedFileType = value.value
-    },
-    onDeviceName(value: string) {
-      this.deviceName = value
     },
     onSelectedDevice(value: DeviceOption) {
       this.selectedDevice = value
@@ -186,7 +172,7 @@ export default {
         targetFileType: this.selectedFileType,
         manufacturerId: this.selectedDevice.manufacturerId!,
         productId: this.selectedDevice.productId!,
-        deviceName: this.deviceName,
+        deviceName: this.selectedDevice.label,
         sports: toRaw(this.sessionSports),
         trimMarkers: toRaw(this.trimMarkers),
         concealMarkers: toRaw(this.concealMarkers),
