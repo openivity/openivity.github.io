@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Marker } from '@/spec/activity-service'
+import ToolDeviceNameInput from './ToolDeviceNameInput.vue'
 import ToolDeviceSelector, { DeviceOption } from './ToolDeviceSelector.vue'
 import ToolFieldsRemover from './ToolFieldsRemover.vue'
+import ToolFileTypeSelector, { FileTypeOption } from './ToolFileTypeSelector.vue'
 import ToolModeSelector from './ToolModeSelector.vue'
 import ToolSportChanger from './ToolSportChanger.vue'
 import ToolTrackpointsConcealer from './ToolTrackpointsConcealer.vue'
@@ -33,6 +35,22 @@ import { toRaw } from 'vue'
       ></ToolModeSelector>
     </div>
     <div class="pt-3">
+      <ToolFileTypeSelector
+        :tool-mode="toolMode"
+        v-on:selected-file-type="onSelectedFileType"
+      ></ToolFileTypeSelector>
+    </div>
+    <div
+      class="pt-3"
+      v-show="selectedFileType != FileType.Unsupported && selectedFileType != FileType.FIT"
+    >
+      <ToolDeviceNameInput
+        :tool-mode="toolMode"
+        :activities="activities"
+        v-on:device-name="onDeviceName"
+      ></ToolDeviceNameInput>
+    </div>
+    <div class="pt-3" v-show="selectedFileType == FileType.FIT">
       <ToolDeviceSelector
         :manufacturers="manufacturers"
         :activities="activities"
@@ -73,7 +91,11 @@ import { toRaw } from 'vue'
       <div class="row">
         <div>
           <button class="w-100 btn btn-success" @click="proceed" :disabled="!isValidToProceed">
-            Proceed
+            {{
+              !isValidToProceed
+                ? 'Please fill in all required fields.'
+                : 'Export as ' + FileType[selectedFileType]
+            }}
           </button>
         </div>
       </div>
@@ -93,6 +115,8 @@ export default {
   data() {
     return {
       toolMode: ToolMode.Unknown,
+      selectedFileType: FileType.Unsupported,
+      deviceName: '',
       selectedDevice: new DeviceOption(),
       sessionSports: new Array<string>(),
       trimMarkers: new Array<Marker>(),
@@ -103,8 +127,13 @@ export default {
   computed: {
     isValidToProceed(): boolean {
       if (this.toolMode == ToolMode.Unknown) return false
-      if (this.selectedDevice == null) return false
-      if (this.selectedDevice.productId == null) return false
+      if (this.selectedFileType == FileType.Unsupported) return false
+      if (this.selectedFileType == FileType.FIT) {
+        if (this.selectedDevice == null) return false
+        if (this.selectedDevice.productId == null) return false
+      } else {
+        if (this.deviceName == '') return false
+      }
       return true
     }
   },
@@ -118,6 +147,12 @@ export default {
   methods: {
     onToolMode(value: ToolMode) {
       this.toolMode = value
+    },
+    onSelectedFileType(value: FileTypeOption) {
+      this.selectedFileType = value.value
+    },
+    onDeviceName(value: string) {
+      this.deviceName = value
     },
     onSelectedDevice(value: DeviceOption) {
       this.selectedDevice = value
@@ -148,10 +183,10 @@ export default {
 
       const spec = new EncodeSpecifications({
         toolMode: this.toolMode,
-        targetFileType: FileType.FIT, // TODO: implement other type
+        targetFileType: this.selectedFileType,
         manufacturerId: this.selectedDevice.manufacturerId!,
         productId: this.selectedDevice.productId!,
-        deviceName: '', // TODO: not required for FIT File Type
+        deviceName: this.deviceName,
         sports: toRaw(this.sessionSports),
         trimMarkers: toRaw(this.trimMarkers),
         concealMarkers: toRaw(this.concealMarkers),

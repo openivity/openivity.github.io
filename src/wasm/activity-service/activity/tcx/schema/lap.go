@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/muktihari/openactivity-fit/kit"
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 type ActivityLap struct {
@@ -17,9 +18,9 @@ type ActivityLap struct {
 	Calories            uint16        `xml:"Calories"`
 	AverageHeartRateBpm *uint8        `xml:"AverageHeartRateBpm"`
 	MaximumHeartRateBpm *uint8        `xml:"MaximumHeartRateBpm"`
-	Intensity           Intensity     `xml:"Intensity"`
+	Intensity           Intensity     `xml:"Intensity,omitempty"`
 	Cadence             *uint8        `xml:"Cadence,omitempty"`
-	TriggerMethod       TriggerMethod `xml:"TriggerMethod"`
+	TriggerMethod       TriggerMethod `xml:"TriggerMethod,omitempty"`
 	Tracks              []Track       `xml:"Track,omitempty"`
 	Notes               string        `xml:"Notes,omitempty"`
 }
@@ -123,6 +124,114 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 			}
 		}
 	}
+}
+
+var _ xml.Marshaler = &ActivityLap{}
+
+func (a *ActivityLap) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	se.Attr = append(se.Attr, xml.Attr{
+		Name:  xml.Name{Local: "StartTime"},
+		Value: a.StartTime.Format(time.RFC3339),
+	})
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("TotalTimeSeconds"),
+		xml.CharData(strconv.FormatFloat(a.TotalTimeSeconds, 'g', -1, 64))); err != nil {
+		return fmt.Errorf("totalTimeSeconds: %w", err)
+	}
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("DistanceMeters"),
+		xml.CharData(strconv.FormatFloat(a.DistanceMeters, 'g', -1, 64))); err != nil {
+		return fmt.Errorf("distanceMeters: %w", err)
+	}
+
+	if a.MaximumSpeed != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("MaximumSpeed"),
+			xml.CharData(strconv.FormatFloat(*a.MaximumSpeed, 'g', -1, 64))); err != nil {
+			return fmt.Errorf("maximumSpeed: %w", err)
+		}
+	}
+
+	if err := kxml.EncodeElement(enc,
+		kxml.StartElement("Calories"),
+		xml.CharData(strconv.FormatUint(uint64(a.Calories), 10))); err != nil {
+		return fmt.Errorf("calories: %w", err)
+	}
+
+	if a.AverageHeartRateBpm != nil {
+		avgHR := kxml.StartElement("AverageHeartRateBpm")
+		if err := enc.EncodeToken(avgHR); err != nil {
+			return fmt.Errorf("averageHeartRateBpm start: %w", err)
+		}
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("Value"),
+			xml.CharData(strconv.FormatUint(uint64(*a.AverageHeartRateBpm), 10))); err != nil {
+			return fmt.Errorf("averageHeartRateBpmValue: %w", err)
+		}
+		if err := enc.EncodeToken(avgHR.End()); err != nil {
+			return fmt.Errorf("averageHeartRateBpm end: %w", err)
+		}
+	}
+	if a.MaximumHeartRateBpm != nil {
+		maxHR := kxml.StartElement("MaximumHeartRateBpm")
+		if err := enc.EncodeToken(maxHR); err != nil {
+			return fmt.Errorf("maximumHeartRateBpm start: %w", err)
+		}
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("Value"),
+			xml.CharData(strconv.FormatUint(uint64(*a.MaximumHeartRateBpm), 10))); err != nil {
+			return fmt.Errorf("maximumHeartRateBpmValue: %w", err)
+		}
+		if err := enc.EncodeToken(maxHR.End()); err != nil {
+			return fmt.Errorf("maximumHeartRateBpm end: %w", err)
+		}
+	}
+
+	if len(a.Intensity) != 0 {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("Intensity"),
+			xml.CharData(a.Intensity)); err != nil {
+			return fmt.Errorf("intensity: %w", err)
+		}
+	}
+
+	if a.Cadence != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("Cadence"),
+			xml.CharData(strconv.FormatUint(uint64(*a.Cadence), 10))); err != nil {
+			return fmt.Errorf("cadence: %w", err)
+		}
+
+	}
+
+	if len(a.TriggerMethod) != 0 {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("TriggerMethod"),
+			xml.CharData(a.TriggerMethod)); err != nil {
+			return fmt.Errorf("triggerMethod: %w", err)
+		}
+	}
+
+	for i := range a.Tracks {
+		if err := a.Tracks[i].MarshalXML(enc, kxml.StartElement("Track")); err != nil {
+			return fmt.Errorf("track[%d]: %w", i, err)
+		}
+	}
+
+	if len(a.Notes) != 0 {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("Notes"),
+			xml.CharData(a.Notes)); err != nil {
+			return fmt.Errorf("notes: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }
 
 type Intensity string

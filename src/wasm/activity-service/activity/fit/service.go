@@ -13,6 +13,7 @@ import (
 	"github.com/muktihari/fit/proto"
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/preprocessor"
+	"golang.org/x/exp/slices"
 )
 
 var _ activity.Service = &service{}
@@ -260,6 +261,16 @@ func (s *service) finalizeSession(ses *activity.Session) {
 		lap := activity.NewLapFromRecords(remainingRecords, ses.Sport)
 		ses.Laps = append(ses.Laps, lap)
 	}
+
+	slices.SortFunc(ses.Laps, func(l1, l2 *activity.Lap) int {
+		if l1.StartTime.Equal(l2.StartTime) {
+			return 0
+		}
+		if l1.StartTime.Before(l2.StartTime) {
+			return -1
+		}
+		return 1
+	})
 
 	sesFromLaps := activity.NewSessionFromLaps(ses.Laps, ses.Sport)
 	activity.CombineSession(ses, sesFromLaps)

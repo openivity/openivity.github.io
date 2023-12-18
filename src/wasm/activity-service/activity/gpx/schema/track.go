@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 type Track struct {
@@ -63,6 +65,35 @@ func (t *Track) Validate() error {
 	return nil
 }
 
+var _ xml.Marshaler = &Track{}
+
+func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if len(t.Name) != 0 {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("name"), xml.CharData(t.Name)); err != nil {
+			return fmt.Errorf("name: %w", err)
+		}
+	}
+
+	if len(t.Type) != 0 {
+		if err := kxml.EncodeElement(enc, kxml.StartElement("type"), xml.CharData(t.Type)); err != nil {
+			return fmt.Errorf("type: %w", err)
+		}
+	}
+
+	for i := range t.TrackSegments {
+		if err := t.TrackSegments[i].MarshalXML(enc, kxml.StartElement("trkseg")); err != nil {
+			return fmt.Errorf("trkseg[%d]: %w", i, err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 type TrackSegment struct {
 	Trackpoints []Waypoint `xml:"trkpt,omitempty"`
 }
@@ -104,6 +135,22 @@ func (ts *TrackSegment) Validate() error {
 		}
 	}
 	return nil
+}
+
+var _ xml.Marshaler = &TrackSegment{}
+
+func (ts *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	for i := range ts.Trackpoints {
+		if err := ts.Trackpoints[i].MarshalXML(enc, kxml.StartElement("trkpt")); err != nil {
+			return fmt.Errorf("trkpt[%d]: %w", i, err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }
 
 type Waypoint struct {
@@ -191,4 +238,47 @@ func (w *Waypoint) Validate() error {
 		}
 	}
 	return nil
+}
+
+var _ xml.Marshaler = &Waypoint{}
+
+func (w *Waypoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if w.Lat != nil {
+		se.Attr = append(se.Attr, xml.Attr{
+			Name:  xml.Name{Local: "lat"},
+			Value: strconv.FormatFloat(*w.Lat, 'g', -1, 64)})
+	}
+	if w.Lon != nil {
+		se.Attr = append(se.Attr, xml.Attr{
+			Name:  xml.Name{Local: "lon"},
+			Value: strconv.FormatFloat(*w.Lon, 'g', -1, 64)})
+	}
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if w.Ele != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("ele"),
+			xml.CharData(strconv.FormatFloat(*w.Ele, 'g', -1, 64))); err != nil {
+			return fmt.Errorf("ele: %w", err)
+		}
+	}
+
+	if !w.Time.IsZero() {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("time"),
+			xml.CharData(w.Time.Format(time.RFC3339))); err != nil {
+			return fmt.Errorf("time: %w", err)
+		}
+	}
+
+	if w.TrackPointExtension != nil {
+		if err := w.TrackPointExtension.MarshalXML(enc, kxml.StartElement("extensions")); err != nil {
+			return fmt.Errorf("extensions: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }

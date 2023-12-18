@@ -9,7 +9,13 @@ import (
 	"github.com/muktihari/openactivity-fit/activity"
 	"github.com/muktihari/openactivity-fit/activity/gpx/schema"
 	"github.com/muktihari/openactivity-fit/kit"
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 	"github.com/muktihari/openactivity-fit/preprocessor"
+)
+
+const (
+	metadataDesc = "The GPX file is created by openivity.github.io"
+	metadataLink = "https://openivity.github.io"
 )
 
 var _ activity.Service = &service{}
@@ -74,6 +80,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		}
 		records := make([]*activity.Record, 0, recordCount)
 
+		recordsByLap := make([][]*activity.Record, 0, len(trk.TrackSegments))
 		for j := range trk.TrackSegments { // Laps
 			trkseg := trk.TrackSegments[j]
 
@@ -88,18 +95,22 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 				continue
 			}
 
-			// Preprocessing...
-			s.preprocessor.CalculateDistanceAndSpeed(lapRecords)
-			if activity.HasPace(sport) {
-				s.preprocessor.CalculatePace(sport, lapRecords)
-			}
-			s.preprocessor.SmoothingElev(lapRecords)
-			s.preprocessor.CalculateGrade(lapRecords)
-
-			lap := activity.NewLapFromRecords(lapRecords, sport)
-			laps = append(laps, lap)
-
+			recordsByLap = append(recordsByLap, lapRecords)
 			records = append(records, lapRecords...)
+		}
+
+		// Preprocessing...
+		s.preprocessor.CalculateDistanceAndSpeed(records)
+		if activity.HasPace(sport) {
+			s.preprocessor.CalculatePace(sport, records)
+		}
+		s.preprocessor.SmoothingElev(records)
+		s.preprocessor.CalculateGrade(records)
+
+		// We can only calculate laps' summary after preprocessing.
+		for i := range recordsByLap {
+			lap := activity.NewLapFromRecords(recordsByLap[i], sport)
+			laps = append(laps, lap)
 		}
 
 		if len(laps) == 0 {
@@ -129,5 +140,78 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 }
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
-	return nil, fmt.Errorf("gpx: encode: not yet implemented")
+	bs := make([][]byte, len(activities))
+
+	for i := range activities {
+		gpx := s.convertActivityToGPX(&activities[i])
+		if err := gpx.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid gpx: %w", err)
+		}
+		b, err := kxml.Marshal(gpx)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal gpx[%d]: %w", i, err)
+		}
+		bs[i] = b
+	}
+
+	return bs, nil
+}
+
+func (s *service) convertActivityToGPX(act *activity.Activity) *schema.GPX {
+	gpx := &schema.GPX{
+		Creator: act.Creator.Name,
+		Metadata: schema.Metadata{
+			Time: act.Creator.TimeCreated,
+			Desc: metadataDesc,
+			Link: &schema.Link{Href: metadataLink},
+		},
+		Tracks: make([]schema.Track, 0, len(act.Sessions)),
+	}
+
+	for i := range act.Sessions {
+		ses := act.Sessions[i]
+
+		track := schema.Track{
+			Name:          ses.Sport,
+			Type:          ses.Sport,
+			TrackSegments: make([]schema.TrackSegment, 0, len(ses.Laps)),
+		}
+
+		sesRecords := ses.Records
+		for j := range ses.Laps {
+			lap := ses.Laps[j]
+			trackSegment := schema.TrackSegment{}
+
+			remainingRecords := make([]*activity.Record, 0)
+			for k := range sesRecords {
+				rec := sesRecords[k]
+
+				if lap.IsBelongToThisLap(rec.Timestamp) {
+					waypoint := schema.Waypoint{
+						Time: rec.Timestamp,
+						Lat:  rec.PositionLat,
+						Lon:  rec.PositionLong,
+						Ele:  rec.Altitude,
+						TrackPointExtension: &schema.TrackPointExtension{
+							Cadence:     rec.Cadence,
+							Distance:    rec.Distance,
+							HeartRate:   rec.HeartRate,
+							Temperature: rec.Temperature,
+							Power:       rec.Power,
+						},
+					}
+					trackSegment.Trackpoints = append(trackSegment.Trackpoints, waypoint)
+				} else {
+					remainingRecords = append(remainingRecords, rec)
+				}
+			}
+			sesRecords = remainingRecords
+
+			track.TrackSegments = append(track.TrackSegments, trackSegment)
+		}
+
+		gpx.Tracks = append(gpx.Tracks, track)
+	}
+
+	return gpx
 }

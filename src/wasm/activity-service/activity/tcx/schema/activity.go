@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"time"
+
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 type ActivityList struct {
@@ -37,6 +39,22 @@ func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error
 	}
 }
 
+var _ xml.Marshaler = &ActivityList{}
+
+func (a *ActivityList) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if a.Activity != nil {
+		if err := a.Activity.MarshalXML(enc, kxml.StartElement("Activity")); err != nil {
+			return fmt.Errorf("activity: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 type Activity struct {
 	Sport   string        `xml:"Sport,attr"`
 	ID      time.Time     `xml:"Id"`
@@ -45,7 +63,7 @@ type Activity struct {
 	Creator *Device       `xml:"Creator,omitempty"`
 }
 
-var _ xml.Unmarshaler = &ActivityList{}
+var _ xml.Unmarshaler = &Activity{}
 
 func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for i := range se.Attr {
@@ -100,4 +118,39 @@ func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			}
 		}
 	}
+}
+
+var _ xml.Marshaler = &Activity{}
+
+func (a *Activity) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	se.Attr = append(se.Attr, xml.Attr{
+		Name:  xml.Name{Local: "Sport"},
+		Value: a.Sport,
+	})
+
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if err := kxml.EncodeElement(enc, kxml.StartElement("Id"), xml.CharData(a.ID.Format(time.RFC3339))); err != nil {
+		return fmt.Errorf("id: %w", err)
+	}
+
+	for i := range a.Laps {
+		if err := a.Laps[i].MarshalXML(enc, kxml.StartElement("Lap")); err != nil {
+			return fmt.Errorf("lap[%d]: %w", i, err)
+		}
+	}
+
+	if err := kxml.EncodeElement(enc, kxml.StartElement("Notes"), xml.CharData(a.Notes)); err != nil {
+		return fmt.Errorf("notes: %w", err)
+	}
+
+	if a.Creator != nil {
+		if err := a.Creator.MarshalXML(enc, kxml.StartElement("Creator")); err != nil {
+			return fmt.Errorf("creator: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
 }

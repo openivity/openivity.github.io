@@ -5,7 +5,7 @@
     --vs-colors--dark: #333;
     --vs-colors--darkest: rgba(0, 0, 0, .15);
     --vs-search-input-color: inherit;
-    --vs-search-input-placeholder-color: var(--color-text-soft);
+    --vs-search-input-placeholder-color: var(--color-text);
     --vs-font-size: 1rem;
     --vs-line-height: 1.4;
     --vs-state-disabled-bg: var(--color-background);
@@ -316,7 +316,16 @@
     z-index: 1
 }
 
+.vs__search::-webkit-input-placeholder {
+    color: var(--vs-search-input-placeholder-color)
+}
+
 .vs__search::-moz-placeholder {
+    color: var(--vs-search-input-placeholder-color);
+    opacity: 1; /* override default moz which is 0.54 */
+}
+
+.vs__search::-ms-placeholder {
     color: var(--vs-search-input-placeholder-color)
 }
 

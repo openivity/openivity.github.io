@@ -2,9 +2,11 @@ package schema
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strconv"
 
 	"github.com/muktihari/openactivity-fit/kit"
+	kxml "github.com/muktihari/openactivity-fit/kit/xml"
 )
 
 // TrackPointExtension is a GPX extension for health-related data.
@@ -84,6 +86,40 @@ type garminTrackpoinExtensionV1 struct {
 	Cad   *uint8 `xml:"gpxtpx:cad,omitempty"`
 }
 
+var _ xml.Marshaler = &garminTrackpoinExtensionV1{}
+
+func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if err := enc.EncodeToken(se); err != nil {
+		return err
+	}
+
+	if g.Atemp != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:atemp"),
+			xml.CharData(strconv.FormatInt(int64(*g.Atemp), 10))); err != nil {
+			return fmt.Errorf("atemp: %w", err)
+		}
+	}
+
+	if g.HR != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:hr"),
+			xml.CharData(strconv.FormatUint(uint64(*g.HR), 10))); err != nil {
+			return fmt.Errorf("hr: %w", err)
+		}
+	}
+
+	if g.Cad != nil {
+		if err := kxml.EncodeElement(enc,
+			kxml.StartElement("gpxtpx:cad"),
+			xml.CharData(strconv.FormatUint(uint64(*g.Cad), 10))); err != nil {
+			return fmt.Errorf("cad: %w", err)
+		}
+	}
+
+	return enc.EncodeToken(se.End())
+}
+
 var _ xml.Marshaler = &TrackPointExtension{}
 
 func (t *TrackPointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
@@ -93,10 +129,17 @@ func (t *TrackPointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) 
 		Cad:   t.Cadence,
 	}
 
-	se.Name = xml.Name{Local: "gpxtpx:TrackPointExtension"}
-	if err := enc.EncodeElement(m, se); err != nil {
+	if m.Atemp == nil && m.HR == nil && m.Cad == nil { // omit
+		return nil
+	}
+
+	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	return nil
+	if err := m.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "gpxtpx:TrackPointExtension"}}); err != nil {
+		return fmt.Errorf("gpxtpx: %w", err)
+	}
+
+	return enc.EncodeToken(se.End())
 }

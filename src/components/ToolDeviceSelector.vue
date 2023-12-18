@@ -5,7 +5,7 @@ import type { PropType } from 'vue'
 </script>
 <template>
   <div>
-    <label>Target device</label>
+    <label>Target Device</label>
     <div class="col-12 pt-1">
       <v-select
         label="label"
