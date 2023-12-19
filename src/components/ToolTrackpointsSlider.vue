@@ -163,8 +163,9 @@ export default {
       deep: true
     },
     selected: {
-      handler() {
+      handler(selected) {
         this.updateMarkers()
+        this.$emit('selected', selected)
       }
     }
   },

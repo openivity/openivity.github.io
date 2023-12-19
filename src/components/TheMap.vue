@@ -121,6 +121,7 @@ import { shallowRef } from 'vue'
 import { MULTIPLE, NONE } from '@/components/TheSummary.vue'
 import { GeoJSON } from 'ol/format'
 import { rotate } from 'ol/transform'
+import { Marker } from '@/spec/activity-service'
 
 // shallowRef
 const kdbush = shallowRef(new KDBush(0))
@@ -151,7 +152,7 @@ const routeVecLayer = new VectorImageLayer({
 const concealVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] as Feature[] }),
   visible: true,
-  style: concealStyle()
+  style: concealHideStyle()
 })
 
 const concealFeatures = new Array<Feature>()
@@ -163,13 +164,13 @@ const view = new View({
   projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
 })
 
-const newIcon = (src: string, scale: number = 0): Icon => {
-  return new Icon({ crossOrigin: 'anonymous', src: src, scale: 1 })
+const newIcon = (src: string, scale: number = 1): Icon => {
+  return new Icon({ crossOrigin: 'anonymous', src: src, scale: scale })
 }
 
 const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
 const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
-const concealPointStyle = new Style({ image: newIcon(concealPointIcon) })
+const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.75), zIndex: 11 })
 
 let popupOverlay = new Overlay({})
 let zoomToExtent = new ZoomToExtent()
@@ -190,6 +191,20 @@ export default {
     },
     selectSession: {
       type: Number,
+      required: true
+    },
+
+    // Display Tools Marker
+    toolConcealActive: {
+      type: Boolean,
+      default: false
+    },
+    toolConcealMarkers: {
+      type: Array<Marker>,
+      required: true
+    },
+    toolTrimMarkers: {
+      type: Array<Marker>,
       required: true
     },
 
@@ -226,8 +241,13 @@ export default {
       }
     },
     selectSession: {
-      handler(value) {
-        this.showConcealFeatures(value)
+      handler() {
+        this.showConcealFeaturesHandler()
+      }
+    },
+    toolConcealActive: {
+      handler() {
+        this.showConcealFeaturesHandler()
       }
     },
     receivedRecord: {
@@ -255,6 +275,14 @@ export default {
       handler(freeze: Boolean) {
         this.$emit('hoveredRecordFreeze', freeze)
       }
+    },
+
+    // Tool things
+    toolConcealMarkers: {
+      handler(markers: Array<Marker>) {
+        this.setConcealMarkers(markers)
+      },
+      deep: true
     }
   },
   expose: ['showPopUpRecord'],
@@ -263,10 +291,15 @@ export default {
     toTimezoneDateString: toTimezoneDateString,
     formatPace: formatPace,
 
+    setConcealMarkers(markers: Array<Marker>) {
+      markers.forEach((m, i) => this.setConceal(i, m.startN, m.endN))
+    },
     // update feat which side to hide, 0-showStartIndex and showEndIndex-0
     // add/remove coordinates based on trim index record
     setConceal(sessionIndex: number, showStartIndex: number, showEndIndex: number) {
-      const startHiddenCoords = this.selectedSessions[sessionIndex].records
+      if (sessionIndex >= this.sessions.length || sessionIndex < 0) return
+
+      const startHiddenCoords = this.sessions[sessionIndex].records
         .slice(0, showStartIndex + 1)
         .reduce<Array<Array<number>>>((result, r) => {
           if (r.positionLong != null && r.positionLat != null)
@@ -274,25 +307,36 @@ export default {
           return result
         }, [])
       const startHiddenLineString = new LineString(startHiddenCoords)
-      const startHiddenFirstCoord = startHiddenLineString.getFirstCoordinate()
       const startHiddenLastCoord = startHiddenLineString.getLastCoordinate()
 
       const source = concealVecLayer.getSource()!
       ;(
-        source.getFeatureById(`lineString-${sessionIndex}`) as Feature<Geometry> | null
+        source.getFeatureById(`lineString-concealStart-${sessionIndex}`) as Feature<Geometry> | null
       )?.setGeometry(startHiddenLineString)
       ;(
         (
           source.getFeatureById(`startingPoint-${sessionIndex}`) as Feature<Geometry> | null
         )?.getGeometry() as Point
-      ).setCoordinates(startHiddenFirstCoord)
+      ).setCoordinates(startHiddenLastCoord)
+
+      const endHiddenCoords = this.sessions[sessionIndex].records
+        .slice(showEndIndex, this.sessions[sessionIndex].records.length)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const endHiddenLineString = new LineString(endHiddenCoords)
+      const endHiddenFirstCoord = endHiddenLineString.getFirstCoordinate()
+
+      ;(
+        source.getFeatureById(`lineString-concealEnd-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(endHiddenLineString)
       ;(
         (
           source.getFeatureById(`destinationPoint-${sessionIndex}`) as Feature<Geometry> | null
         )?.getGeometry() as Point
-      ).setCoordinates(startHiddenLastCoord)
-
-      console.log(startHiddenLineString)
+      ).setCoordinates(endHiddenFirstCoord)
     },
     // prepare empty hidden feature for all session (whenever session is created)
     createConcealFeatures(sessions: Array<Session>) {
@@ -302,23 +346,22 @@ export default {
       source.clear()
 
       sessions.forEach((_, sessionIndex) => {
-        const feat = new GeoJSON().readFeature({
-          id: `lineString-${sessionIndex}`,
-          type: 'Feature',
-          style: concealStyle()
-        }) as Feature
-        feat.set('hidden', true)
-        source.addFeature(feat)
+        ;['concealStart', 'concealEnd'].forEach((v) => {
+          const feat = new GeoJSON().readFeature({
+            id: `lineString-${v}-${sessionIndex}`,
+            type: 'Feature',
+            style: undefined
+          }) as Feature
+          source.addFeature(feat)
+        })
 
         const startingPoint = new Feature(new Point([0, 0]))
-        startingPoint.setStyle(concealPointStyle as Style)
+        startingPoint.setStyle(undefined)
         startingPoint.setId(`startingPoint-${sessionIndex}`)
-        startingPoint.set('hidden', true)
 
         const destinationPoint = new Feature(new Point([0, 0]))
-        destinationPoint.setStyle(concealPointStyle as Style)
+        destinationPoint.setStyle(undefined)
         destinationPoint.setId(`destinationPoint-${sessionIndex}`)
-        destinationPoint.set('hidden', true)
 
         source.addFeatures([startingPoint, destinationPoint])
       })
@@ -331,28 +374,37 @@ export default {
     },
     // TODO fix hidden not work
     // show Conceal features based on selected session
+    showConcealFeaturesHandler() {
+      if (!this.toolConcealActive) this.showConcealFeatures(NONE)
+      else this.showConcealFeatures(this.selectSession)
+    },
     showConcealFeatures(index: number) {
       const source = concealVecLayer.getSource()!
       if (index == NONE) {
         // NONE
-        source.getFeatures().forEach((f) => f.set('hidden', true))
+        source.getFeatures().forEach((f) => f.setStyle(undefined))
       } else if (index == MULTIPLE) {
         // MULTIPLE
-        source.getFeatures().forEach((f) => f.set('hidden', false))
+        source
+          .getFeatures()
+          .forEach((f) =>
+            f.getId()?.toString().startsWith('lineString')
+              ? f.setStyle(concealStyle)
+              : f.setStyle(concealPointStyle as Style)
+          )
       } else {
         // DEFAULT
-        source.getFeatures().forEach((f) => f.set('hidden', true))
-        ;(source.getFeatureById(`lineString-${index}`) as Feature<Geometry> | null)?.set(
-          'hidden',
-          false
+        source.getFeatures().forEach((f) => f.setStyle(undefined))
+        ;['concealStart', 'concealEnd'].forEach((v) => {
+          ;(
+            source.getFeatureById(`lineString-${v}-${index}`) as Feature<LineString> | null
+          )?.setStyle(concealStyle)
+        })
+        ;(source.getFeatureById(`startingPoint-${index}`) as Feature<Point> | null)?.setStyle(
+          concealPointStyle as Style
         )
-        ;(source.getFeatureById(`startingPoint-${index}`) as Feature<Geometry> | null)?.set(
-          'hidden',
-          false
-        )
-        ;(source.getFeatureById(`destinationPoint-${index}`) as Feature<Geometry> | null)?.set(
-          'hidden',
-          false
+        ;(source.getFeatureById(`destinationPoint-${index}`) as Feature<Point> | null)?.setStyle(
+          concealPointStyle as Style
         )
       }
     },
