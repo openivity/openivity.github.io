@@ -1,6 +1,9 @@
 package result
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
 	"time"
 )
 
@@ -15,35 +18,44 @@ type Encode struct {
 	FilesBytes           [][]byte
 }
 
-func (e Encode) ToMap() map[string]any {
+var _ json.Marshaler = &Encode{}
+
+func (e *Encode) MarshalJSON() ([]byte, error) {
 	if e.Err != nil {
-		return map[string]any{"err": e.Err.Error()}
+		return []byte("{\"err\":\"" + e.Err.Error() + "\"}"), nil
 	}
 
 	begin := time.Now()
+	buf := new(bytes.Buffer)
 
-	filesBytes := make([]any, len(e.FilesBytes))
+	buf.WriteByte('{')
+	buf.WriteString("\"fileName\":\"" + e.FileName + "\",")
+	buf.WriteString("\"fileType\":\"" + e.FileType + "\",")
+	buf.WriteString("\"encodeTook\":" + strconv.FormatInt(e.EncodeTook.Milliseconds(), 10) + ",")
+	buf.WriteString("\"deserializeInputTook\":" + strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10) + ",")
+
+	buf.WriteString("\"filesBytes\":[")
 	for i := range e.FilesBytes {
-		fileBytes := make([]any, len(e.FilesBytes[i]))
+		buf.WriteByte('[')
 		for j := range e.FilesBytes[i] {
-			fileBytes[j] = e.FilesBytes[i][j]
+			buf.WriteString(strconv.Itoa(int(e.FilesBytes[i][j]))) // keep it as number
+			if j != len(e.FilesBytes[i])-1 {
+				buf.WriteByte(',')
+			}
 		}
-		filesBytes[i] = fileBytes
+		buf.WriteByte(']')
+		if i != len(e.FilesBytes)-1 {
+			buf.WriteByte(',')
+		}
 	}
+	buf.WriteString("],")
 
 	e.SerializationTook = time.Since(begin)
 	e.TotalElapsed = e.DeserializeInputTook + e.EncodeTook + e.SerializationTook
 
-	m := map[string]any{
-		"err":                  nil,
-		"fileName":             e.FileName,
-		"fileType":             e.FileType,
-		"filesBytes":           filesBytes,
-		"deserializeInputTook": e.DeserializeInputTook.Milliseconds(),
-		"encodeTook":           e.EncodeTook.Milliseconds(),
-		"serializationTook":    e.SerializationTook.Milliseconds(),
-		"totalElapsed":         e.TotalElapsed.Milliseconds(),
-	}
+	buf.WriteString("\"serializationTook\":" + strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10) + ",")
+	buf.WriteString("\"totalElapsed\":" + strconv.FormatInt(e.TotalElapsed.Milliseconds(), 10))
 
-	return m
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }

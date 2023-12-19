@@ -1,6 +1,8 @@
 package activity
 
 import (
+	"bytes"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/kit"
@@ -15,24 +17,30 @@ type Creator struct {
 	TimeCreated  time.Time
 }
 
-func (c *Creator) ToMap() map[string]any {
-	m := map[string]any{}
+func (c *Creator) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
 
-	if c.Name == "" {
-		c.Name = Unknown
-	}
-	m["name"] = c.Name
+	buf.WriteString("\"name\":\"" + c.Name + "\",")
 	if c.Manufacturer != nil {
-		m["manufacturer"] = *c.Manufacturer
+		buf.WriteString("\"manufacturer\":" + strconv.FormatUint(uint64(*c.Manufacturer), 10) + ",")
 	}
 	if c.Product != nil {
-		m["product"] = *c.Product
+		buf.WriteString("\"product\":" + strconv.FormatUint(uint64(*c.Product), 10) + ",")
 	}
 	if !c.TimeCreated.IsZero() {
-		m["timeCreated"] = c.TimeCreated.Format(time.RFC3339)
+		buf.WriteString("\"timeCreated\":\"" + c.TimeCreated.Format(time.RFC3339) + "\"")
 	}
 
-	return m
+	b := buf.Bytes()
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (c *Creator) Clone() *Creator {

@@ -14,9 +14,10 @@ onmessage = async (e) => {
     case 'decode': {
       // @ts-ignore
       const result = decode(e.data.input)
+      const resultJson = JSON.parse(result)
       postMessage({
         type: e.data.type,
-        result: result,
+        result: resultJson,
         elapsed: new Date().getTime() - begin.getTime()
       })
       break
@@ -24,16 +25,17 @@ onmessage = async (e) => {
     case 'encode': {
       // @ts-ignore
       const result = encode(e.data.input)
+      const resultJson = JSON.parse(result)
       postMessage({
         type: e.data.type,
-        result: result,
+        result: resultJson,
         elapsed: new Date().getTime() - begin.getTime()
       })
       break
     }
     case 'manufacturerList': {
       // @ts-ignore
-      const manufacturers = manufacturerList(e.data.input)
+      const manufacturers = JSON.parse(manufacturerList(e.data.input))
       postMessage({
         type: e.data.type,
         result: manufacturers,
@@ -43,7 +45,7 @@ onmessage = async (e) => {
     }
     case 'sportList': {
       // @ts-ignore
-      const sports = sportList(e.data.input)
+      const sports = JSON.parse(sportList(e.data.input))
       postMessage({
         type: e.data.type,
         result: sports,

@@ -1,25 +1,49 @@
 package activity
 
+import (
+	"bytes"
+	"strconv"
+)
+
 type Activity struct {
 	Creator  Creator
 	Timezone int
 	Sessions []*Session
 }
 
-func (a *Activity) ToMap() map[string]any {
-	m := map[string]any{
-		"timezone": a.Timezone,
+func (a *Activity) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	buf.WriteByte('{')
+
+	buf.WriteString("\"creator\":")
+	b, _ := a.Creator.MarshalJSON()
+	buf.Write(b)
+	buf.WriteByte(',')
+
+	buf.WriteString("\"timezone\":" + strconv.FormatInt(int64(a.Timezone), 10) + ",")
+
+	if len(a.Sessions) != 0 {
+		buf.WriteString("\"sessions\":[")
+		for i := range a.Sessions {
+			b, _ = a.Sessions[i].MarshalJSON()
+			buf.Write(b)
+			if i != len(a.Sessions)-1 {
+				buf.WriteByte(',')
+			}
+		}
+		buf.WriteByte(']')
 	}
 
-	m["creator"] = a.Creator.ToMap()
-
-	sessions := make([]any, 0, len(a.Sessions))
-	for i := range a.Sessions {
-		sessions = append(sessions, a.Sessions[i].ToMap())
+	b = buf.Bytes()
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
 	}
-	m["sessions"] = sessions
 
-	return m
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (a *Activity) Clone() *Activity {

@@ -1,7 +1,10 @@
 package activity
 
 import (
+	"bytes"
+	"encoding/json"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/accumulator"
@@ -168,70 +171,83 @@ func NewLapFromSession(session *Session) *Lap {
 	}
 }
 
-func (l *Lap) ToMap() map[string]any {
-	m := map[string]any{}
+var _ json.Marshaler = &Lap{}
 
+func (l *Lap) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	buf.WriteByte('{')
+
+	buf.WriteString("\"sport\":\"" + l.Sport + "\",")
 	if !l.Timestamp.IsZero() {
-		m["timestamp"] = l.Timestamp.Format(time.RFC3339)
+		buf.WriteString("\"timestamp\":\"" + l.Timestamp.Format(time.RFC3339) + "\",")
 	}
 	if !l.StartTime.IsZero() {
-		m["startTime"] = l.StartTime.Format(time.RFC3339)
+		buf.WriteString("\"startTime\":\"" + l.StartTime.Format(time.RFC3339) + "\",")
 	}
 	if !l.EndTime.IsZero() {
-		m["endTime"] = l.EndTime.Format(time.RFC3339)
+		buf.WriteString("\"endTime\":\"" + l.EndTime.Format(time.RFC3339) + "\",")
 	}
 
-	m["totalMovingTime"] = l.TotalMovingTime
-	m["totalElapsedTime"] = l.TotalElapsedTime
-	m["totalDistance"] = l.TotalDistance
-	m["totalAscent"] = l.TotalAscent
-	m["totalDescent"] = l.TotalDescent
-	m["totalCalories"] = l.TotalCalories
+	buf.WriteString("\"totalMovingTime\":" + strconv.FormatFloat(l.TotalMovingTime, 'g', -1, 64) + ",")
+	buf.WriteString("\"totalElapsedTime\":" + strconv.FormatFloat(l.TotalElapsedTime, 'g', -1, 64) + ",")
+	buf.WriteString("\"totalDistance\":" + strconv.FormatFloat(l.TotalDistance, 'g', -1, 64) + ",")
+	buf.WriteString("\"totalAscent\":" + strconv.FormatUint(uint64(l.TotalAscent), 10) + ",")
+	buf.WriteString("\"totalDescent\":" + strconv.FormatUint(uint64(l.TotalDescent), 10) + ",")
+	buf.WriteString("\"totalCalories\":" + strconv.FormatUint(uint64(l.TotalCalories), 10) + ",")
 
 	if l.AvgSpeed != nil {
-		m["avgSpeed"] = *l.AvgSpeed
+		buf.WriteString("\"avgSpeed\":" + strconv.FormatFloat(*l.AvgSpeed, 'g', -1, 64) + ",")
 	}
 	if l.MaxSpeed != nil {
-		m["maxSpeed"] = *l.MaxSpeed
+		buf.WriteString("\"maxSpeed\":" + strconv.FormatFloat(*l.MaxSpeed, 'g', -1, 64) + ",")
 	}
 	if l.AvgHeartRate != nil {
-		m["avgHeartRate"] = *l.AvgHeartRate
+		buf.WriteString("\"avgHeartRate\":" + strconv.FormatUint(uint64(*l.AvgHeartRate), 10) + ",")
 	}
 	if l.MaxHeartRate != nil {
-		m["maxHeartRate"] = *l.MaxHeartRate
+		buf.WriteString("\"maxHeartRate\":" + strconv.FormatUint(uint64(*l.MaxHeartRate), 10) + ",")
 	}
 	if l.AvgCadence != nil {
-		m["avgCadence"] = *l.AvgCadence
+		buf.WriteString("\"avgCadence\":" + strconv.FormatUint(uint64(*l.AvgCadence), 10) + ",")
 	}
 	if l.MaxCadence != nil {
-		m["maxCadence"] = *l.MaxCadence
+		buf.WriteString("\"maxCadence\":" + strconv.FormatUint(uint64(*l.MaxCadence), 10) + ",")
 	}
 	if l.AvgPower != nil {
-		m["avgPower"] = *l.AvgPower
+		buf.WriteString("\"avgPower\":" + strconv.FormatUint(uint64(*l.AvgPower), 10) + ",")
 	}
 	if l.MaxPower != nil {
-		m["maxPower"] = *l.MaxPower
+		buf.WriteString("\"maxPower\":" + strconv.FormatUint(uint64(*l.MaxPower), 10) + ",")
 	}
 	if l.AvgTemperature != nil {
-		m["avgTemperature"] = *l.AvgTemperature
+		buf.WriteString("\"avgTemperature\":" + strconv.FormatInt(int64(*l.AvgTemperature), 10) + ",")
 	}
 	if l.MaxTemperature != nil {
-		m["maxTemperature"] = *l.MaxTemperature
+		buf.WriteString("\"maxTemperature\":" + strconv.FormatInt(int64(*l.MaxTemperature), 10) + ",")
 	}
 	if l.AvgAltitude != nil {
-		m["avgAltitude"] = *l.AvgAltitude
+		buf.WriteString("\"avgAltitude\":" + strconv.FormatFloat(*l.AvgAltitude, 'g', -1, 64) + ",")
 	}
 	if l.MaxAltitude != nil {
-		m["maxAltitude"] = *l.MaxAltitude
+		buf.WriteString("\"maxAltitude\":" + strconv.FormatFloat(*l.MaxAltitude, 'g', -1, 64) + ",")
 	}
 	if l.AvgPace != nil {
-		m["avgPace"] = *l.AvgPace
+		buf.WriteString("\"avgPace\":" + strconv.FormatFloat(*l.AvgPace, 'g', -1, 64) + ",")
 	}
 	if l.AvgElapsedPace != nil {
-		m["maxPace"] = *l.AvgElapsedPace
+		buf.WriteString("\"avgElapsedPace\":" + strconv.FormatFloat(*l.AvgElapsedPace, 'g', -1, 64))
 	}
 
-	return m
+	b := buf.Bytes()
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (l *Lap) IsBelongToThisLap(t time.Time) bool {

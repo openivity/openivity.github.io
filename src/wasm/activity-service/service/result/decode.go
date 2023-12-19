@@ -1,6 +1,9 @@
 package result
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/activity"
@@ -14,30 +17,41 @@ type Decode struct {
 	Activities        []activity.Activity
 }
 
-func (d Decode) ToMap() map[string]any {
+var _ json.Marshaler = &Decode{}
+
+func (d *Decode) MarshalJSON() ([]byte, error) {
 	if d.Err != nil {
-		return map[string]any{"err": d.Err.Error()}
+		return []byte("{\"err\":\"" + d.Err.Error() + "\"}"), nil
 	}
 
 	begin := time.Now()
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
 
-	activities := make([]any, len(d.Activities))
-	for i := range d.Activities {
-		activities[i] = d.Activities[i].ToMap()
+	buf.WriteString("\"err\":null,")
+
+	if len(d.Activities) != 0 {
+		buf.WriteString("\"activities\":[")
+		for i := range d.Activities {
+			b, _ := d.Activities[i].MarshalJSON()
+			buf.Write(b)
+			if i != len(d.Activities)-1 {
+				buf.WriteByte(',')
+			}
+		}
+		buf.WriteString("],")
 	}
 
 	d.SerializationTook = time.Since(begin)
 	d.TotalElapsed = d.DecodeTook + d.SerializationTook
 
-	m := map[string]any{
-		"err":               nil,
-		"activities":        activities,
-		"decodeTook":        d.DecodeTook.Milliseconds(),
-		"serializationTook": d.SerializationTook.Milliseconds(),
-		"totalElapsed":      d.TotalElapsed.Milliseconds(),
-	}
+	buf.WriteString("\"decodeTook\":" + strconv.FormatInt(d.DecodeTook.Milliseconds(), 10) + ",")
+	buf.WriteString("\"serializationTook\":" + strconv.FormatInt(d.SerializationTook.Milliseconds(), 10) + ",")
+	buf.WriteString("\"totalElapsed\":" + strconv.FormatInt(d.TotalElapsed.Milliseconds(), 10))
 
-	return m
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 type DecodeWorker struct {

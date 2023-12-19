@@ -1,17 +1,32 @@
 package result
 
-import "github.com/muktihari/openactivity-fit/activity/fit"
+import (
+	"bytes"
+	"encoding/json"
+
+	"github.com/muktihari/openactivity-fit/activity/fit"
+)
 
 type ManufacturerList struct {
 	Manufacturers []fit.Manufacturer
 }
 
-func (m ManufacturerList) ToMap() map[string]any {
-	manufacturers := make([]any, len(m.Manufacturers))
+var _ json.Marshaler = &ManufacturerList{}
+
+func (m *ManufacturerList) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
+
+	buf.WriteString("\"manufacturers\":[")
 	for i := range m.Manufacturers {
-		manufacturers[i] = m.Manufacturers[i].ToMap()
+		b, _ := m.Manufacturers[i].MarshalJSON()
+		buf.Write(b)
+		if i != len(m.Manufacturers)-1 {
+			buf.WriteByte(',')
+		}
 	}
-	return map[string]any{
-		"manufacturers": manufacturers,
-	}
+	buf.WriteByte(']')
+
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }

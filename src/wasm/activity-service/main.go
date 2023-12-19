@@ -21,7 +21,6 @@ import (
 	"github.com/muktihari/openactivity-fit/kit"
 	"github.com/muktihari/openactivity-fit/preprocessor"
 	"github.com/muktihari/openactivity-fit/service"
-	"github.com/muktihari/openactivity-fit/service/result"
 	"github.com/muktihari/openactivity-fit/service/spec"
 	"golang.org/x/exp/slices"
 )
@@ -166,7 +165,7 @@ func createDecodeFunc(s service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an Array<Uint8Array>
 		if input.Length() == 0 {
-			return result.Decode{Err: fmt.Errorf("no input is passed")}.ToMap()
+			return map[string]any{"err": fmt.Errorf("no input is passed")}
 		}
 
 		rs := make([]io.Reader, input.Length())
@@ -181,7 +180,9 @@ func createDecodeFunc(s service.Service) js.Func {
 
 		cache(result.Activities)
 
-		return result.ToMap()
+		b, _ := result.MarshalJSON()
+
+		return string(b)
 	})
 }
 
@@ -189,7 +190,7 @@ func createEncodeFunc(s service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an JSON string
 		if input.Length() == 0 {
-			return result.Encode{Err: fmt.Errorf("no input is passed")}.ToMap()
+			return "{\"err\":\"no input is passed.\"}"
 		}
 
 		begin := time.Now()
@@ -198,7 +199,7 @@ func createEncodeFunc(s service.Service) js.Func {
 
 		var encodeSpec spec.Encode
 		if err := json.Unmarshal(b, &encodeSpec); err != nil {
-			return result.Encode{Err: fmt.Errorf("could not unmarshal input: %v", err)}.ToMap()
+			return "{\"err\":\"could not unmarshal input\"}"
 		}
 
 		encodeSpec.Activities = retrieveCache(pointer)
@@ -207,18 +208,25 @@ func createEncodeFunc(s service.Service) js.Func {
 
 		result := s.Encode(context.Background(), encodeSpec)
 		result.DeserializeInputTook = elapsed
-		return result.ToMap()
+
+		b, _ = result.MarshalJSON()
+
+		return string(b)
 	})
 }
 
 func createManufacturerListFunc(s service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		return s.ManufacturerList().ToMap()
+		manufacturerList := s.ManufacturerList()
+		b, _ := manufacturerList.MarshalJSON()
+		return string(b)
 	})
 }
 
 func createSportListFunc(s service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		return s.SportList().ToMap()
+		sportList := s.SportList()
+		b, _ := sportList.MarshalJSON()
+		return string(b)
 	})
 }
