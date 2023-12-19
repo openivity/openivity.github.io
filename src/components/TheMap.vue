@@ -96,6 +96,7 @@
 <script lang="ts">
 import destinationPointIcon from '@/assets/map/destination-point.svg'
 import startingPointIcon from '@/assets/map/starting-point.svg'
+import concealPointIcon from '@/assets/map/hide-point.svg'
 import 'ol/ol.css'
 
 import { Record, Session } from '@/spec/activity'
@@ -110,13 +111,16 @@ import { FullScreen, ScaleLine, ZoomToExtent, defaults as defaultControls } from
 import type { Coordinate } from 'ol/coordinate'
 import { toStringHDMS } from 'ol/coordinate.js'
 import { isEmpty } from 'ol/extent'
-import { LineString, Point, SimpleGeometry } from 'ol/geom'
+import { Geometry, LineString, Point, SimpleGeometry } from 'ol/geom'
 import TileLayer from 'ol/layer/Tile'
 import VectorImageLayer from 'ol/layer/VectorImage'
 import OSM from 'ol/source/OSM'
 import VectorSource from 'ol/source/Vector'
 import { Icon, Stroke, Style } from 'ol/style'
 import { shallowRef } from 'vue'
+import { MULTIPLE, NONE } from '@/components/TheSummary.vue'
+import { GeoJSON } from 'ol/format'
+import { rotate } from 'ol/transform'
 
 // shallowRef
 const kdbush = shallowRef(new KDBush(0))
@@ -126,15 +130,31 @@ const kdbushIndexToRecordMapping = shallowRef([] as String[])
 const emptyRecord = new Record()
 
 let map: OlMap
+
+const concealHideStyle = () =>
+  new Style({ stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }) })
+const concealStyle = () => [
+  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: 9 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 10 })
+]
+
 const tileLayer = new TileLayer({ source: new OSM() })
 const routeVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] }),
   visible: true,
   style: [
     new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
-    new Style({ stroke: new Stroke({ color: '#34495e', width: 4 }) })
+    new Style({ stroke: new Stroke({ color: '#f15a22', width: 4 }) })
   ]
 })
+
+const concealVecLayer = new VectorImageLayer({
+  source: new VectorSource({ features: [] as Feature[] }),
+  visible: true,
+  style: concealStyle()
+})
+
+const concealFeatures = new Array<Feature>()
 
 const view = new View({
   center: [0, 0],
@@ -143,12 +163,13 @@ const view = new View({
   projection: 'EPSG:4326' // WGS84: World Geodetic System 1984
 })
 
-const newIcon = (src: string): Icon => {
+const newIcon = (src: string, scale: number = 0): Icon => {
   return new Icon({ crossOrigin: 'anonymous', src: src, scale: 1 })
 }
 
 const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
 const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
+const concealPointStyle = new Style({ image: newIcon(concealPointIcon) })
 
 let popupOverlay = new Overlay({})
 let zoomToExtent = new ZoomToExtent()
@@ -165,6 +186,10 @@ export default {
     },
     selectedSessions: {
       type: Array<Session>,
+      required: true
+    },
+    selectSession: {
+      type: Number,
       required: true
     },
 
@@ -197,6 +222,12 @@ export default {
     sessions: {
       handler() {
         this.kdbushIndexing(this.sessions)
+        this.createConcealFeatures(this.sessions)
+      }
+    },
+    selectSession: {
+      handler(value) {
+        this.showConcealFeatures(value)
       }
     },
     receivedRecord: {
@@ -232,6 +263,100 @@ export default {
     toTimezoneDateString: toTimezoneDateString,
     formatPace: formatPace,
 
+    // update feat which side to hide, 0-showStartIndex and showEndIndex-0
+    // add/remove coordinates based on trim index record
+    setConceal(sessionIndex: number, showStartIndex: number, showEndIndex: number) {
+      const startHiddenCoords = this.selectedSessions[sessionIndex].records
+        .slice(0, showStartIndex + 1)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const startHiddenLineString = new LineString(startHiddenCoords)
+      const startHiddenFirstCoord = startHiddenLineString.getFirstCoordinate()
+      const startHiddenLastCoord = startHiddenLineString.getLastCoordinate()
+
+      const source = concealVecLayer.getSource()!
+      ;(
+        source.getFeatureById(`lineString-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(startHiddenLineString)
+      ;(
+        (
+          source.getFeatureById(`startingPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(startHiddenFirstCoord)
+      ;(
+        (
+          source.getFeatureById(`destinationPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(startHiddenLastCoord)
+
+      console.log(startHiddenLineString)
+    },
+    // prepare empty hidden feature for all session (whenever session is created)
+    createConcealFeatures(sessions: Array<Session>) {
+      if (sessions == null) sessions = this.sessions
+
+      const source = concealVecLayer.getSource()!
+      source.clear()
+
+      sessions.forEach((_, sessionIndex) => {
+        const feat = new GeoJSON().readFeature({
+          id: `lineString-${sessionIndex}`,
+          type: 'Feature',
+          style: concealStyle()
+        }) as Feature
+        feat.set('hidden', true)
+        source.addFeature(feat)
+
+        const startingPoint = new Feature(new Point([0, 0]))
+        startingPoint.setStyle(concealPointStyle as Style)
+        startingPoint.setId(`startingPoint-${sessionIndex}`)
+        startingPoint.set('hidden', true)
+
+        const destinationPoint = new Feature(new Point([0, 0]))
+        destinationPoint.setStyle(concealPointStyle as Style)
+        destinationPoint.setId(`destinationPoint-${sessionIndex}`)
+        destinationPoint.set('hidden', true)
+
+        source.addFeatures([startingPoint, destinationPoint])
+      })
+
+      // TODO remove debug
+      // sessions.forEach((_, i) => {
+      //   this.setConceal(i, 2000, 0)
+      // })
+      // console.log(source.getFeatures())
+    },
+    // TODO fix hidden not work
+    // show Conceal features based on selected session
+    showConcealFeatures(index: number) {
+      const source = concealVecLayer.getSource()!
+      if (index == NONE) {
+        // NONE
+        source.getFeatures().forEach((f) => f.set('hidden', true))
+      } else if (index == MULTIPLE) {
+        // MULTIPLE
+        source.getFeatures().forEach((f) => f.set('hidden', false))
+      } else {
+        // DEFAULT
+        source.getFeatures().forEach((f) => f.set('hidden', true))
+        ;(source.getFeatureById(`lineString-${index}`) as Feature<Geometry> | null)?.set(
+          'hidden',
+          false
+        )
+        ;(source.getFeatureById(`startingPoint-${index}`) as Feature<Geometry> | null)?.set(
+          'hidden',
+          false
+        )
+        ;(source.getFeatureById(`destinationPoint-${index}`) as Feature<Geometry> | null)?.set(
+          'hidden',
+          false
+        )
+      }
+    },
+
     updateMapSource(features: Feature[]) {
       popupOverlay.setPosition(undefined)
       const source = routeVecLayer.getSource()!
@@ -242,6 +367,17 @@ export default {
       }
 
       source.addFeatures(features)
+
+      // source.removeFeature(this.overlayFeatures)
+
+      // this.overlayFeatures.length = 0
+      // features.forEach((feature) => {
+      //   const f = feature.clone()
+
+      //   f.setStyle(lineStringStyle)
+      //   this.overlayFeatures.push(f)
+      // })
+      // source.addFeatures(this.overlayFeatures)
 
       const pointFeatures = new Array<Feature>()
       for (let i = 0; i < features.length; i++) {
@@ -262,6 +398,7 @@ export default {
       source.addFeatures(pointFeatures)
       this.updateExtent()
     },
+
     async kdbushIndexing(sessions: Array<Session>) {
       console.time('KDtree Indexing')
 
@@ -287,6 +424,7 @@ export default {
       kdbush.value.finish()
       console.timeEnd('KDtree Indexing')
     },
+
     findNearestRecord(coordinate: Coordinate): Record {
       const nearestIndex = around(kdbush.value, coordinate[0], coordinate[1], 1)
       if (nearestIndex.length == 0) return emptyRecord
@@ -304,7 +442,12 @@ export default {
         this.popupFreeze = !this.popupFreeze && popupOverlay.getPosition() != undefined
       if (this.popupFreeze == true && popupOverlay.getPosition() != undefined) return
 
-      const features = map.getFeaturesAtPixel(e.pixel, { hitTolerance: 10 })
+      const features = map.getFeaturesAtPixel(e.pixel, {
+        hitTolerance: 10,
+        layerFilter: function (layer) {
+          return layer === routeVecLayer
+        }
+      })
       const feature = features.find((feature) => feature.getGeometry() instanceof LineString)
 
       if (!feature) {
@@ -383,7 +526,7 @@ export default {
     map = new OlMap({
       overlays: [popupOverlay],
       controls: defaultControls(),
-      layers: [tileLayer, routeVecLayer],
+      layers: [tileLayer, routeVecLayer, concealVecLayer],
       view: view
     })
 
@@ -399,6 +542,7 @@ export default {
     this.updateMapSource(this.features)
 
     this.kdbushIndexing(this.sessions)
+    this.createConcealFeatures(this.sessions)
   },
   unmounted() {
     map.dispose()
