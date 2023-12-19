@@ -59,7 +59,7 @@ func (r *Record) MarshalJSON() ([]byte, error) {
 		buf.WriteString("\"power\":" + strconv.FormatUint(uint64(*r.Power), 10) + ",")
 	}
 	if r.Temperature != nil {
-		buf.WriteString("\"power\":" + strconv.FormatInt(int64(*r.Temperature), 10) + ",")
+		buf.WriteString("\"temperature\":" + strconv.FormatInt(int64(*r.Temperature), 10) + ",")
 	}
 	if r.Pace != nil {
 		buf.WriteString("\"pace\":" + strconv.FormatFloat(*r.Pace, 'g', -1, 64) + ",")
