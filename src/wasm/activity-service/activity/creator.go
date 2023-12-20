@@ -18,18 +18,30 @@ type Creator struct {
 }
 
 func (c *Creator) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+
 	buf.WriteByte('{')
 
-	buf.WriteString("\"name\":\"" + c.Name + "\",")
+	buf.WriteString("\"name\":\"")
+	buf.WriteString(c.Name)
+	buf.WriteString("\",")
+
 	if c.Manufacturer != nil {
-		buf.WriteString("\"manufacturer\":" + strconv.FormatUint(uint64(*c.Manufacturer), 10) + ",")
+		buf.WriteString("\"manufacturer\":")
+		buf.WriteString(strconv.FormatUint(uint64(*c.Manufacturer), 10))
+		buf.WriteByte(',')
 	}
 	if c.Product != nil {
-		buf.WriteString("\"product\":" + strconv.FormatUint(uint64(*c.Product), 10) + ",")
+		buf.WriteString("\"product\":")
+		buf.WriteString(strconv.FormatUint(uint64(*c.Product), 10))
+		buf.WriteByte(',')
 	}
 	if !c.TimeCreated.IsZero() {
-		buf.WriteString("\"timeCreated\":\"" + c.TimeCreated.Format(time.RFC3339) + "\"")
+		buf.WriteString("\"timeCreated\":\"")
+		buf.WriteString(c.TimeCreated.Format(time.RFC3339))
+		buf.WriteString("\"")
 	}
 
 	b := buf.Bytes()

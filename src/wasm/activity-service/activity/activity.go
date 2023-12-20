@@ -12,7 +12,9 @@ type Activity struct {
 }
 
 func (a *Activity) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
 
 	buf.WriteByte('{')
 
@@ -21,7 +23,9 @@ func (a *Activity) MarshalJSON() ([]byte, error) {
 	buf.Write(b)
 	buf.WriteByte(',')
 
-	buf.WriteString("\"timezone\":" + strconv.FormatInt(int64(a.Timezone), 10) + ",")
+	buf.WriteString("\"timezone\":")
+	buf.WriteString(strconv.FormatInt(int64(a.Timezone), 10))
+	buf.WriteByte(',')
 
 	if len(a.Sessions) != 0 {
 		buf.WriteString("\"sessions\":[")

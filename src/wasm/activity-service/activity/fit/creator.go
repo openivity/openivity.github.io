@@ -72,6 +72,7 @@ var _ json.Marshaler = &Manufacturer{}
 
 func (m *Manufacturer) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
+
 	buf.WriteByte('{')
 	buf.WriteString("\"id\":" + strconv.FormatUint(uint64(m.ID), 10) + ",")
 	buf.WriteString("\"name\":\"" + m.Name + "\",")

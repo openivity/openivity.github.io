@@ -28,44 +28,70 @@ type Record struct {
 var _ json.Marshaler = &Record{}
 
 func (r *Record) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+
 	buf.WriteByte('{')
 
 	if !r.Timestamp.IsZero() {
-		buf.WriteString("\"timestamp\":\"" + r.Timestamp.Format(time.RFC3339) + "\",")
+		buf.WriteString("\"timestamp\":\"")
+		buf.WriteString(r.Timestamp.Format(time.RFC3339))
+		buf.WriteString("\",")
 	}
 	if r.PositionLat != nil {
-		buf.WriteString("\"positionLat\":" + strconv.FormatFloat(*r.PositionLat, 'g', -1, 64) + ",")
+		buf.WriteString("\"positionLat\":")
+		buf.WriteString(strconv.FormatFloat(*r.PositionLat, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.PositionLong != nil {
-		buf.WriteString("\"positionLong\":" + strconv.FormatFloat(*r.PositionLong, 'g', -1, 64) + ",")
+		buf.WriteString("\"positionLong\":")
+		buf.WriteString(strconv.FormatFloat(*r.PositionLong, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Distance != nil {
-		buf.WriteString("\"distance\":" + strconv.FormatFloat(*r.Distance, 'g', -1, 64) + ",")
+		buf.WriteString("\"distance\":")
+		buf.WriteString(strconv.FormatFloat(*r.Distance, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Altitude != nil {
-		buf.WriteString("\"altitude\":" + strconv.FormatFloat(*r.SmoothedAltitude, 'g', -1, 64) + ",")
+		buf.WriteString("\"altitude\":")
+		buf.WriteString(strconv.FormatFloat(*r.SmoothedAltitude, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.HeartRate != nil {
-		buf.WriteString("\"heartRate\":" + strconv.FormatUint(uint64(*r.HeartRate), 10) + ",")
+		buf.WriteString("\"heartRate\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.HeartRate), 10))
+		buf.WriteByte(',')
 	}
 	if r.Cadence != nil {
-		buf.WriteString("\"cadence\":" + strconv.FormatUint(uint64(*r.Cadence), 10) + ",")
+		buf.WriteString("\"cadence\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.Cadence), 10))
+		buf.WriteByte(',')
 	}
 	if r.Speed != nil {
-		buf.WriteString("\"speed\":" + strconv.FormatFloat(*r.Speed, 'g', -1, 64) + ",")
+		buf.WriteString("\"speed\":")
+		buf.WriteString(strconv.FormatFloat(*r.Speed, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Power != nil {
-		buf.WriteString("\"power\":" + strconv.FormatUint(uint64(*r.Power), 10) + ",")
+		buf.WriteString("\"power\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.Power), 10))
+		buf.WriteByte(',')
 	}
 	if r.Temperature != nil {
-		buf.WriteString("\"temperature\":" + strconv.FormatInt(int64(*r.Temperature), 10) + ",")
+		buf.WriteString("\"temperature\":")
+		buf.WriteString(strconv.FormatInt(int64(*r.Temperature), 10))
+		buf.WriteByte(',')
 	}
 	if r.Pace != nil {
-		buf.WriteString("\"pace\":" + strconv.FormatFloat(*r.Pace, 'g', -1, 64) + ",")
+		buf.WriteString("\"pace\":")
+		buf.WriteString(strconv.FormatFloat(*r.Pace, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Grade != nil {
-		buf.WriteString("\"grade\":" + strconv.FormatFloat(*r.Grade, 'g', -1, 64))
+		buf.WriteString("\"grade\":")
+		buf.WriteString(strconv.FormatFloat(*r.Grade, 'g', -1, 64))
 	}
 
 	b := buf.Bytes()
