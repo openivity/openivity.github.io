@@ -97,6 +97,7 @@
 import destinationPointIcon from '@/assets/map/destination-point.svg'
 import startingPointIcon from '@/assets/map/starting-point.svg'
 import concealPointIcon from '@/assets/map/hide-point.svg'
+import trimPointIcon from '@/assets/map/trim-point.svg'
 import 'ol/ol.css'
 
 import { Record, Session } from '@/spec/activity'
@@ -120,7 +121,6 @@ import { Icon, Stroke, Style } from 'ol/style'
 import { shallowRef } from 'vue'
 import { MULTIPLE, NONE } from '@/components/TheSummary.vue'
 import { GeoJSON } from 'ol/format'
-import { rotate } from 'ol/transform'
 import { Marker } from '@/spec/activity-service'
 
 // shallowRef
@@ -132,16 +132,19 @@ const emptyRecord = new Record()
 
 let map: OlMap
 
-const concealHideStyle = () =>
-  new Style({ stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }) })
+const hiddenStyle = () => new Style({ stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }) })
 const concealStyle = () => [
+  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: 4 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 5 })
+]
+const trimStyle = () => [
   new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: 9 }), // outliner
-  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 10 })
+  new Style({ stroke: new Stroke({ color: '#A7A7B5', width: 4 }), zIndex: 10 })
 ]
 
 const tileLayer = new TileLayer({ source: new OSM() })
 const routeVecLayer = new VectorImageLayer({
-  source: new VectorSource({ features: [] }),
+  source: new VectorSource({ features: [] as Feature[] }),
   visible: true,
   style: [
     new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
@@ -152,10 +155,13 @@ const routeVecLayer = new VectorImageLayer({
 const concealVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] as Feature[] }),
   visible: true,
-  style: concealHideStyle()
+  style: hiddenStyle()
 })
-
-const concealFeatures = new Array<Feature>()
+const trimVecLayer = new VectorImageLayer({
+  source: new VectorSource({ features: [] as Feature[] }),
+  visible: true,
+  style: hiddenStyle()
+})
 
 const view = new View({
   center: [0, 0],
@@ -170,7 +176,8 @@ const newIcon = (src: string, scale: number = 1): Icon => {
 
 const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
 const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
-const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.75), zIndex: 11 })
+const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.5), zIndex: 11 })
+const trimPointStyle = new Style({ image: newIcon(trimPointIcon, 0.5), zIndex: 12 })
 
 let popupOverlay = new Overlay({})
 let zoomToExtent = new ZoomToExtent()
@@ -196,6 +203,10 @@ export default {
 
     // Display Tools Marker
     toolConcealActive: {
+      type: Boolean,
+      default: false
+    },
+    toolTrimActive: {
       type: Boolean,
       default: false
     },
@@ -238,16 +249,23 @@ export default {
       handler() {
         this.kdbushIndexing(this.sessions)
         this.createConcealFeatures(this.sessions)
+        this.createTrimFeatures(this.sessions)
       }
     },
     selectSession: {
       handler() {
         this.showConcealFeaturesHandler()
+        this.showTrimFeaturesHandler()
       }
     },
     toolConcealActive: {
       handler() {
         this.showConcealFeaturesHandler()
+      }
+    },
+    toolTrimActive: {
+      handler() {
+        this.showTrimFeaturesHandler()
       }
     },
     receivedRecord: {
@@ -280,7 +298,13 @@ export default {
     // Tool things
     toolConcealMarkers: {
       handler(markers: Array<Marker>) {
-        this.setConcealMarkers(markers)
+        markers.forEach((m, i) => this.setConceal(i, m.startN, m.endN))
+      },
+      deep: true
+    },
+    toolTrimMarkers: {
+      handler(markers: Array<Marker>) {
+        markers.forEach((m, i) => this.setTrim(i, m.startN, m.endN))
       },
       deep: true
     }
@@ -291,53 +315,6 @@ export default {
     toTimezoneDateString: toTimezoneDateString,
     formatPace: formatPace,
 
-    setConcealMarkers(markers: Array<Marker>) {
-      markers.forEach((m, i) => this.setConceal(i, m.startN, m.endN))
-    },
-    // update feat which side to hide, 0-showStartIndex and showEndIndex-0
-    // add/remove coordinates based on trim index record
-    setConceal(sessionIndex: number, showStartIndex: number, showEndIndex: number) {
-      if (sessionIndex >= this.sessions.length || sessionIndex < 0) return
-
-      const startHiddenCoords = this.sessions[sessionIndex].records
-        .slice(0, showStartIndex + 1)
-        .reduce<Array<Array<number>>>((result, r) => {
-          if (r.positionLong != null && r.positionLat != null)
-            result.push([r.positionLong, r.positionLat])
-          return result
-        }, [])
-      const startHiddenLineString = new LineString(startHiddenCoords)
-      const startHiddenLastCoord = startHiddenLineString.getLastCoordinate()
-
-      const source = concealVecLayer.getSource()!
-      ;(
-        source.getFeatureById(`lineString-concealStart-${sessionIndex}`) as Feature<Geometry> | null
-      )?.setGeometry(startHiddenLineString)
-      ;(
-        (
-          source.getFeatureById(`startingPoint-${sessionIndex}`) as Feature<Geometry> | null
-        )?.getGeometry() as Point
-      ).setCoordinates(startHiddenLastCoord)
-
-      const endHiddenCoords = this.sessions[sessionIndex].records
-        .slice(showEndIndex, this.sessions[sessionIndex].records.length)
-        .reduce<Array<Array<number>>>((result, r) => {
-          if (r.positionLong != null && r.positionLat != null)
-            result.push([r.positionLong, r.positionLat])
-          return result
-        }, [])
-      const endHiddenLineString = new LineString(endHiddenCoords)
-      const endHiddenFirstCoord = endHiddenLineString.getFirstCoordinate()
-
-      ;(
-        source.getFeatureById(`lineString-concealEnd-${sessionIndex}`) as Feature<Geometry> | null
-      )?.setGeometry(endHiddenLineString)
-      ;(
-        (
-          source.getFeatureById(`destinationPoint-${sessionIndex}`) as Feature<Geometry> | null
-        )?.getGeometry() as Point
-      ).setCoordinates(endHiddenFirstCoord)
-    },
     // prepare empty hidden feature for all session (whenever session is created)
     createConcealFeatures(sessions: Array<Session>) {
       if (sessions == null) sessions = this.sessions
@@ -357,27 +334,22 @@ export default {
 
         const startingPoint = new Feature(new Point([0, 0]))
         startingPoint.setStyle(undefined)
-        startingPoint.setId(`startingPoint-${sessionIndex}`)
+        startingPoint.setId(`startPartLastPoint-${sessionIndex}`)
 
         const destinationPoint = new Feature(new Point([0, 0]))
         destinationPoint.setStyle(undefined)
-        destinationPoint.setId(`destinationPoint-${sessionIndex}`)
+        destinationPoint.setId(`endPartFirstPoint-${sessionIndex}`)
 
         source.addFeatures([startingPoint, destinationPoint])
       })
-
-      // TODO remove debug
-      // sessions.forEach((_, i) => {
-      //   this.setConceal(i, 2000, 0)
-      // })
-      // console.log(source.getFeatures())
     },
-    // TODO fix hidden not work
+
     // show Conceal features based on selected session
     showConcealFeaturesHandler() {
       if (!this.toolConcealActive) this.showConcealFeatures(NONE)
       else this.showConcealFeatures(this.selectSession)
     },
+
     showConcealFeatures(index: number) {
       const source = concealVecLayer.getSource()!
       if (index == NONE) {
@@ -400,13 +372,168 @@ export default {
             source.getFeatureById(`lineString-${v}-${index}`) as Feature<LineString> | null
           )?.setStyle(concealStyle)
         })
-        ;(source.getFeatureById(`startingPoint-${index}`) as Feature<Point> | null)?.setStyle(
+        ;(source.getFeatureById(`startPartLastPoint-${index}`) as Feature<Point> | null)?.setStyle(
           concealPointStyle as Style
         )
-        ;(source.getFeatureById(`destinationPoint-${index}`) as Feature<Point> | null)?.setStyle(
+        ;(source.getFeatureById(`endPartFirstPoint-${index}`) as Feature<Point> | null)?.setStyle(
           concealPointStyle as Style
         )
       }
+    },
+    // update feat which side to hide, 0-showStartIndex and showEndIndex-0
+    // add/remove coordinates based on trim index record
+    setConceal(sessionIndex: number, showStartIndex: number, showEndIndex: number) {
+      if (sessionIndex >= this.sessions.length || sessionIndex < 0) return
+
+      const startPartCoords = this.sessions[sessionIndex].records
+        .slice(0, showStartIndex + 1)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const startPartLineString = new LineString(startPartCoords)
+      const startPartLastCoord = startPartLineString.getLastCoordinate()
+
+      const source = concealVecLayer.getSource()!
+      ;(
+        source.getFeatureById(`lineString-concealStart-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(startPartLineString)
+      ;(
+        (
+          source.getFeatureById(`startPartLastPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(startPartLastCoord)
+
+      const endPartCoords = this.sessions[sessionIndex].records
+        .slice(showEndIndex, this.sessions[sessionIndex].records.length)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const endPartLineString = new LineString(endPartCoords)
+      const endPartFirstCoord = endPartLineString.getFirstCoordinate()
+
+      ;(
+        source.getFeatureById(`lineString-concealEnd-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(endPartLineString)
+      ;(
+        (
+          source.getFeatureById(`endPartFirstPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(endPartFirstCoord)
+    },
+
+    // prepare empty hidden feature for all session (whenever session is created)
+    createTrimFeatures(sessions: Array<Session>) {
+      if (sessions == null) sessions = this.sessions
+
+      const source = trimVecLayer.getSource()!
+      source.clear()
+
+      sessions.forEach((_, sessionIndex) => {
+        ;['trimStart', 'trimEnd'].forEach((v) => {
+          const feat = new GeoJSON().readFeature({
+            id: `lineString-${v}-${sessionIndex}`,
+            type: 'Feature',
+            style: undefined
+          }) as Feature
+          source.addFeature(feat)
+        })
+
+        const startPartLastPoint = new Feature(new Point([0, 0]))
+        startPartLastPoint.setStyle(undefined)
+        startPartLastPoint.setId(`startPartLastPoint-${sessionIndex}`)
+
+        const endPartFirstPoint = new Feature(new Point([0, 0]))
+        endPartFirstPoint.setStyle(undefined)
+        endPartFirstPoint.setId(`endPartFirstPoint-${sessionIndex}`)
+
+        source.addFeatures([startPartLastPoint, endPartFirstPoint])
+      })
+    },
+
+    // show Conceal features based on selected session
+    showTrimFeaturesHandler() {
+      if (!this.toolTrimActive) this.showTrimFeatures(NONE)
+      else this.showTrimFeatures(this.selectSession)
+    },
+
+    showTrimFeatures(index: number) {
+      const source = trimVecLayer.getSource()!
+      if (index == NONE) {
+        // NONE
+        source.getFeatures().forEach((f) => f.setStyle(undefined))
+      } else if (index == MULTIPLE) {
+        // MULTIPLE
+        source
+          .getFeatures()
+          .forEach((f) =>
+            f.getId()?.toString().startsWith('lineString')
+              ? f.setStyle(trimStyle)
+              : f.setStyle(trimPointStyle as Style)
+          )
+      } else {
+        // DEFAULT
+        source.getFeatures().forEach((f) => f.setStyle(undefined))
+        ;['trimStart', 'trimEnd'].forEach((v) => {
+          ;(
+            source.getFeatureById(`lineString-${v}-${index}`) as Feature<LineString> | null
+          )?.setStyle(trimStyle)
+        })
+        ;(source.getFeatureById(`startPartLastPoint-${index}`) as Feature<Point> | null)?.setStyle(
+          trimPointStyle as Style
+        )
+        ;(source.getFeatureById(`endPartFirstPoint-${index}`) as Feature<Point> | null)?.setStyle(
+          trimPointStyle as Style
+        )
+      }
+    },
+
+    // update feat which side to hide, 0-showStartIndex and showEndIndex-0
+    // add/remove coordinates based on trim index record
+    setTrim(sessionIndex: number, showStartIndex: number, showEndIndex: number) {
+      if (sessionIndex >= this.sessions.length || sessionIndex < 0) return
+
+      const startPartCoords = this.sessions[sessionIndex].records
+        .slice(0, showStartIndex + 1)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const startPartLineString = new LineString(startPartCoords)
+      const startPartLastCoords = startPartLineString.getLastCoordinate()
+
+      const source = trimVecLayer.getSource()!
+      ;(
+        source.getFeatureById(`lineString-trimStart-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(startPartLineString)
+      ;(
+        (
+          source.getFeatureById(`startPartLastPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(startPartLastCoords)
+
+      const endPartCoords = this.sessions[sessionIndex].records
+        .slice(showEndIndex, this.sessions[sessionIndex].records.length)
+        .reduce<Array<Array<number>>>((result, r) => {
+          if (r.positionLong != null && r.positionLat != null)
+            result.push([r.positionLong, r.positionLat])
+          return result
+        }, [])
+      const endPartLineString = new LineString(endPartCoords)
+      const endPartFirstCoord = endPartLineString.getFirstCoordinate()
+
+      ;(
+        source.getFeatureById(`lineString-trimEnd-${sessionIndex}`) as Feature<Geometry> | null
+      )?.setGeometry(endPartLineString)
+      ;(
+        (
+          source.getFeatureById(`endPartFirstPoint-${sessionIndex}`) as Feature<Geometry> | null
+        )?.getGeometry() as Point
+      ).setCoordinates(endPartFirstCoord)
     },
 
     updateMapSource(features: Feature[]) {
@@ -578,7 +705,7 @@ export default {
     map = new OlMap({
       overlays: [popupOverlay],
       controls: defaultControls(),
-      layers: [tileLayer, routeVecLayer, concealVecLayer],
+      layers: [tileLayer, routeVecLayer, concealVecLayer, trimVecLayer],
       view: view
     })
 
@@ -595,6 +722,7 @@ export default {
 
     this.kdbushIndexing(this.sessions)
     this.createConcealFeatures(this.sessions)
+    this.createTrimFeatures(this.sessions)
   },
   unmounted() {
     map.dispose()

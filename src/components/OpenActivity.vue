@@ -254,6 +254,7 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
                       :sessions="sessions"
                       v-on:encodeSpecifications="onEncodeSpecifications"
                       v-on:onTrimMarkers="onTrimMarkers"
+                      v-on:onTrimActive="onTrimActive"
                       v-on:onConcealMarkers="onConcealMarkers"
                       v-on:onConcealActive="onConcealActive"
                     ></TheTools>
@@ -291,6 +292,7 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
                 :select-session="sessionSelected"
                 :tool-conceal-active="toolConcealActive"
                 :tool-conceal-markers="toolConcealMarkers"
+                :tool-trim-active="toolTrimActive"
                 :tool-trim-markers="toolTrimMarkers"
                 :hasPace="hasPace"
                 :hasCadence="hasCadence"
@@ -885,6 +887,9 @@ export default {
     },
     onConcealMarkers(markers: Marker[]) {
       this.toolConcealMarkers = markers
+    },
+    onTrimActive(active: boolean) {
+      this.toolTrimActive = active
     },
     onConcealActive(active: boolean) {
       this.toolConcealActive = active
