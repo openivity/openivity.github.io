@@ -134,12 +134,12 @@ let map: OlMap
 
 const hiddenStyle = () => new Style({ stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }) })
 const concealStyle = () => [
-  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: 4 }), // outliner
-  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 5 })
+  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 0 })
 ]
 const trimStyle = () => [
-  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: 9 }), // outliner
-  new Style({ stroke: new Stroke({ color: '#A7A7B5', width: 4 }), zIndex: 10 })
+  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#C7C7C5', width: 4 }), zIndex: 0 })
 ]
 
 const tileLayer = new TileLayer({ source: new OSM() })
@@ -162,6 +162,10 @@ const trimVecLayer = new VectorImageLayer({
   visible: true,
   style: hiddenStyle()
 })
+const pointLayer = new VectorImageLayer({
+  source: new VectorSource({ features: [] as Feature[] }),
+  visible: true
+})
 
 const view = new View({
   center: [0, 0],
@@ -176,8 +180,8 @@ const newIcon = (src: string, scale: number = 1): Icon => {
 
 const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
 const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
-const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.5), zIndex: 11 })
-const trimPointStyle = new Style({ image: newIcon(trimPointIcon, 0.5), zIndex: 12 })
+const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.65) })
+const trimPointStyle = new Style({ image: newIcon(trimPointIcon, 0.65) })
 
 let popupOverlay = new Overlay({})
 let zoomToExtent = new ZoomToExtent()
@@ -322,10 +326,15 @@ export default {
       const source = concealVecLayer.getSource()!
       source.clear()
 
+      const pointSource = pointLayer.getSource()!
+      pointSource.getFeatures().forEach((v) => {
+        if (v.getId()?.toString().startsWith('conceal-')) pointSource.removeFeature(v)
+      })
+
       sessions.forEach((_, sessionIndex) => {
         ;['concealStart', 'concealEnd'].forEach((v) => {
           const feat = new GeoJSON().readFeature({
-            id: `lineString-${v}-${sessionIndex}`,
+            id: `conceal-lineString-${v}-${sessionIndex}`,
             type: 'Feature',
             style: undefined
           }) as Feature
@@ -334,13 +343,13 @@ export default {
 
         const startingPoint = new Feature(new Point([0, 0]))
         startingPoint.setStyle(undefined)
-        startingPoint.setId(`startPartLastPoint-${sessionIndex}`)
+        startingPoint.setId(`conceal-startPartLastPoint-${sessionIndex}`)
 
         const destinationPoint = new Feature(new Point([0, 0]))
         destinationPoint.setStyle(undefined)
-        destinationPoint.setId(`endPartFirstPoint-${sessionIndex}`)
+        destinationPoint.setId(`conceal-endPartFirstPoint-${sessionIndex}`)
 
-        source.addFeatures([startingPoint, destinationPoint])
+        pointSource.addFeatures([startingPoint, destinationPoint])
       })
     },
 
@@ -352,32 +361,35 @@ export default {
 
     showConcealFeatures(index: number) {
       const source = concealVecLayer.getSource()!
+      const pointSource = pointLayer.getSource()!
+
       if (index == NONE) {
         // NONE
         source.getFeatures().forEach((f) => f.setStyle(undefined))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(undefined)
+        })
       } else if (index == MULTIPLE) {
         // MULTIPLE
-        source
-          .getFeatures()
-          .forEach((f) =>
-            f.getId()?.toString().startsWith('lineString')
-              ? f.setStyle(concealStyle)
-              : f.setStyle(concealPointStyle as Style)
-          )
+        source.getFeatures().forEach((f) => f.setStyle(concealStyle))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(concealPointStyle as Style)
+        })
       } else {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         ;['concealStart', 'concealEnd'].forEach((v) => {
           ;(
-            source.getFeatureById(`lineString-${v}-${index}`) as Feature<LineString> | null
+            source.getFeatureById(`conceal-lineString-${v}-${index}`) as Feature<LineString> | null
           )?.setStyle(concealStyle)
         })
-        ;(source.getFeatureById(`startPartLastPoint-${index}`) as Feature<Point> | null)?.setStyle(
-          concealPointStyle as Style
-        )
-        ;(source.getFeatureById(`endPartFirstPoint-${index}`) as Feature<Point> | null)?.setStyle(
-          concealPointStyle as Style
-        )
+        pointSource.getFeatures().forEach((f) => {
+          if (
+            f.getId()?.toString().startsWith('conceal-') &&
+            f.getId()?.toString().endsWith(`-${index}`)
+          )
+            f.setStyle(concealPointStyle as Style)
+        })
       }
     },
     // update feat which side to hide, 0-showStartIndex and showEndIndex-0
@@ -396,12 +408,18 @@ export default {
       const startPartLastCoord = startPartLineString.getLastCoordinate()
 
       const source = concealVecLayer.getSource()!
+      const pointSource = pointLayer.getSource()!
+
       ;(
-        source.getFeatureById(`lineString-concealStart-${sessionIndex}`) as Feature<Geometry> | null
+        source.getFeatureById(
+          `conceal-lineString-concealStart-${sessionIndex}`
+        ) as Feature<Geometry> | null
       )?.setGeometry(startPartLineString)
       ;(
         (
-          source.getFeatureById(`startPartLastPoint-${sessionIndex}`) as Feature<Geometry> | null
+          pointSource.getFeatureById(
+            `conceal-startPartLastPoint-${sessionIndex}`
+          ) as Feature<Geometry> | null
         )?.getGeometry() as Point
       ).setCoordinates(startPartLastCoord)
 
@@ -416,11 +434,15 @@ export default {
       const endPartFirstCoord = endPartLineString.getFirstCoordinate()
 
       ;(
-        source.getFeatureById(`lineString-concealEnd-${sessionIndex}`) as Feature<Geometry> | null
+        source.getFeatureById(
+          `conceal-lineString-concealEnd-${sessionIndex}`
+        ) as Feature<Geometry> | null
       )?.setGeometry(endPartLineString)
       ;(
         (
-          source.getFeatureById(`endPartFirstPoint-${sessionIndex}`) as Feature<Geometry> | null
+          pointSource.getFeatureById(
+            `conceal-endPartFirstPoint-${sessionIndex}`
+          ) as Feature<Geometry> | null
         )?.getGeometry() as Point
       ).setCoordinates(endPartFirstCoord)
     },
@@ -432,10 +454,15 @@ export default {
       const source = trimVecLayer.getSource()!
       source.clear()
 
+      const pointSource = pointLayer.getSource()!
+      pointSource.getFeatures().forEach((v) => {
+        if (v.getId()?.toString().startsWith('trim-')) pointSource.removeFeature(v)
+      })
+
       sessions.forEach((_, sessionIndex) => {
         ;['trimStart', 'trimEnd'].forEach((v) => {
           const feat = new GeoJSON().readFeature({
-            id: `lineString-${v}-${sessionIndex}`,
+            id: `trim-lineString-${v}-${sessionIndex}`,
             type: 'Feature',
             style: undefined
           }) as Feature
@@ -444,13 +471,13 @@ export default {
 
         const startPartLastPoint = new Feature(new Point([0, 0]))
         startPartLastPoint.setStyle(undefined)
-        startPartLastPoint.setId(`startPartLastPoint-${sessionIndex}`)
+        startPartLastPoint.setId(`trim-startPartLastPoint-${sessionIndex}`)
 
         const endPartFirstPoint = new Feature(new Point([0, 0]))
         endPartFirstPoint.setStyle(undefined)
-        endPartFirstPoint.setId(`endPartFirstPoint-${sessionIndex}`)
+        endPartFirstPoint.setId(`trim-endPartFirstPoint-${sessionIndex}`)
 
-        source.addFeatures([startPartLastPoint, endPartFirstPoint])
+        pointSource.addFeatures([startPartLastPoint, endPartFirstPoint])
       })
     },
 
@@ -462,32 +489,35 @@ export default {
 
     showTrimFeatures(index: number) {
       const source = trimVecLayer.getSource()!
+      const pointSource = pointLayer.getSource()!
+
       if (index == NONE) {
         // NONE
         source.getFeatures().forEach((f) => f.setStyle(undefined))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(undefined)
+        })
       } else if (index == MULTIPLE) {
         // MULTIPLE
-        source
-          .getFeatures()
-          .forEach((f) =>
-            f.getId()?.toString().startsWith('lineString')
-              ? f.setStyle(trimStyle)
-              : f.setStyle(trimPointStyle as Style)
-          )
+        source.getFeatures().forEach((f) => f.setStyle(trimStyle))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(trimPointStyle as Style)
+        })
       } else {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         ;['trimStart', 'trimEnd'].forEach((v) => {
           ;(
-            source.getFeatureById(`lineString-${v}-${index}`) as Feature<LineString> | null
+            source.getFeatureById(`trim-lineString-${v}-${index}`) as Feature<LineString> | null
           )?.setStyle(trimStyle)
         })
-        ;(source.getFeatureById(`startPartLastPoint-${index}`) as Feature<Point> | null)?.setStyle(
-          trimPointStyle as Style
-        )
-        ;(source.getFeatureById(`endPartFirstPoint-${index}`) as Feature<Point> | null)?.setStyle(
-          trimPointStyle as Style
-        )
+        pointSource.getFeatures().forEach((f) => {
+          if (
+            f.getId()?.toString().startsWith('trim-') &&
+            f.getId()?.toString().endsWith(`-${index}`)
+          )
+            f.setStyle(trimPointStyle as Style)
+        })
       }
     },
 
@@ -507,12 +537,18 @@ export default {
       const startPartLastCoords = startPartLineString.getLastCoordinate()
 
       const source = trimVecLayer.getSource()!
+      const pointSource = pointLayer.getSource()!
+
       ;(
-        source.getFeatureById(`lineString-trimStart-${sessionIndex}`) as Feature<Geometry> | null
+        source.getFeatureById(
+          `trim-lineString-trimStart-${sessionIndex}`
+        ) as Feature<Geometry> | null
       )?.setGeometry(startPartLineString)
       ;(
         (
-          source.getFeatureById(`startPartLastPoint-${sessionIndex}`) as Feature<Geometry> | null
+          pointSource.getFeatureById(
+            `trim-startPartLastPoint-${sessionIndex}`
+          ) as Feature<Geometry> | null
         )?.getGeometry() as Point
       ).setCoordinates(startPartLastCoords)
 
@@ -527,11 +563,13 @@ export default {
       const endPartFirstCoord = endPartLineString.getFirstCoordinate()
 
       ;(
-        source.getFeatureById(`lineString-trimEnd-${sessionIndex}`) as Feature<Geometry> | null
+        source.getFeatureById(`trim-lineString-trimEnd-${sessionIndex}`) as Feature<Geometry> | null
       )?.setGeometry(endPartLineString)
       ;(
         (
-          source.getFeatureById(`endPartFirstPoint-${sessionIndex}`) as Feature<Geometry> | null
+          pointSource.getFeatureById(
+            `trim-endPartFirstPoint-${sessionIndex}`
+          ) as Feature<Geometry> | null
         )?.getGeometry() as Point
       ).setCoordinates(endPartFirstCoord)
     },
@@ -540,6 +578,15 @@ export default {
       popupOverlay.setPosition(undefined)
       const source = routeVecLayer.getSource()!
       source.clear()
+
+      const pointSource = pointLayer.getSource()!
+      pointSource.getFeatures().forEach((v) => {
+        if (
+          v.getId()?.toString().startsWith('startingPoint') ||
+          v.getId()?.toString().startsWith('destinationPoint')
+        )
+          pointSource.removeFeature(v)
+      })
 
       if (features.length == 0) {
         return
@@ -574,7 +621,7 @@ export default {
         pointFeatures.push(destinationPoint)
       }
 
-      source.addFeatures(pointFeatures)
+      pointSource.addFeatures(pointFeatures)
       this.updateExtent()
     },
 
@@ -705,7 +752,7 @@ export default {
     map = new OlMap({
       overlays: [popupOverlay],
       controls: defaultControls(),
-      layers: [tileLayer, routeVecLayer, concealVecLayer, trimVecLayer],
+      layers: [tileLayer, routeVecLayer, concealVecLayer, trimVecLayer, pointLayer],
       view: view
     })
 
