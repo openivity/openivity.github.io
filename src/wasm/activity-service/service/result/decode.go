@@ -45,9 +45,16 @@ func (d *Decode) MarshalJSON() ([]byte, error) {
 	d.SerializationTook = time.Since(begin)
 	d.TotalElapsed = d.DecodeTook + d.SerializationTook
 
-	buf.WriteString("\"decodeTook\":" + strconv.FormatInt(d.DecodeTook.Milliseconds(), 10) + ",")
-	buf.WriteString("\"serializationTook\":" + strconv.FormatInt(d.SerializationTook.Milliseconds(), 10) + ",")
-	buf.WriteString("\"totalElapsed\":" + strconv.FormatInt(d.TotalElapsed.Milliseconds(), 10))
+	buf.WriteString("\"decodeTook\":")
+	buf.WriteString(strconv.FormatInt(d.DecodeTook.Milliseconds(), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"serializationTook\":")
+	buf.WriteString(strconv.FormatInt(d.SerializationTook.Milliseconds(), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalElapsed\":")
+	buf.WriteString(strconv.FormatInt(d.TotalElapsed.Milliseconds(), 10))
 
 	buf.WriteByte('}')
 

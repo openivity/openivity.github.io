@@ -29,10 +29,21 @@ func (e *Encode) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	buf.WriteByte('{')
-	buf.WriteString("\"fileName\":\"" + e.FileName + "\",")
-	buf.WriteString("\"fileType\":\"" + e.FileType + "\",")
-	buf.WriteString("\"encodeTook\":" + strconv.FormatInt(e.EncodeTook.Milliseconds(), 10) + ",")
-	buf.WriteString("\"deserializeInputTook\":" + strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10) + ",")
+	buf.WriteString("\"fileName\":\"")
+	buf.WriteString(e.FileName)
+	buf.WriteString("\",")
+
+	buf.WriteString("\"fileType\":\"")
+	buf.WriteString(e.FileType)
+	buf.WriteString("\",")
+
+	buf.WriteString("\"encodeTook\":")
+	buf.WriteString(strconv.FormatInt(e.EncodeTook.Milliseconds(), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"deserializeInputTook\":")
+	buf.WriteString(strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10))
+	buf.WriteByte(',')
 
 	buf.WriteString("\"filesBytes\":[")
 	for i := range e.FilesBytes {
@@ -53,8 +64,12 @@ func (e *Encode) MarshalJSON() ([]byte, error) {
 	e.SerializationTook = time.Since(begin)
 	e.TotalElapsed = e.DeserializeInputTook + e.EncodeTook + e.SerializationTook
 
-	buf.WriteString("\"serializationTook\":" + strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10) + ",")
-	buf.WriteString("\"totalElapsed\":" + strconv.FormatInt(e.TotalElapsed.Milliseconds(), 10))
+	buf.WriteString("\"serializationTook\":")
+	buf.WriteString(strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalElapsed\":")
+	buf.WriteString(strconv.FormatInt(e.TotalElapsed.Milliseconds(), 10))
 
 	buf.WriteByte('}')
 	return buf.Bytes(), nil

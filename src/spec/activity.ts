@@ -85,8 +85,8 @@ export class Lap {
 
 export class Record {
   timestamp: string | null = null
-  positionLat: number | null = null
-  positionLong: number | null = null
+  lat: number | null = null
+  lon: number | null = null
   distance: number | null = null
   speed: number | null = null
   altitude: number | null = null
@@ -99,8 +99,8 @@ export class Record {
 
   constructor(data?: any) {
     const casted = data as Record
-    this.positionLat = casted?.positionLat
-    this.positionLong = casted?.positionLong
+    this.lat = casted?.lat
+    this.lon = casted?.lon
     this.altitude = casted?.altitude
     this.cadence = casted?.cadence
     this.distance = casted?.distance
