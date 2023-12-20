@@ -378,6 +378,9 @@ export default {
       } else {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(undefined)
+        })
         ;['concealStart', 'concealEnd'].forEach((v) => {
           ;(
             source.getFeatureById(`conceal-lineString-${v}-${index}`) as Feature<LineString> | null
@@ -506,6 +509,9 @@ export default {
       } else {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
+        pointSource.getFeatures().forEach((f) => {
+          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(undefined)
+        })
         ;['trimStart', 'trimEnd'].forEach((v) => {
           ;(
             source.getFeatureById(`trim-lineString-${v}-${index}`) as Feature<LineString> | null
