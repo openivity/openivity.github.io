@@ -134,12 +134,12 @@ let map: OlMap
 
 const hiddenStyle = () => new Style({ stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }) })
 const concealStyle = () => [
-  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
-  new Style({ stroke: new Stroke({ color: '#6D6D79', width: 4 }), zIndex: 0 })
+  new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 6 }), zIndex: -1 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#2ecc71', width: 4 }), zIndex: 0 })
 ]
 const trimStyle = () => [
-  new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
-  new Style({ stroke: new Stroke({ color: '#C7C7C5', width: 4 }), zIndex: 0 })
+  new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 6 }), zIndex: -1 }), // outliner
+  new Style({ stroke: new Stroke({ color: '#f50f30', width: 4 }), zIndex: 0 })
 ]
 
 const tileLayer = new TileLayer({ source: new OSM() })
@@ -147,8 +147,8 @@ const routeVecLayer = new VectorImageLayer({
   source: new VectorSource({ features: [] as Feature[] }),
   visible: true,
   style: [
-    new Style({ stroke: new Stroke({ color: 'white', width: 6 }), zIndex: -1 }), // outliner
-    new Style({ stroke: new Stroke({ color: '#f15a22', width: 4 }) })
+    new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 6 }), zIndex: -1 }), // outliner
+    new Style({ stroke: new Stroke({ color: '#34495e', width: 4 }) })
   ]
 })
 
