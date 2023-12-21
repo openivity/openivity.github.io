@@ -96,8 +96,8 @@
 <script lang="ts">
 import destinationPointIcon from '@/assets/map/destination-point.svg'
 import startingPointIcon from '@/assets/map/starting-point.svg'
-import concealPointIcon from '@/assets/map/hide-point.svg'
-import trimPointIcon from '@/assets/map/trim-point.svg'
+import concealPointIcon from '@/assets/map/eye-off-green.svg'
+import trimPointIcon from '@/assets/map/crop-red.svg'
 import 'ol/ol.css'
 
 import { Record, Session } from '@/spec/activity'
@@ -180,8 +180,8 @@ const newIcon = (src: string, scale: number = 1): Icon => {
 
 const startingPointStyle = new Style({ image: newIcon(startingPointIcon) })
 const destinationPointStyle = new Style({ image: newIcon(destinationPointIcon) })
-const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.65) })
-const trimPointStyle = new Style({ image: newIcon(trimPointIcon, 0.65) })
+const concealPointStyle = new Style({ image: newIcon(concealPointIcon, 0.075) })
+const trimPointStyle = new Style({ image: newIcon(trimPointIcon, 0.075) })
 
 let popupOverlay = new Overlay({})
 let zoomToExtent = new ZoomToExtent()
