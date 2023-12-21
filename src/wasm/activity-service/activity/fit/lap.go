@@ -154,7 +154,7 @@ func convertLapToMesg(lap *activity.Lap) proto.Message {
 	}
 	if lap.TotalDistance != 0 {
 		field := factory.CreateField(mesgnum.Lap, fieldnum.LapTotalDistance)
-		field.Value = scaleoffset.DiscardAny(lap.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(lap.TotalDistance, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if lap.TotalAscent != 0 {
@@ -224,12 +224,12 @@ func convertLapToMesg(lap *activity.Lap) proto.Message {
 	}
 	if lap.AvgAltitude != nil {
 		field := factory.CreateField(mesgnum.Lap, fieldnum.LapAvgAltitude)
-		field.Value = scaleoffset.DiscardAny(lap.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(*lap.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if lap.MaxAltitude != nil {
 		field := factory.CreateField(mesgnum.Lap, fieldnum.LapMaxAltitude)
-		field.Value = scaleoffset.DiscardAny(lap.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(*lap.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 
