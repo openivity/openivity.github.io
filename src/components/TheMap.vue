@@ -342,11 +342,11 @@ export default {
         })
 
         const startingPoint = new Feature(new Point([0, 0]))
-        startingPoint.setStyle(undefined)
+        startingPoint.setStyle(hiddenStyle())
         startingPoint.setId(`conceal-startPartLastPoint-${sessionIndex}`)
 
         const destinationPoint = new Feature(new Point([0, 0]))
-        destinationPoint.setStyle(undefined)
+        destinationPoint.setStyle(hiddenStyle())
         destinationPoint.setId(`conceal-endPartFirstPoint-${sessionIndex}`)
 
         pointSource.addFeatures([startingPoint, destinationPoint])
@@ -367,7 +367,7 @@ export default {
         // NONE
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         pointSource.getFeatures().forEach((f) => {
-          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(undefined)
+          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(hiddenStyle())
         })
       } else if (index == MULTIPLE) {
         // MULTIPLE
@@ -379,7 +379,7 @@ export default {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         pointSource.getFeatures().forEach((f) => {
-          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(undefined)
+          if (f.getId()?.toString().startsWith('conceal-')) f.setStyle(hiddenStyle())
         })
         ;['concealStart', 'concealEnd'].forEach((v) => {
           ;(
@@ -473,11 +473,11 @@ export default {
         })
 
         const startPartLastPoint = new Feature(new Point([0, 0]))
-        startPartLastPoint.setStyle(undefined)
+        startPartLastPoint.setStyle(hiddenStyle())
         startPartLastPoint.setId(`trim-startPartLastPoint-${sessionIndex}`)
 
         const endPartFirstPoint = new Feature(new Point([0, 0]))
-        endPartFirstPoint.setStyle(undefined)
+        endPartFirstPoint.setStyle(hiddenStyle())
         endPartFirstPoint.setId(`trim-endPartFirstPoint-${sessionIndex}`)
 
         pointSource.addFeatures([startPartLastPoint, endPartFirstPoint])
@@ -498,7 +498,7 @@ export default {
         // NONE
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         pointSource.getFeatures().forEach((f) => {
-          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(undefined)
+          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(hiddenStyle())
         })
       } else if (index == MULTIPLE) {
         // MULTIPLE
@@ -510,7 +510,7 @@ export default {
         // DEFAULT
         source.getFeatures().forEach((f) => f.setStyle(undefined))
         pointSource.getFeatures().forEach((f) => {
-          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(undefined)
+          if (f.getId()?.toString().startsWith('trim-')) f.setStyle(hiddenStyle())
         })
         ;['trimStart', 'trimEnd'].forEach((v) => {
           ;(
