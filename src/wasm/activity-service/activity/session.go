@@ -1,6 +1,9 @@
 package activity
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/accumulator"
@@ -141,89 +144,163 @@ func NewSessionFromLaps(laps []*Lap, sport string) *Session {
 	return ses
 }
 
-func (s *Session) ToMap() map[string]any {
-	m := map[string]any{
-		"workoutType": uint8(s.WorkoutType),
-	}
+var _ json.Marshaler = &Session{}
+
+func (s *Session) MarshalJSON() ([]byte, error) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+
+	buf.WriteByte('{')
+
+	buf.WriteString("\"sport\":\"")
+	buf.WriteString(s.Sport)
+	buf.WriteString("\",")
 
 	if !s.Timestamp.IsZero() {
-		m["timestamp"] = s.Timestamp.Format(time.RFC3339)
+		buf.WriteString("\"timestamp\":\"")
+		buf.WriteString(s.Timestamp.Format(time.RFC3339))
+		buf.WriteString("\",")
 	}
 	if !s.StartTime.IsZero() {
-		m["startTime"] = s.StartTime.Format(time.RFC3339)
+		buf.WriteString("\"startTime\":\"")
+		buf.WriteString(s.StartTime.Format(time.RFC3339))
+		buf.WriteString("\",")
 	}
 	if !s.EndTime.IsZero() {
-		m["endTime"] = s.EndTime.Format(time.RFC3339)
-	}
-	if s.Sport != "" {
-		m["sport"] = s.Sport
+		buf.WriteString("\"endTime\":\"")
+		buf.WriteString(s.EndTime.Format(time.RFC3339))
+		buf.WriteString("\",")
 	}
 
-	m["totalMovingTime"] = s.TotalMovingTime
-	m["totalElapsedTime"] = s.TotalElapsedTime
-	m["totalDistance"] = s.TotalDistance
-	m["totalAscent"] = s.TotalAscent
-	m["totalDescent"] = s.TotalDescent
-	m["totalCalories"] = s.TotalCalories
+	buf.WriteString("\"totalMovingTime\":")
+	buf.WriteString(strconv.FormatFloat(s.TotalMovingTime, 'g', -1, 64))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalElapsedTime\":")
+	buf.WriteString(strconv.FormatFloat(s.TotalElapsedTime, 'g', -1, 64))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalDistance\":")
+	buf.WriteString(strconv.FormatFloat(s.TotalDistance, 'g', -1, 64))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalAscent\":")
+	buf.WriteString(strconv.FormatUint(uint64(s.TotalAscent), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalDescent\":")
+	buf.WriteString(strconv.FormatUint(uint64(s.TotalDescent), 10))
+	buf.WriteByte(',')
+
+	buf.WriteString("\"totalCalories\":")
+	buf.WriteString(strconv.FormatUint(uint64(s.TotalCalories), 10))
+	buf.WriteByte(',')
 
 	if s.AvgSpeed != nil {
-		m["avgSpeed"] = *s.AvgSpeed
+		buf.WriteString("\"avgSpeed\":")
+		buf.WriteString(strconv.FormatFloat(*s.AvgSpeed, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if s.MaxSpeed != nil {
-		m["maxSpeed"] = *s.MaxSpeed
+		buf.WriteString("\"maxSpeed\":")
+		buf.WriteString(strconv.FormatFloat(*s.MaxSpeed, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if s.AvgHeartRate != nil {
-		m["avgHeartRate"] = *s.AvgHeartRate
+		buf.WriteString("\"avgHeartRate\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.AvgHeartRate), 10))
+		buf.WriteByte(',')
 	}
 	if s.MaxHeartRate != nil {
-		m["maxHeartRate"] = *s.MaxHeartRate
+		buf.WriteString("\"maxHeartRate\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.MaxHeartRate), 10))
+		buf.WriteByte(',')
 	}
 	if s.AvgCadence != nil {
-		m["avgCadence"] = *s.AvgCadence
+		buf.WriteString("\"avgCadence\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.AvgCadence), 10))
+		buf.WriteByte(',')
 	}
 	if s.MaxCadence != nil {
-		m["maxCadence"] = *s.MaxCadence
+		buf.WriteString("\"maxCadence\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.MaxCadence), 10))
+		buf.WriteByte(',')
 	}
 	if s.AvgPower != nil {
-		m["avgPower"] = *s.AvgPower
+		buf.WriteString("\"avgPower\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.AvgPower), 10))
+		buf.WriteByte(',')
 	}
 	if s.MaxPower != nil {
-		m["maxPower"] = *s.MaxPower
+		buf.WriteString("\"maxPower\":")
+		buf.WriteString(strconv.FormatUint(uint64(*s.MaxPower), 10))
+		buf.WriteByte(',')
 	}
 	if s.AvgTemperature != nil {
-		m["avgTemperature"] = *s.AvgTemperature
+		buf.WriteString("\"avgTemperature\":")
+		buf.WriteString(strconv.FormatInt(int64(*s.AvgTemperature), 10))
+		buf.WriteByte(',')
 	}
 	if s.MaxTemperature != nil {
-		m["maxTemperature"] = *s.MaxTemperature
+		buf.WriteString("\"maxTemperature\":")
+		buf.WriteString(strconv.FormatInt(int64(*s.MaxTemperature), 10))
+		buf.WriteByte(',')
 	}
 	if s.AvgAltitude != nil {
-		m["avgAltitude"] = *s.AvgAltitude
+		buf.WriteString("\"avgAltitude\":")
+		buf.WriteString(strconv.FormatFloat(*s.AvgAltitude, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if s.MaxAltitude != nil {
-		m["maxAltitude"] = *s.MaxAltitude
+		buf.WriteString("\"maxAltitude\":")
+		buf.WriteString(strconv.FormatFloat(*s.MaxAltitude, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if s.AvgPace != nil {
-		m["avgPace"] = *s.AvgPace
+		buf.WriteString("\"avgPace\":")
+		buf.WriteString(strconv.FormatFloat(*s.AvgPace, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if s.AvgElapsedPace != nil {
-		m["avgElapsedPace"] = *s.AvgElapsedPace
-	}
-	if len(s.Laps) != 0 {
-		laps := make([]any, len(s.Laps))
-		for i := range s.Laps {
-			laps[i] = s.Laps[i].ToMap()
-		}
-		m["laps"] = laps
-	}
-	if len(s.Records) != 0 {
-		records := make([]any, len(s.Records))
-		for i := range s.Records {
-			records[i] = s.Records[i].ToMap()
-		}
-		m["records"] = records
+		buf.WriteString("\"avgElapsedPace\":")
+		buf.WriteString(strconv.FormatFloat(*s.AvgElapsedPace, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 
-	return m
+	if len(s.Laps) != 0 {
+		buf.WriteString("\"laps\": [")
+		for i := range s.Laps {
+			b, _ := s.Laps[i].MarshalJSON()
+			buf.Write(b)
+			if i != len(s.Laps)-1 {
+				buf.WriteByte(',')
+			}
+		}
+		buf.WriteString("],")
+	}
+
+	if len(s.Records) != 0 {
+		buf.WriteString("\"records\": [")
+		for i := range s.Records {
+			b, _ := s.Records[i].MarshalJSON()
+			buf.Write(b)
+			if i != len(s.Records)-1 {
+				buf.WriteByte(',')
+			}
+		}
+		buf.WriteByte(']')
+	}
+
+	b := buf.Bytes()
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (s *Session) IsBelongToThisSession(t time.Time) bool {

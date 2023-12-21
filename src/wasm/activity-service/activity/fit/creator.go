@@ -1,6 +1,10 @@
 package fit
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
+
 	"github.com/muktihari/fit/factory"
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/profile/typedef"
@@ -64,16 +68,27 @@ type Manufacturer struct {
 	Products []ManufacturerProduct
 }
 
-func (m *Manufacturer) ToMap() map[string]any {
-	products := make([]any, len(m.Products))
+var _ json.Marshaler = &Manufacturer{}
+
+func (m *Manufacturer) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	buf.WriteByte('{')
+	buf.WriteString("\"id\":" + strconv.FormatUint(uint64(m.ID), 10) + ",")
+	buf.WriteString("\"name\":\"" + m.Name + "\",")
+
+	buf.WriteString("\"products\":[")
 	for i := range m.Products {
-		products[i] = m.Products[i].ToMap()
+		b, _ := m.Products[i].MarshalJSON()
+		buf.Write(b)
+		if i != len(m.Products)-1 {
+			buf.WriteByte(',')
+		}
 	}
-	return map[string]any{
-		"id":       uint16(m.ID),
-		"name":     m.Name,
-		"products": products,
-	}
+	buf.WriteByte(']')
+
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }
 
 type ManufacturerProduct struct {
@@ -81,9 +96,13 @@ type ManufacturerProduct struct {
 	Name string
 }
 
-func (p *ManufacturerProduct) ToMap() map[string]any {
-	return map[string]any{
-		"id":   p.ID,
-		"name": p.Name,
-	}
+var _ json.Marshaler = &ManufacturerProduct{}
+
+func (p *ManufacturerProduct) MarshalJSON() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteByte('{')
+	buf.WriteString("\"id\":" + strconv.FormatUint(uint64(p.ID), 10) + ",")
+	buf.WriteString("\"name\":\"" + p.Name + "\"")
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }

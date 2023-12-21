@@ -1,6 +1,9 @@
 package activity
 
 import (
+	"bytes"
+	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/kit"
@@ -22,47 +25,88 @@ type Record struct {
 	Grade            *float64
 }
 
-func (r *Record) ToMap() map[string]any {
-	m := map[string]any{}
+var _ json.Marshaler = &Record{}
+
+func (r *Record) MarshalJSON() ([]byte, error) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+
+	buf.WriteByte('{')
 
 	if !r.Timestamp.IsZero() {
-		m["timestamp"] = r.Timestamp.Format(time.RFC3339)
+		buf.WriteString("\"timestamp\":\"")
+		buf.WriteString(r.Timestamp.Format(time.RFC3339))
+		buf.WriteString("\",")
 	}
 	if r.PositionLat != nil {
-		m["positionLat"] = *r.PositionLat
+		buf.WriteString("\"positionLat\":")
+		buf.WriteString(strconv.FormatFloat(*r.PositionLat, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.PositionLong != nil {
-		m["positionLong"] = *r.PositionLong
+		buf.WriteString("\"positionLong\":")
+		buf.WriteString(strconv.FormatFloat(*r.PositionLong, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Distance != nil {
-		m["distance"] = *r.Distance
+		buf.WriteString("\"distance\":")
+		buf.WriteString(strconv.FormatFloat(*r.Distance, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
-	if r.SmoothedAltitude != nil {
-		m["altitude"] = *r.SmoothedAltitude // for better data representation.
+	if r.Altitude != nil {
+		buf.WriteString("\"altitude\":")
+		buf.WriteString(strconv.FormatFloat(*r.SmoothedAltitude, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.HeartRate != nil {
-		m["heartRate"] = *r.HeartRate
+		buf.WriteString("\"heartRate\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.HeartRate), 10))
+		buf.WriteByte(',')
 	}
 	if r.Cadence != nil {
-		m["cadence"] = *r.Cadence
+		buf.WriteString("\"cadence\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.Cadence), 10))
+		buf.WriteByte(',')
 	}
 	if r.Speed != nil {
-		m["speed"] = *r.Speed
+		buf.WriteString("\"speed\":")
+		buf.WriteString(strconv.FormatFloat(*r.Speed, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Power != nil {
-		m["power"] = *r.Power
+		buf.WriteString("\"power\":")
+		buf.WriteString(strconv.FormatUint(uint64(*r.Power), 10))
+		buf.WriteByte(',')
 	}
 	if r.Temperature != nil {
-		m["temperature"] = *r.Temperature
+		buf.WriteString("\"temperature\":")
+		buf.WriteString(strconv.FormatInt(int64(*r.Temperature), 10))
+		buf.WriteByte(',')
 	}
 	if r.Pace != nil {
-		m["pace"] = *r.Pace
+		buf.WriteString("\"pace\":")
+		buf.WriteString(strconv.FormatFloat(*r.Pace, 'g', -1, 64))
+		buf.WriteByte(',')
 	}
 	if r.Grade != nil {
-		m["grade"] = *r.Grade
+		buf.WriteString("\"grade\":")
+		buf.WriteString(strconv.FormatFloat(*r.Grade, 'g', -1, 64))
 	}
 
-	return m
+	b := buf.Bytes()
+	if len(b) == 1 { // only '{' means all fields is invalid
+		return nil, nil
+	}
+
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (r *Record) Clone() *Record {

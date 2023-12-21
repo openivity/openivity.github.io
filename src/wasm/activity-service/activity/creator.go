@@ -1,6 +1,8 @@
 package activity
 
 import (
+	"bytes"
+	"strconv"
 	"time"
 
 	"github.com/muktihari/openactivity-fit/kit"
@@ -15,24 +17,42 @@ type Creator struct {
 	TimeCreated  time.Time
 }
 
-func (c *Creator) ToMap() map[string]any {
-	m := map[string]any{}
+func (c *Creator) MarshalJSON() ([]byte, error) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
 
-	if c.Name == "" {
-		c.Name = Unknown
-	}
-	m["name"] = c.Name
+	buf.WriteByte('{')
+
+	buf.WriteString("\"name\":\"")
+	buf.WriteString(c.Name)
+	buf.WriteString("\",")
+
 	if c.Manufacturer != nil {
-		m["manufacturer"] = *c.Manufacturer
+		buf.WriteString("\"manufacturer\":")
+		buf.WriteString(strconv.FormatUint(uint64(*c.Manufacturer), 10))
+		buf.WriteByte(',')
 	}
 	if c.Product != nil {
-		m["product"] = *c.Product
+		buf.WriteString("\"product\":")
+		buf.WriteString(strconv.FormatUint(uint64(*c.Product), 10))
+		buf.WriteByte(',')
 	}
 	if !c.TimeCreated.IsZero() {
-		m["timeCreated"] = c.TimeCreated.Format(time.RFC3339)
+		buf.WriteString("\"timeCreated\":\"")
+		buf.WriteString(c.TimeCreated.Format(time.RFC3339))
+		buf.WriteString("\"")
 	}
 
-	return m
+	b := buf.Bytes()
+	if b[len(b)-1] == ',' {
+		b[len(b)-1] = '}'
+		return b, nil
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
 
 func (c *Creator) Clone() *Creator {
