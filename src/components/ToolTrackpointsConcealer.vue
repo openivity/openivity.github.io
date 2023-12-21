@@ -12,6 +12,7 @@ import ToolTrackpointsSlider from './ToolTrackpointsSlider.vue'
       :sessions="sessions"
       :tool-mode="toolMode"
       :legend-label="'Visible'"
+      v-on:selected="onSelected"
       v-on:markers="onMarkers"
     >
     </ToolTrackpointsSlider>
@@ -42,6 +43,9 @@ export default {
   methods: {
     onMarkers(value: Marker[]) {
       this.$emit('markers', value)
+    },
+    onSelected(data: any) {
+      this.$emit('active', data?.value)
     }
   },
   mounted() {}

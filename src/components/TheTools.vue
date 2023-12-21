@@ -61,6 +61,7 @@ import { toRaw } from 'vue'
         :sessions="sessions"
         :tool-mode="toolMode"
         v-on:markers="onTrimMarkers"
+        v-on:active="onTrimActive"
       ></ToolTrackpointsTrimmer>
     </div>
     <div class="pt-3">
@@ -68,6 +69,7 @@ import { toRaw } from 'vue'
         :sessions="sessions"
         :tool-mode="toolMode"
         v-on:markers="onConcealMarkers"
+        v-on:active="onConcealActive"
       ></ToolTrackpointsConcealer>
     </div>
     <div class="pt-3">
@@ -148,9 +150,17 @@ export default {
     },
     onTrimMarkers(markers: Marker[]) {
       this.trimMarkers = this.validateMarkers(markers)
+      this.$emit('onTrimMarkers', this.trimMarkers)
     },
     onConcealMarkers(markers: Marker[]) {
       this.concealMarkers = this.validateMarkers(markers)
+      this.$emit('onConcealMarkers', this.concealMarkers)
+    },
+    onTrimActive(active: boolean) {
+      this.$emit('onTrimActive', active)
+    },
+    onConcealActive(active: boolean) {
+      this.$emit('onConcealActive', active)
     },
     onSelectedFields(value: string[]) {
       this.selectedFieldRemovers = value

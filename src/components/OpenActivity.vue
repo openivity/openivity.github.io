@@ -253,6 +253,10 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
                       :activities="activities"
                       :sessions="sessions"
                       v-on:encodeSpecifications="onEncodeSpecifications"
+                      v-on:onTrimMarkers="onTrimMarkers"
+                      v-on:onTrimActive="onTrimActive"
+                      v-on:onConcealMarkers="onConcealMarkers"
+                      v-on:onConcealActive="onConcealActive"
                     ></TheTools>
                   </div>
                 </div>
@@ -285,6 +289,11 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
                 :sessions="sessions"
                 :selected-sessions="selectedSessions"
                 :features="selectedFeatures"
+                :select-session="sessionSelected"
+                :tool-conceal-active="toolConcealActive"
+                :tool-conceal-markers="toolConcealMarkers"
+                :tool-trim-active="toolTrimActive"
+                :tool-trim-markers="toolTrimMarkers"
                 :hasPace="hasPace"
                 :hasCadence="hasCadence"
                 :hasHeartRate="hasHeartRate"
@@ -327,6 +336,7 @@ import {
   FileType,
   Manufacturer,
   ManufacturerListResult,
+  Marker,
   Sport,
   SportListResult
 } from '@/spec/activity-service'
@@ -372,7 +382,11 @@ export default {
       summary: new Summary(),
       hoveredRecord: new Record(),
       hoveredRecordFreeze: new Boolean(),
-      isActivityServiceReady: false
+      isActivityServiceReady: false,
+      toolTrimMarkers: new Array<Marker>(),
+      toolConcealMarkers: new Array<Marker>(),
+      toolTrimActive: false,
+      toolConcealActive: false
     }
   },
   computed: {
@@ -867,6 +881,18 @@ export default {
         type: 'encode',
         input: input
       })
+    },
+    onTrimMarkers(markers: Marker[]) {
+      this.toolTrimMarkers = markers
+    },
+    onConcealMarkers(markers: Marker[]) {
+      this.toolConcealMarkers = markers
+    },
+    onTrimActive(active: boolean) {
+      this.toolTrimActive = active
+    },
+    onConcealActive(active: boolean) {
+      this.toolConcealActive = active
     }
   },
   mounted() {
