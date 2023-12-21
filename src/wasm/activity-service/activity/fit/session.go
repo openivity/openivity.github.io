@@ -270,12 +270,12 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.AvgAltitude != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionAvgAltitude)
-		field.Value = scaleoffset.DiscardAny(ses.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(*ses.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.MaxAltitude != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionMaxAltitude)
-		field.Value = scaleoffset.DiscardAny(ses.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardAny(*ses.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 

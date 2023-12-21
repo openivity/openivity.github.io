@@ -3,6 +3,7 @@ package result
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -21,7 +22,7 @@ var _ json.Marshaler = &Decode{}
 
 func (d *Decode) MarshalJSON() ([]byte, error) {
 	if d.Err != nil {
-		return []byte("{\"err\":\"" + d.Err.Error() + "\"}"), nil
+		return []byte(fmt.Sprintf("{%q:%q}", "err", d.Err)), nil
 	}
 
 	begin := time.Now()
