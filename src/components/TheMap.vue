@@ -96,8 +96,8 @@
 <script lang="ts">
 import destinationPointIcon from '@/assets/map/destination-point.svg'
 import startingPointIcon from '@/assets/map/starting-point.svg'
-import concealPointIcon from '@/assets/map/eye-off-green.svg'
-import trimPointIcon from '@/assets/map/crop-red.svg'
+import concealPointIcon from '@/assets/map/eye-off.svg'
+import trimPointIcon from '@/assets/map/crop.svg'
 import 'ol/ol.css'
 
 import { Record, Session } from '@/spec/activity'
