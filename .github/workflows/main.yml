@@ -29,6 +29,7 @@ jobs:
 
       - name: Build Wasm & Web 🔧
         run: |
+          go env
           $GOROOT/misc/wasm/wasm_exec.js src/assets/wasm/wasm_exec.js
 
           npm ci
