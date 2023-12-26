@@ -94,13 +94,15 @@
 </template>
 
 <script lang="ts">
-import destinationPointIcon from '@/assets/map/destination-point.svg'
-import startingPointIcon from '@/assets/map/starting-point.svg'
-import concealPointIcon from '@/assets/map/eye-off-black.svg'
 import trimPointIcon from '@/assets/map/crop-black.svg'
+import destinationPointIcon from '@/assets/map/destination-point.svg'
+import concealPointIcon from '@/assets/map/eye-off-black.svg'
+import startingPointIcon from '@/assets/map/starting-point.svg'
 import 'ol/ol.css'
 
+import { MULTIPLE, NONE } from '@/components/TheSummary.vue'
 import { Record, Session } from '@/spec/activity'
+import { Marker } from '@/spec/activity-service'
 import { toTimezoneDateString } from '@/toolkit/date'
 import { formatPace } from '@/toolkit/pace'
 import { around } from 'geokdbush-tk'
@@ -112,6 +114,7 @@ import { FullScreen, ScaleLine, ZoomToExtent, defaults as defaultControls } from
 import type { Coordinate } from 'ol/coordinate'
 import { toStringHDMS } from 'ol/coordinate.js'
 import { isEmpty } from 'ol/extent'
+import { GeoJSON } from 'ol/format'
 import { Geometry, LineString, Point, SimpleGeometry } from 'ol/geom'
 import TileLayer from 'ol/layer/Tile'
 import VectorImageLayer from 'ol/layer/VectorImage'
@@ -119,9 +122,6 @@ import OSM from 'ol/source/OSM'
 import VectorSource from 'ol/source/Vector'
 import { Icon, Stroke, Style } from 'ol/style'
 import { shallowRef } from 'vue'
-import { MULTIPLE, NONE } from '@/components/TheSummary.vue'
-import { GeoJSON } from 'ol/format'
-import { Marker } from '@/spec/activity-service'
 
 // shallowRef
 const kdbush = shallowRef(new KDBush(0))
@@ -302,13 +302,21 @@ export default {
     // Tool things
     toolConcealMarkers: {
       handler(markers: Array<Marker>) {
-        markers.forEach((m, i) => this.setConceal(i, m.startN, m.endN))
+        markers.forEach((m, i) => {
+          const start = this.findNearestCoordinateFromStart(i, m.startN)
+          const end = this.findNearestCoordinateFromEnd(i, m.endN)
+          this.setConceal(i, start, end)
+        })
       },
       deep: true
     },
     toolTrimMarkers: {
       handler(markers: Array<Marker>) {
-        markers.forEach((m, i) => this.setTrim(i, m.startN, m.endN))
+        markers.forEach((m, i) => {
+          const start = this.findNearestCoordinateFromStart(i, m.startN)
+          const end = this.findNearestCoordinateFromEnd(i, m.endN)
+          this.setTrim(i, start, end)
+        })
       },
       deep: true
     }
@@ -578,6 +586,26 @@ export default {
           ) as Feature<Geometry> | null
         )?.getGeometry() as Point
       ).setCoordinates(endPartFirstCoord)
+    },
+
+    findNearestCoordinateFromStart(sessionIndex: number, startIndex: number): number {
+      const records = this.sessions[sessionIndex].records
+      for (let i = startIndex; i < records.length; i++) {
+        if (records[i].positionLong != null && records[i].positionLat != null) {
+          return i
+        }
+      }
+      return startIndex
+    },
+
+    findNearestCoordinateFromEnd(sessionIndex: number, endIndex: number): number {
+      const records = this.sessions[sessionIndex].records
+      for (let i = endIndex; i >= 0; i--) {
+        if (records[i].positionLong != null && records[i].positionLat != null) {
+          return i
+        }
+      }
+      return endIndex
     },
 
     updateMapSource(features: Feature[]) {
