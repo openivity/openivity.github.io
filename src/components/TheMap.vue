@@ -590,6 +590,7 @@ export default {
 
     findNearestCoordinateFromStart(sessionIndex: number, startIndex: number): number {
       const records = this.sessions[sessionIndex].records
+      if (records.length == 0) return startIndex
       for (let i = startIndex; i < records.length; i++) {
         if (records[i].positionLong != null && records[i].positionLat != null) {
           return i
@@ -600,6 +601,7 @@ export default {
 
     findNearestCoordinateFromEnd(sessionIndex: number, endIndex: number): number {
       const records = this.sessions[sessionIndex].records
+      if (endIndex > records.length - 1) return endIndex
       for (let i = endIndex; i >= 0; i--) {
         if (records[i].positionLong != null && records[i].positionLat != null) {
           return i
