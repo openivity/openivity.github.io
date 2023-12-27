@@ -35,7 +35,6 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	dec := decoder.New(r,
 		decoder.WithMesgListener(lis),
 		decoder.WithBroadcastOnly(),
-		decoder.WithNoComponentExpansion(),
 		decoder.WithIgnoreChecksum(),
 	)
 
