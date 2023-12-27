@@ -114,13 +114,12 @@ func (p *Preprocessor) CalculateDistanceAndSpeed(records []*activity.Record) {
 					prevDist = *prev.Distance
 				}
 
-				pointDistance = geomath.VincentyDistance(
+				pointDistance = geomath.HaversineDistance(
 					*rec.PositionLat,
 					*rec.PositionLong,
 					*prev.PositionLat,
 					*prev.PositionLong,
 				)
-
 				rec.Distance = kit.Ptr(prevDist + pointDistance)
 			}
 		} else if rec.Distance != nil && prev.Distance != nil {

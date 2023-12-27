@@ -3,6 +3,7 @@ package activity
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strconv"
 	"time"
 
@@ -197,12 +198,12 @@ func (s *Session) MarshalJSON() ([]byte, error) {
 	buf.WriteString(strconv.FormatUint(uint64(s.TotalCalories), 10))
 	buf.WriteByte(',')
 
-	if s.AvgSpeed != nil {
+	if s.AvgSpeed != nil && !math.IsInf(*s.AvgSpeed, 0) && !math.IsNaN(*s.AvgSpeed) {
 		buf.WriteString("\"avgSpeed\":")
 		buf.WriteString(strconv.FormatFloat(*s.AvgSpeed, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if s.MaxSpeed != nil {
+	if s.MaxSpeed != nil && !math.IsInf(*s.MaxSpeed, 0) && !math.IsNaN(*s.MaxSpeed) {
 		buf.WriteString("\"maxSpeed\":")
 		buf.WriteString(strconv.FormatFloat(*s.MaxSpeed, 'g', -1, 64))
 		buf.WriteByte(',')
@@ -247,22 +248,22 @@ func (s *Session) MarshalJSON() ([]byte, error) {
 		buf.WriteString(strconv.FormatInt(int64(*s.MaxTemperature), 10))
 		buf.WriteByte(',')
 	}
-	if s.AvgAltitude != nil {
+	if s.AvgAltitude != nil && !math.IsInf(*s.AvgAltitude, 0) && !math.IsNaN(*s.AvgAltitude) {
 		buf.WriteString("\"avgAltitude\":")
 		buf.WriteString(strconv.FormatFloat(*s.AvgAltitude, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if s.MaxAltitude != nil {
+	if s.MaxAltitude != nil && !math.IsInf(*s.MaxAltitude, 0) && !math.IsNaN(*s.MaxAltitude) {
 		buf.WriteString("\"maxAltitude\":")
 		buf.WriteString(strconv.FormatFloat(*s.MaxAltitude, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if s.AvgPace != nil {
+	if s.AvgPace != nil && !math.IsInf(*s.AvgPace, 0) && !math.IsNaN(*s.AvgPace) {
 		buf.WriteString("\"avgPace\":")
 		buf.WriteString(strconv.FormatFloat(*s.AvgPace, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if s.AvgElapsedPace != nil {
+	if s.AvgElapsedPace != nil && !math.IsInf(*s.AvgElapsedPace, 0) && !math.IsNaN(*s.AvgElapsedPace) {
 		buf.WriteString("\"avgElapsedPace\":")
 		buf.WriteString(strconv.FormatFloat(*s.AvgElapsedPace, 'g', -1, 64))
 		buf.WriteByte(',')

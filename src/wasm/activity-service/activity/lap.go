@@ -224,12 +224,12 @@ func (l *Lap) MarshalJSON() ([]byte, error) {
 	buf.WriteString(strconv.FormatUint(uint64(l.TotalCalories), 10))
 	buf.WriteByte(',')
 
-	if l.AvgSpeed != nil {
+	if l.AvgSpeed != nil && !math.IsInf(*l.AvgSpeed, 0) && !math.IsNaN(*l.AvgSpeed) {
 		buf.WriteString("\"avgSpeed\":")
 		buf.WriteString(strconv.FormatFloat(*l.AvgSpeed, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if l.MaxSpeed != nil {
+	if l.MaxSpeed != nil && !math.IsInf(*l.MaxSpeed, 0) && !math.IsNaN(*l.MaxSpeed) {
 		buf.WriteString("\"maxSpeed\":")
 		buf.WriteString(strconv.FormatFloat(*l.MaxSpeed, 'g', -1, 64))
 		buf.WriteByte(',')
@@ -274,22 +274,22 @@ func (l *Lap) MarshalJSON() ([]byte, error) {
 		buf.WriteString(strconv.FormatInt(int64(*l.MaxTemperature), 10))
 		buf.WriteByte(',')
 	}
-	if l.AvgAltitude != nil {
+	if l.AvgAltitude != nil && !math.IsInf(*l.AvgAltitude, 0) && !math.IsNaN(*l.AvgAltitude) {
 		buf.WriteString("\"avgAltitude\":")
 		buf.WriteString(strconv.FormatFloat(*l.AvgAltitude, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if l.MaxAltitude != nil {
+	if l.MaxAltitude != nil && !math.IsInf(*l.MaxAltitude, 0) && !math.IsNaN(*l.MaxAltitude) {
 		buf.WriteString("\"maxAltitude\":")
 		buf.WriteString(strconv.FormatFloat(*l.MaxAltitude, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if l.AvgPace != nil {
+	if l.AvgPace != nil && !math.IsInf(*l.AvgPace, 0) && !math.IsNaN(*l.AvgPace) {
 		buf.WriteString("\"avgPace\":")
 		buf.WriteString(strconv.FormatFloat(*l.AvgPace, 'g', -1, 64))
 		buf.WriteByte(',')
 	}
-	if l.AvgElapsedPace != nil {
+	if l.AvgElapsedPace != nil && !math.IsInf(*l.AvgElapsedPace, 0) && !math.IsNaN(*l.AvgElapsedPace) {
 		buf.WriteString("\"avgElapsedPace\":")
 		buf.WriteString(strconv.FormatFloat(*l.AvgElapsedPace, 'g', -1, 64))
 	}

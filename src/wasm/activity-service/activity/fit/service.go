@@ -46,12 +46,12 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		if err != nil {
 			return nil, err
 		}
-
 		res := lis.Result()
 		act := s.convertListenerResultToActivity(res)
 		if act == nil {
 			continue
 		}
+
 		activities = append(activities, *act)
 	}
 

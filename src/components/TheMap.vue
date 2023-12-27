@@ -302,6 +302,7 @@ export default {
     // Tool things
     toolConcealMarkers: {
       handler(markers: Array<Marker>) {
+        if (markers.length != this.sessions.length) return // FIXME: markers and sessions is not in sync causing index out of bound
         markers.forEach((m, i) => {
           const start = this.findNearestCoordinateFromStart(i, m.startN)
           const end = this.findNearestCoordinateFromEnd(i, m.endN)
@@ -312,6 +313,7 @@ export default {
     },
     toolTrimMarkers: {
       handler(markers: Array<Marker>) {
+        if (markers.length != this.sessions.length) return // FIXME: markers and sessions is not in sync causing index out of bound
         markers.forEach((m, i) => {
           const start = this.findNearestCoordinateFromStart(i, m.startN)
           const end = this.findNearestCoordinateFromEnd(i, m.endN)
