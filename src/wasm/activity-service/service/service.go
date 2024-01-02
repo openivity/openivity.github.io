@@ -95,13 +95,36 @@ func (s *service) Decode(ctx context.Context, rs []io.Reader) result.Decode {
 		if a.Creator.TimeCreated.Before(b.Creator.TimeCreated) {
 			return -1
 		}
-		return 1
+		if a.Creator.TimeCreated.After(b.Creator.TimeCreated) {
+			return 1
+		}
+		// TimeCreated is equal, compare by first record's timestamp of each activity.
+		firstTimestampA := firstNonZeroTimestamp(&a)
+		firstTimestampB := firstNonZeroTimestamp(&b)
+		if firstTimestampA.Before(firstTimestampB) {
+			return -1
+		}
+		if firstTimestampA.After(firstTimestampB) {
+			return 1
+		}
+		return 0
 	})
 
 	return result.Decode{
 		DecodeTook: time.Since(begin),
 		Activities: activities,
 	}
+}
+
+func firstNonZeroTimestamp(act *activity.Activity) time.Time {
+	for i := range act.Sessions {
+		for j := range act.Sessions[i].Records {
+			if !act.Sessions[i].Records[j].Timestamp.IsZero() {
+				return act.Sessions[i].Records[j].Timestamp
+			}
+		}
+	}
+	return time.Time{}
 }
 
 func (s *service) decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- result.DecodeWorker, wg *sync.WaitGroup, index int) {
