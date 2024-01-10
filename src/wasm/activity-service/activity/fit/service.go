@@ -32,13 +32,13 @@ func NewService(preproc *preprocessor.Preprocessor, manufacturers map[uint16]Man
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	lis := NewListener()
+	defer lis.WaitAndClose()
+
 	dec := decoder.New(r,
 		decoder.WithMesgListener(lis),
 		decoder.WithBroadcastOnly(),
 		decoder.WithIgnoreChecksum(),
 	)
-
-	defer lis.WaitAndClose()
 
 	activities := make([]activity.Activity, 0, 1) // In most cases, 1 fit == 1 activity
 	for dec.Next() {
@@ -46,6 +46,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		if err != nil {
 			return nil, err
 		}
+
 		res := lis.Result()
 		act := s.convertListenerResultToActivity(res)
 		if act == nil {
@@ -309,21 +310,38 @@ func (s *service) creatorName(manufacturerID, productID uint16) string {
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	bs := make([][]byte, len(activities))
-	w := bytes.NewBuffer(nil)
+	bufAt := &bytesBufferAt{bytes.NewBuffer(make([]byte, 0, 1_000<<10))} // Buffer 1 MB
 
 	for i := range activities {
 		fit := s.convertActivityToFit(&activities[i])
 
-		enc := encoder.New(w, encoder.WithProtocolVersion(proto.V2))
+		enc := encoder.New(bufAt, encoder.WithProtocolVersion(proto.V2))
 		if err := enc.EncodeWithContext(ctx, fit); err != nil {
 			return nil, fmt.Errorf("could not encode: %w", err)
 		}
 
-		bs[i] = w.Bytes()
-		w.Reset()
+		bs[i] = slices.Clone(bufAt.Buffer.Bytes())
+		bufAt.Buffer.Reset()
 	}
 
 	return bs, nil
+}
+
+// bytesBufferAt wraps bytes.Buffer to implement io.WriterAt enabling fast encoding.
+type bytesBufferAt struct {
+	*bytes.Buffer
+}
+
+func (b *bytesBufferAt) WriteAt(p []byte, off int64) (n int, err error) {
+	if off < 0 {
+		return n, fmt.Errorf("negative offset")
+	}
+	l := off + int64(len(p))
+	if l > int64(b.Len()) {
+		return n, fmt.Errorf("offset > len")
+	}
+	n = copy(b.Bytes()[off:l], p)
+	return
 }
 
 func (s *service) convertActivityToFit(act *activity.Activity) *proto.Fit {
