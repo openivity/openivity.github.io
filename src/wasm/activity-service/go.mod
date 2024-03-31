@@ -3,7 +3,7 @@ module github.com/muktihari/openactivity-fit
 go 1.20
 
 require (
-	github.com/muktihari/fit v0.11.0
+	github.com/muktihari/fit v0.11.1
 	golang.org/x/text v0.13.0
 )
 
