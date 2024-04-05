@@ -16,17 +16,9 @@ func CreateTimezone(mesg proto.Message) int {
 	for i := range mesg.Fields {
 		switch mesg.Fields[i].Num {
 		case fieldnum.ActivityTimestamp:
-			t, ok := mesg.Fields[i].Value.(uint32)
-			if !ok {
-				continue
-			}
-			timestamp = t
+			timestamp = mesg.Fields[i].Value.Uint32()
 		case fieldnum.ActivityLocalTimestamp:
-			t, ok := mesg.Fields[i].Value.(uint32)
-			if !ok {
-				continue
-			}
-			localDateTime = t
+			localDateTime = mesg.Fields[i].Value.Uint32()
 		}
 	}
 

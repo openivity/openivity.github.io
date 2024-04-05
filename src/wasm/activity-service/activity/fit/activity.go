@@ -15,20 +15,20 @@ func createActivityMesg(timestamp time.Time, timezone int, sessionCount uint16) 
 	mesg := factory.CreateMesgOnly(mesgnum.Activity)
 
 	activityTypeField := factory.CreateField(mesgnum.Activity, fieldnum.ActivityType)
-	activityTypeField.Value = uint8(typedef.ActivityAutoMultiSport)
+	activityTypeField.Value = proto.Uint8(uint8(typedef.ActivityAutoMultiSport))
 	mesg.Fields = append(mesg.Fields, activityTypeField)
 
 	timestampField := factory.CreateField(mesgnum.Activity, fieldnum.ActivityTimestamp)
-	timestampField.Value = datetime.ToUint32(timestamp)
+	timestampField.Value = proto.Uint32(datetime.ToUint32(timestamp))
 	mesg.Fields = append(mesg.Fields, timestampField)
 
 	localTimestamp := datetime.ToLocalTime(timestampField.Value, timezone)
 	localTimestampField := factory.CreateField(mesgnum.Activity, fieldnum.ActivityLocalTimestamp)
-	localTimestampField.Value = datetime.ToUint32(localTimestamp)
+	localTimestampField.Value = proto.Uint32(datetime.ToUint32(localTimestamp))
 	mesg.Fields = append(mesg.Fields, localTimestampField)
 
 	sessionCountField := factory.CreateField(mesgnum.Activity, fieldnum.ActivityNumSessions)
-	sessionCountField.Value = sessionCount
+	sessionCountField.Value = proto.Uint16(sessionCount)
 
 	return mesg
 }

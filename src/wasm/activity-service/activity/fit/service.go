@@ -344,7 +344,7 @@ func (b *bytesBufferAt) WriteAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-func (s *service) convertActivityToFit(act *activity.Activity) *proto.Fit {
+func (s *service) convertActivityToFit(act *activity.Activity) *proto.FIT {
 	var lapCount, recordCount int
 	sessionCount := len(act.Sessions)
 
@@ -353,7 +353,7 @@ func (s *service) convertActivityToFit(act *activity.Activity) *proto.Fit {
 		recordCount += len(act.Sessions[i].Records)
 	}
 
-	fit := new(proto.Fit)
+	fit := new(proto.FIT)
 	fit.Messages = make([]proto.Message, 0, sessionCount+lapCount+recordCount+2) // +2 for FileId and Activity messages
 
 	filedIdMesg := convertCreatorToMesg(&act.Creator) // Must be first the message

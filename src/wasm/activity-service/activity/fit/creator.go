@@ -21,16 +21,10 @@ func NewCreator(mesg proto.Message) activity.Creator {
 
 		switch field.Num {
 		case fieldnum.FileIdManufacturer:
-			manufacturer, ok := field.Value.(uint16)
-			if !ok {
-				continue
-			}
+			manufacturer := field.Value.Uint16()
 			m.Manufacturer = &manufacturer
 		case fieldnum.FileIdProduct:
-			product, ok := field.Value.(uint16)
-			if !ok {
-				continue
-			}
+			product := field.Value.Uint16()
 			m.Product = &product
 		case fieldnum.FileIdTimeCreated:
 			m.TimeCreated = datetime.ToTime(field.Value)
@@ -44,19 +38,19 @@ func convertCreatorToMesg(cre *activity.Creator) proto.Message {
 	mesg := factory.CreateMesgOnly(mesgnum.FileId)
 
 	fileTypeField := factory.CreateField(mesgnum.FileId, fieldnum.FileIdType)
-	fileTypeField.Value = uint8(typedef.FileActivity)
+	fileTypeField.Value = proto.Uint8(uint8(typedef.FileActivity))
 	mesg.Fields = append(mesg.Fields, fileTypeField)
 
 	manufacturerField := factory.CreateField(mesgnum.FileId, fieldnum.FileIdManufacturer)
-	manufacturerField.Value = uint16(*cre.Manufacturer)
+	manufacturerField.Value = proto.Uint16(*cre.Manufacturer)
 	mesg.Fields = append(mesg.Fields, manufacturerField)
 
 	productField := factory.CreateField(mesgnum.FileId, fieldnum.FileIdProduct)
-	productField.Value = uint16(*cre.Product)
+	productField.Value = proto.Uint16(*cre.Product)
 	mesg.Fields = append(mesg.Fields, productField)
 
 	timeCreatedField := factory.CreateField(mesgnum.FileId, fieldnum.FileIdTimeCreated)
-	timeCreatedField.Value = datetime.ToUint32(cre.TimeCreated)
+	timeCreatedField.Value = proto.Uint32(datetime.ToUint32(cre.TimeCreated))
 	mesg.Fields = append(mesg.Fields, timeCreatedField)
 
 	return mesg
