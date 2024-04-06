@@ -186,12 +186,12 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.TotalMovingTime != 0 {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionTotalMovingTime)
-		field.Value = scaleoffset.DiscardValue(ses.TotalMovingTime, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(ses.TotalMovingTime), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.TotalElapsedTime != 0 {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionTotalElapsedTime)
-		field.Value = scaleoffset.DiscardValue(ses.TotalElapsedTime, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(ses.TotalElapsedTime), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 
 		totalTimerTimeField := factory.CreateField(mesgnum.Lap, fieldnum.SessionTotalElapsedTime)
@@ -200,7 +200,7 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.TotalDistance != 0 {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionTotalDistance)
-		field.Value = scaleoffset.DiscardValue(ses.TotalDistance, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(ses.TotalDistance), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.TotalAscent != 0 {
@@ -220,12 +220,12 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.AvgSpeed != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionAvgSpeed)
-		field.Value = scaleoffset.DiscardValue(*ses.AvgSpeed, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*ses.AvgSpeed), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.MaxSpeed != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionMaxSpeed)
-		field.Value = scaleoffset.DiscardValue(*ses.MaxSpeed, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*ses.MaxSpeed), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.AvgHeartRate != nil {
@@ -270,12 +270,12 @@ func convertSessionToMesg(ses *activity.Session) proto.Message {
 	}
 	if ses.AvgAltitude != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionAvgAltitude)
-		field.Value = scaleoffset.DiscardValue(*ses.AvgAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*ses.AvgAltitude), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if ses.MaxAltitude != nil {
 		field := factory.CreateField(mesgnum.Session, fieldnum.SessionMaxAltitude)
-		field.Value = scaleoffset.DiscardValue(*ses.MaxAltitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*ses.MaxAltitude), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 

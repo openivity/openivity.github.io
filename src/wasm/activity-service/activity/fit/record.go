@@ -107,12 +107,12 @@ func convertRecordToMesg(rec *activity.Record) proto.Message {
 	}
 	if rec.Distance != nil {
 		field := factory.CreateField(mesgnum.Record, fieldnum.RecordDistance)
-		field.Value = scaleoffset.DiscardValue(*rec.Distance, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*rec.Distance), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if rec.Altitude != nil {
 		field := factory.CreateField(mesgnum.Record, fieldnum.RecordAltitude)
-		field.Value = scaleoffset.DiscardValue(*rec.Altitude, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*rec.Altitude), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if rec.HeartRate != nil {
@@ -127,7 +127,7 @@ func convertRecordToMesg(rec *activity.Record) proto.Message {
 	}
 	if rec.Speed != nil {
 		field := factory.CreateField(mesgnum.Record, fieldnum.RecordSpeed)
-		field.Value = scaleoffset.DiscardValue(*rec.Speed, field.Type.BaseType(), field.Scale, field.Offset)
+		field.Value = scaleoffset.DiscardValue(proto.Float64(*rec.Speed), field.Type.BaseType(), field.Scale, field.Offset)
 		mesg.Fields = append(mesg.Fields, field)
 	}
 	if rec.Power != nil {
