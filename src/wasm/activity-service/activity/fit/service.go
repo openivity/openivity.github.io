@@ -315,7 +315,10 @@ func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([
 	for i := range activities {
 		fit := s.convertActivityToFit(&activities[i])
 
-		enc := encoder.New(bufAt, encoder.WithProtocolVersion(proto.V2))
+		enc := encoder.New(bufAt,
+			encoder.WithProtocolVersion(proto.V2),
+			encoder.WithNormalHeader(15),
+		)
 		if err := enc.EncodeWithContext(ctx, fit); err != nil {
 			return nil, fmt.Errorf("could not encode: %w", err)
 		}
