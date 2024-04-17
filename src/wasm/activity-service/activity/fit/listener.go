@@ -119,7 +119,7 @@ func (l *Listener) Result() *ListenerResult {
 }
 
 func (l *Listener) reset() {
-	l.mesgc = make(chan proto.Message, 1000)
+	l.mesgc = make(chan proto.Message, bufferSize)
 	l.done = make(chan struct{})
 
 	l.creator = nil
