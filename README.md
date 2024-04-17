@@ -1,52 +1,43 @@
-# openactivity
+# Openivity: Open Activity
 
-This template should help get you started developing with Vue 3 in Vite.
+Interactive tool to view (with OpenStreetMap view), edit, convert and combine multiple FIT, GPX and TCX activity files. 100% client-site power!
 
-## Recommended IDE Setup
+## Getting Started
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+### Prerequisites
 
-## Type Support for `.vue` Imports in TS
+- Go version >= v1.20.x
+- NodeJS >= v20.7.x
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
+### Project Setup
 
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
+- Install node dependencies
 
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+  ```sh
+  npm install
+  ```
 
-## Customize configuration
+- Copy `wasm_exec.js` of your current version of Go in your local machine to `src/assets/wasm/wasm_exec.js`. This file is tightly coupled with a specific version of Go in order to compile the WebAssembly binary.
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+  ```sh
+  cp $GOROOT/misc/wasm/wasm_exec.js src/assets/wasm/wasm_exec.js
+  ```
 
-## Project Setup
+- Compile Go source code into wasm binary.
 
-```sh
-npm install
-```
+  ```sh
+  npm run build-wasm
+  ```
 
-### Compile and Hot-Reload for Development
+- Finally, now you can run the project
 
-```sh
-npm run dev
-```
+  ```sh
+  npm run dev
+  ```
 
-### Type-Check, Compile and Minify for Production
+- Type-Check, Compile and Minify for Production
 
-```sh
-npm run build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
-npm run test:unit
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+  ```sh
+  npm run build-wasm
+  npm run build-only
+  ```
