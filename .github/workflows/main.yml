@@ -36,6 +36,7 @@ jobs:
           npm run build-wasm
           npm run build-only
           cp dist/index.html dist/404.html
+          cp LICENSE dist/LICENSE
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
