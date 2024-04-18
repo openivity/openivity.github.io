@@ -14,7 +14,7 @@ This project need:
 
 Project Git Branch:
 
-- `main` release branch
+- `master` release branch
 - `dev` dev consolidate branch
 
 ### Project Setup
