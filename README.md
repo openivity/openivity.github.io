@@ -52,7 +52,7 @@ Interactive tool to view (with OpenStreetMap view), edit, convert and combine mu
 
 ## Getting Started
 
-Please see [Development environment setup](docs/CONTRIBUTING.md#development+environment+setup) to set-up.
+Please see [Development environment setup](docs/CONTRIBUTING.md#development-environment-setup) to set-up.
 
 ## Features
 
