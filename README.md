@@ -11,9 +11,7 @@
 <br />
 
 [![Project license](https://img.shields.io/github/license/openivity/openivity.github.io.svg?style=flat-square)](LICENSE)
-
-[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/openivity/openivity.github.io/issues?q=is%3Aissue+is%3Aopen)
-[![code with love by openivity](https://img.shields.io/badge/Code%20with%20%E2%99%A5%20by-openivity-ff1414.svg?style=flat-square)](https://github.com/openivity)
+[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-33CC56.svg?style=flat-square)](https://github.com/openivity/openivity.github.io/issues?q=is%3Aissue+is%3Aopen)
 
 </div>
 
@@ -44,7 +42,7 @@ Interactive tool to view (with OpenStreetMap view), edit, convert and combine mu
 ### Built With
 
 - Go - WASM
-- NodeJS Vite - Vue- Typescript
+- NodeJS Vite - Vue - Typescript
 - Open Layer
 - Open Street Map
 - Bootstrap
