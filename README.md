@@ -10,6 +10,7 @@
 <div align="center">
 <br />
 
+![GitHub Workflow Status](https://github.com/openivity/openivity.github.io/actions/workflows/main.yml/badge.svg)
 [![Project license](https://img.shields.io/github/license/openivity/openivity.github.io.svg?style=flat-square)](LICENSE)
 [![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-33CC56.svg?style=flat-square)](https://github.com/openivity/openivity.github.io/issues?q=is%3Aissue+is%3Aopen)
 
@@ -35,18 +36,19 @@
 
 ## About
 
-Interactive tool to view (with OpenStreetMap view), edit, convert and combine multiple FIT, GPX and TCX activity files. 100% client-site power!
+Interactive tool to view (with OpenStreetMap), edit, convert and combine multiple FIT, GPX and TCX activity files. 100% client-site power!
 
 <img src="docs/images/sample.jpg" title="App Page" width="100%">
 
 ### Built With
 
-- Go - WASM
-- NodeJS Vite - Vue - Typescript
-- Open Layer
-- Open Street Map
-- Bootstrap
-- d3.js
+- [Go](https://go.dev) - [WebAssembly](https://github.com/golang/go/wiki/WebAssembly)
+- [FIT SDK for Go](https://github.com/muktihari/fit)
+- [NodeJS](https://nodejs.org) - [Vite](https://vitejs.dev) - [Vue](https://vuejs.org) - [Typescript](https://www.typescriptlang.org)
+- [OpenLayers](https://openlayers.org)
+- [OpenStreetMap](https://www.openstreetmap.org)
+- [Bootstrap](https://getbootstrap.com)
+- [d3.js](https://d3js.org)
 
 ## Getting Started
 
@@ -54,21 +56,29 @@ Please see [Development environment setup](docs/CONTRIBUTING.md#development-envi
 
 ## Features
 
-- Supported files: \*.fit, \*.gpx, \*.tcx
-- Support open Single or Multiple files
+- Supported files: **\*.fit**, **\*.gpx**, and **\*.tcx**
+- Support opening Single or Multiple files
 - Support multiple sport session in Single or Multiple files
-- Map view
-- Heart Rate Zone
-- Speed Graph, Cadence Graph, Heart Rate Graph, Elevation Graph
-- Laps & Session
+- Map view (with OpenStreetMap)
+- Graphs:
+  - Elevation
+  - Heart Rate Zone
+  - Splits Pace
+  - Pace
+  - Speed
+  - Cadence
+  - Heart Rate
+  - Power
+  - Temperature
+- Laps & Sessions
 - **Tools**
-  - Export to fit, gpx, tcx
+  - Export to FIT, GPX, or TCX
   - Edit Relevant Data
     - Change Sport Type
     - Change Device
     - Trim Track
     - Conceal GPS Positions
-    - Removes Cadence, Heart Rate, Power, Temperature
+    - Remove Fields: Cadence, Heart Rate, Power, and Temperature
   - Combine Multiple Activities
   - Split Activity per Session
 
@@ -78,10 +88,7 @@ See the [open issues](https://github.com/openivity/openivity.github.io/issues) f
 
 ## Support
 
-Reach out to the maintainer at one of the following places:
-
-- [GitHub issues](https://github.com/openivity/openivity.github.io/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+)
-- Contact options listed on [this GitHub profile](https://github.com/openivity)
+If you have any questions or encounter any issues, feel free to open an [issue](https://github.com/openivity/openivity.github.io/issues/new) and we will assist you in resolving them.
 
 ## Project assistance
 
@@ -105,12 +112,12 @@ For a full list of all authors and contributors, see [the contributors page](htt
 
 ## Security
 
-Openivity - Open Activity follows good practices of security, since it's used in 100% client-site, it consider as safe, but 100% security cannot be assured.
-
-Openivity - Open Activity is provided **"as is"** without any **warranty**. Use at your own risk.
+Openivity - Open Activity runs 100% client-side, and we don't collect any data since all data reside on the user's machine, ensuring user privacy. We strive to follow security best practices; however, we cannot assure 100% free from security breaches. Please [Report a vulnerability](https://github.com/openivity/openivity.github.io/security/advisories/new) if you find any security issue in this repository.
 
 ## License
 
 This project is licensed under the **GPL 3**.
 
 See [LICENSE](LICENSE) for more information.
+
+Openivity - Open Activity is provided **"as is"** without any **warranty**. Use at your own risk.
