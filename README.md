@@ -1,52 +1,123 @@
-# openactivity
+<h1 align="center">
+  <a href="https://github.com/openivity/openivity.github.io">
+    <img src="docs/images/logo.png" alt="Logo" height="35">
+  </a>
+</h1>
 
-This template should help get you started developing with Vue 3 in Vite.
+<div align="center">
+</div>
 
-## Recommended IDE Setup
+<div align="center">
+<br />
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+![GitHub Workflow Status](https://github.com/openivity/openivity.github.io/actions/workflows/main.yml/badge.svg)
+[![Project license](https://img.shields.io/github/license/openivity/openivity.github.io.svg?style=flat-square)](LICENSE)
+[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-33CC56.svg?style=flat-square)](https://github.com/openivity/openivity.github.io/issues?q=is%3Aissue+is%3Aopen)
 
-## Type Support for `.vue` Imports in TS
+</div>
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
+<details open="open">
+<summary>Table of Contents</summary>
 
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
+- [About](#about)
+- [Getting Started](#getting-started)
+- [Features](#features)
+- [Roadmap](#roadmap)
+- [Support](#support)
+- [Project assistance](#project-assistance)
+- [Contributing](#contributing)
+- [Contributors](#contributors)
+- [Security](#security)
+- [License](#license)
 
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+</details>
 
-## Customize configuration
+---
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+## About
 
-## Project Setup
+Interactive tool to view (with OpenStreetMap), edit, convert and combine multiple FIT, GPX and TCX activity files. 100% client-site power!
 
-```sh
-npm install
-```
+<img src="docs/images/sample.jpg" title="App Page" width="100%">
 
-### Compile and Hot-Reload for Development
+### Built With
 
-```sh
-npm run dev
-```
+- [Go](https://go.dev) - [WebAssembly](https://github.com/golang/go/wiki/WebAssembly)
+- [FIT SDK for Go](https://github.com/muktihari/fit)
+- [NodeJS](https://nodejs.org) - [Vite](https://vitejs.dev) - [Vue](https://vuejs.org) - [Typescript](https://www.typescriptlang.org)
+- [OpenLayers](https://openlayers.org)
+- [OpenStreetMap](https://www.openstreetmap.org)
+- [Bootstrap](https://getbootstrap.com)
+- [d3.js](https://d3js.org)
 
-### Type-Check, Compile and Minify for Production
+## Getting Started
 
-```sh
-npm run build
-```
+Please see [Development environment setup](docs/CONTRIBUTING.md#development-environment-setup) to set-up.
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+## Features
 
-```sh
-npm run test:unit
-```
+- Supported files: **\*.fit**, **\*.gpx**, and **\*.tcx**
+- Support opening Single or Multiple files
+- Support multiple sport session in Single or Multiple files
+- Map view (with OpenStreetMap)
+- Graphs:
+  - Elevation
+  - Heart Rate Zone
+  - Splits Pace
+  - Pace
+  - Speed
+  - Cadence
+  - Heart Rate
+  - Power
+  - Temperature
+- Laps & Sessions
+- **Tools**
+  - Export to FIT, GPX, or TCX
+  - Edit Relevant Data
+    - Change Sport Type
+    - Change Device
+    - Trim Track
+    - Conceal GPS Positions
+    - Remove Fields: Cadence, Heart Rate, Power, and Temperature
+  - Combine Multiple Activities
+  - Split Activity per Session
 
-### Lint with [ESLint](https://eslint.org/)
+## Roadmap
 
-```sh
-npm run lint
-```
+See the [open issues](https://github.com/openivity/openivity.github.io/issues) for a list of proposed features (and known issues).
+
+## Support
+
+If you have any questions or encounter any issues, feel free to open an [issue](https://github.com/openivity/openivity.github.io/issues/new) and we will assist you in resolving them.
+
+## Project assistance
+
+If you want to say **thank you** or/and support active development of Open Activity:
+
+- Add a [GitHub Star](https://github.com/openivity/openivity.github.io) to the project.
+- Tweet about the Open Activity.
+- Write interesting articles about the project on [Dev.to](https://dev.to/), [Medium](https://medium.com/) or your personal blog.
+
+## Contributing
+
+First off, thanks for taking the time to contribute! Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make will benefit everybody else and are **greatly appreciated**.
+
+Please read [our contribution guidelines](docs/CONTRIBUTING.md), and thank you for being involved!
+
+## Contributors
+
+The original setup of this repository is by [Openivity](https://github.com/openivity).
+
+For a full list of all authors and contributors, see [the contributors page](https://github.com/openivity/openivity.github.io/contributors).
+
+## Security
+
+Openivity - Open Activity runs 100% client-side, and we don't collect any data since all data reside on the user's machine, ensuring user privacy. We strive to follow security best practices; however, we cannot assure 100% free from security breaches. Please [Report a vulnerability](https://github.com/openivity/openivity.github.io/security/advisories/new) if you find any security issue in this repository.
+
+## License
+
+This project is licensed under the **GPL 3**.
+
+See [LICENSE](LICENSE) for more information.
+
+Openivity - Open Activity is provided **"as is"** without any **warranty**. Use at your own risk.

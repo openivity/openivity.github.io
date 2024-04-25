@@ -1,0 +1,58 @@
+// Copyright (C) 2023 Openivity
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+label {
+  font-weight: 500;
+  color: var(--bs-heading-color);
+}
+
+.sub-label {
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.emoji {
+  font-size: 1.2em;
+  color: white;
+}
+
+p {
+  font-size: 0.8em;
+  margin-bottom: 0;
+}
+
+.fs-legend {
+  font-size: 0.8em;
+}
+
+.color-mandatory {
+    color: rgba(255,0,0,0.8)
+}
+
+.openivity-form-range::-webkit-slider-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
+}
+
+.openivity-form-range::-moz-range-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
+}
+
+.openivity-form-range::-ms-thumb {
+  background-color: var(--color-title) !important;
+  border: 2px solid var(--color-title) !important;
+}

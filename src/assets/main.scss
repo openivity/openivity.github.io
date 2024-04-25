@@ -1,0 +1,138 @@
+// Copyright (C) 2023 Openivity
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+/* Global variable (before bootstrap set) */
+:root {
+  --palm-springs-splash: #218c74;
+  --medium-sea-green: #41b883;
+  --vt-c-white: #ffffff;
+  --vt-c-white-soft: #f8f8f8;
+  --vt-c-white-mute: #f2f2f2;
+
+  --vt-c-black: #181818;
+  --vt-c-black-soft: #222222;
+  --vt-c-black-mute: #282828;
+
+  --vt-c-indigo: #2c3e50;
+
+  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
+  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
+  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
+  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+
+  --vt-c-text-light-1: var(--vt-c-indigo);
+  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
+  --vt-c-text-dark-1: var(--vt-c-white);
+  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+  --vt-c-text-dark-3: rgba(130, 130, 130, 0.7);
+
+  --open-activity-color-vivid: #f15a22;
+}
+
+/* semantic color variables for this project */
+:root {
+  --color-background: var(--vt-c-white);
+  --color-background-soft: var(--vt-c-white-soft);
+  --color-background-mute: var(--vt-c-white-mute);
+
+  --color-border: var(--vt-c-divider-light-2);
+  --color-border-hover: var(--vt-c-divider-light-1);
+
+  --color-heading: var(--vt-c-text-light-1);
+  --color-text: var(--vt-c-text-light-1);
+  --color-text-soft: var(--vt-c-black-soft);
+  --color-text-disabled: var(--vt-c-divider-dark-1);
+  --color-title: var(--vt-c-text-light-1);
+
+  --green-text: var(--palm-springs-splash);
+
+  --section-gap: 160px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--vt-c-black);
+    --color-background-soft: var(--vt-c-black-soft);
+    --color-background-mute: var(--vt-c-black-mute);
+
+    --color-border: var(--vt-c-divider-dark-2);
+    --color-border-hover: var(--grey);
+
+    --color-heading: var(--vt-c-text-dark-1);
+    --color-text: var(--vt-c-text-dark-2);
+    --color-text-soft: var(--vt-c-white);
+    --color-text-disabled: var(--vt-c-text-dark-3);
+    --color-title: var(--open-activity-color-vivid);
+
+    --green-text: var(--medium-sea-green);
+  }
+}
+
+/* Bootstrap here */
+@import './bootstrap.scss';
+
+/* scrollbar */
+@import './scrollbar.scss';
+
+@import './v-select.scss';
+
+// DO NOT REMOVE
+// For finding overflow element
+// * {
+//     outline: 1px solid #f00 !important;
+// }
+
+/* Global overrides */
+body {
+  color: var(--color-text);
+  background: var(--color-background);
+  transition:
+    color 0.5s,
+    background-color 0.5s;
+  line-height: 1.6;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (pointer: coarse) {
+  body {
+    font-size: 13px;
+  }
+}
+
+/* Collapse indicator with transition */
+.collapsible.collapsed .collapse-indicator {
+  transition: transform 300ms;
+  transform: rotate(0deg);
+}
+.collapsible:not(.collapsed) .collapse-indicator {
+  transition: transform 300ms;
+  transform: rotate(90deg);
+}

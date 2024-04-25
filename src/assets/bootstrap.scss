@@ -1,0 +1,62 @@
+// Copyright (C) 2023 Openivity
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+// Option A: Include all of Bootstrap
+
+// Include any default variable overrides here (though functions won't be available)
+
+@import '~bootstrap/scss/bootstrap';
+
+// Then add additional custom code here
+:root {
+  --bs-heading-color: #e14a12;
+  --bs-body-bg: #ffffff;
+  --bs-body-color: var(--color-text);
+  --bs-danger-rgb: 255, 0, 0;
+  --bs-primary-rgb: 30, 144, 255;
+
+  .progress,
+  .progress-stacked {
+    --bs-progress-bg-focus: #343a4055;
+  }
+}
+
+table {
+  --bs-table-color: var(--bs-body-color); // make it same table color = body color
+}
+
+[data-bs-theme='dark'] {
+  color-scheme: dark;
+  --bs-heading-color: #f15a22;
+  --bs-body-bg: #181818;
+  --bs-body-color: rgba(235, 235, 235, 0.64);
+  --bs-danger-rgb: 255, 0, 0;
+  --bs-primary-rgb: 30, 144, 255;
+
+  table {
+    --bs-table-color: var(--bs-body-color); // make it same table color = body color
+  }
+}
+
+.nav-tabs .nav-link.flat-green {
+  font-weight: 500 !important;
+  color: var(--green-text) !important;
+  border-top-left-radius: unset !important;
+  border-top-right-radius: unset !important;
+}
+
+.nav-tabs .nav-link.flat-green.active {
+  color: var(--color-heading) !important;
+}
