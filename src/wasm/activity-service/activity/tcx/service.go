@@ -20,12 +20,16 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"math"
 
-	"github.com/muktihari/openactivity-fit/activity"
-	"github.com/muktihari/openactivity-fit/activity/tcx/schema"
-	"github.com/muktihari/openactivity-fit/kit"
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
-	"github.com/muktihari/openactivity-fit/preprocessor"
+	"github.com/muktihari/fit/kit/scaleoffset"
+	"github.com/muktihari/fit/profile/typedef"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/activity/tcx/schema"
+	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/strutils"
+	"github.com/openivity/activity-service/xmlutils"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -35,36 +39,27 @@ const (
 var _ activity.Service = &service{}
 
 type service struct {
-	preprocessor *preprocessor.Preprocessor
+	preprocessor *activity.Preprocessor
 }
 
-func NewService(preproc *preprocessor.Preprocessor) activity.Service {
+// NewService creates new TCX service.
+func NewService(preproc *activity.Preprocessor) activity.Service {
 	return &service{preprocessor: preproc}
 }
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	dec := xml.NewDecoder(r)
 
-	// NOTE: We manually define xml.Unmarshaler to void the reflection used
-	//       in default decoder, which is particularly slow expecially in WASM.
-
 	// Find start element
 	var start *xml.StartElement
-	if start == nil {
-		for {
-			tok, err := dec.Token()
-			if err != nil {
-				return nil, err
-			}
-			if t, ok := tok.(xml.StartElement); ok {
-				start = &t
-				break
-			}
+	for start == nil {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	if start == nil { // In case we got invalid xml, avoid panic.
-		return nil, fmt.Errorf("not a valid xml")
+		if t, ok := tok.(xml.StartElement); ok {
+			start = &t
+		}
 	}
 
 	var tcx schema.TCX
@@ -72,29 +67,24 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		return nil, err
 	}
 
-	act := new(activity.Activity)
-	if len(tcx.Activities) > 0 && tcx.Activities[0].Activity != nil {
+	act := activity.CreateActivity()
+	if len(tcx.Activities) > 0 {
 		act.Creator.TimeCreated = tcx.Activities[0].Activity.ID
 	}
 
-	sessions := make([]*activity.Session, 0, len(tcx.Activities))
+	sessions := make([]activity.Session, 0, len(tcx.Activities))
 
 	for i := range tcx.Activities {
 		a := tcx.Activities[i]
-		if a.Activity == nil {
-			continue
-		}
 
 		if act.Creator.Name == "" && a.Activity.Creator != nil {
 			act.Creator.Name = a.Activity.Creator.Name
 		}
 
-		sport := kit.FormatTitle(a.Activity.Sport)
-		if sport == "" || sport == "Other" {
-			sport = activity.SportGeneric
+		sport := typedef.SportFromString(strutils.ToLowerSnakeCase(a.Activity.Sport))
+		if sport == typedef.SportInvalid {
+			sport = typedef.SportGeneric
 		}
-
-		laps := make([]*activity.Lap, 0, len(a.Activity.Laps))
 
 		var recordCount int
 		for j := range a.Activity.Laps {
@@ -103,23 +93,22 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			}
 		}
 
-		records := make([]*activity.Record, 0, recordCount)
-
-		recordsByLap := make([][]*activity.Record, 0, len(a.Activity.Laps))
+		laps := make([]activity.Lap, 0, len(a.Activity.Laps))
+		records := make([]activity.Record, 0, recordCount)
+		recordsByLap := make([][]activity.Record, 0, len(a.Activity.Laps))
 		for j := range a.Activity.Laps {
-			activityLap := a.Activity.Laps[j]
+			activityLap := &a.Activity.Laps[j]
 
 			var lapRecordCount int
 			for k := range activityLap.Tracks {
 				lapRecordCount += len(activityLap.Tracks[k].Trackpoints)
 			}
-			lapRecords := make([]*activity.Record, 0, lapRecordCount)
+			lapRecords := make([]activity.Record, 0, lapRecordCount)
 
 			for k := range activityLap.Tracks { // flattening tracks-trackpoints
 				for l := range activityLap.Tracks[k].Trackpoints {
-					tp := &activityLap.Tracks[k].Trackpoints[l]
-					rec := NewRecord(tp)
-					lapRecords = append(lapRecords, rec)
+					trackpoint := &activityLap.Tracks[k].Trackpoints[l]
+					lapRecords = append(lapRecords, trackpoint.ToRecord())
 				}
 			}
 
@@ -128,17 +117,19 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			}
 
 			records = append(records, lapRecords...)
-
 			recordsByLap = append(recordsByLap, lapRecords)
 
-			lap := &activity.Lap{
-				StartTime:        activityLap.StartTime,
-				TotalDistance:    activityLap.DistanceMeters,
-				TotalCalories:    activityLap.Calories,
-				TotalElapsedTime: activityLap.TotalTimeSeconds,
-				AvgHeartRate:     activityLap.AverageHeartRateBpm,
-				MaxHeartRate:     activityLap.MaximumHeartRateBpm,
+			lap := activity.CreateLap(nil)
+			lap.StartTime = activityLap.StartTime
+			if !math.IsNaN(activityLap.DistanceMeters) {
+				lap.TotalDistance = uint32(scaleoffset.Discard(activityLap.DistanceMeters, 100, 0))
 			}
+			lap.TotalCalories = activityLap.Calories
+			if !math.IsNaN(activityLap.DistanceMeters) {
+				lap.TotalElapsedTime = uint32(scaleoffset.Discard(activityLap.TotalTimeSeconds, 1000, 0))
+			}
+			lap.AvgHeartRate = activityLap.AverageHeartRateBpm
+			lap.MaxHeartRate = activityLap.MaximumHeartRateBpm
 
 			laps = append(laps, lap)
 		}
@@ -149,15 +140,15 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			s.preprocessor.CalculatePace(sport, records)
 		}
 
-		s.preprocessor.SmoothingElev(records)
+		s.preprocessor.SmoothingElevation(records)
 		s.preprocessor.CalculateGrade(records)
 
 		// We can only calculate laps' summary after preprocessing
 		for i := range laps {
-			lap := laps[i]
+			lap := &laps[i]
 			lapFromRecords := activity.NewLapFromRecords(recordsByLap[i], sport)
 
-			activity.CombineLap(lap, lapFromRecords)
+			lap.ReplaceValues(&lapFromRecords)
 		}
 
 		if len(laps) == 0 {
@@ -171,13 +162,14 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 
 		session.Laps = laps
 		session.Records = records
+		session.Summarize()
 
 		sessions = append(sessions, session)
 
 		if act.Creator.TimeCreated.IsZero() {
 			act.Creator.TimeCreated = session.StartTime
 			act.Creator.Name = a.Activity.Creator.Name
-			act.Creator.Product = &a.Activity.Creator.ProductID
+			act.Creator.Product = a.Activity.Creator.ProductID
 		}
 	}
 
@@ -187,28 +179,29 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 
 	act.Sessions = sessions
 
-	s.preprocessor.SetSessionsWorkoutType(act.Sessions...)
-
-	return []activity.Activity{*act}, nil
+	return []activity.Activity{act}, nil
 }
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	bs := make([][]byte, len(activities))
 
+	buf := mem.GetBuffer()
+	defer mem.PutBuffer(buf)
+
 	for i := range activities {
 		tcx := s.convertActivityToTCX(&activities[i])
-		b, err := kxml.Marshal(tcx)
-		if err != nil {
+		buf.Reset()
+		if err := xmlutils.MarshalWrite(buf, &tcx); err != nil {
 			return nil, fmt.Errorf("could not marshal tcx: %w", err)
 		}
-		bs[i] = b
+		bs[i] = slices.Clone(buf.Bytes())
 	}
 
 	return bs, nil
 }
 
-func (s *service) convertActivityToTCX(act *activity.Activity) *schema.TCX {
-	tcx := &schema.TCX{
+func (s *service) convertActivityToTCX(act *activity.Activity) schema.TCX {
+	tcx := schema.TCX{
 		Author: &schema.Application{
 			Name: applicationName,
 		},
@@ -219,9 +212,9 @@ func (s *service) convertActivityToTCX(act *activity.Activity) *schema.TCX {
 		ses := act.Sessions[i]
 
 		activityList := schema.ActivityList{
-			Activity: &schema.Activity{
+			Activity: schema.Activity{
 				ID:    ses.Timestamp,
-				Sport: ses.Sport,
+				Sport: strutils.ToTitle(ses.Sport.String()),
 				Creator: &schema.Device{
 					Name: act.Creator.Name,
 				},
@@ -238,9 +231,9 @@ func (s *service) convertActivityToTCX(act *activity.Activity) *schema.TCX {
 
 			activityLap := schema.ActivityLap{
 				StartTime:           lap.StartTime,
-				TotalTimeSeconds:    lap.TotalElapsedTime,
-				DistanceMeters:      lap.TotalDistance,
-				MaximumSpeed:        lap.MaxSpeed,
+				TotalTimeSeconds:    lap.TotalElapsedTimeScaled(),
+				DistanceMeters:      lap.TotalDistanceScaled(),
+				MaximumSpeed:        lap.MaxSpeedScaled(),
 				Calories:            lap.TotalCalories,
 				AverageHeartRateBpm: lap.AvgHeartRate,
 				MaximumHeartRateBpm: lap.MaxHeartRate,
@@ -248,30 +241,24 @@ func (s *service) convertActivityToTCX(act *activity.Activity) *schema.TCX {
 			}
 
 			track := schema.Track{}
-			remainingRecords := make([]*activity.Record, 0)
+			remainingRecords := make([]activity.Record, 0)
 			for k := range sesRecords {
 				rec := sesRecords[k]
 
 				if lap.IsBelongToThisLap(rec.Timestamp) {
 					trackpoint := schema.Trackpoint{
-						Time:           rec.Timestamp,
-						AltitudeMeters: rec.Altitude,
-						DistanceMeters: rec.Distance,
+						Time: rec.Timestamp,
+						Position: schema.Position{
+							LatitudeDegrees:  rec.PositionLatDegrees(),
+							LongitudeDegrees: rec.PositionLongDegrees(),
+						},
+						AltitudeMeters: rec.AltitudeScaled(),
+						DistanceMeters: rec.DistanceScaled(),
 						HeartRateBpm:   rec.HeartRate,
 						Cadence:        rec.Cadence,
-					}
-
-					if rec.PositionLat != nil && rec.PositionLong != nil {
-						trackpoint.Position = &schema.Position{
-							LatitudeDegrees:  *rec.PositionLat,
-							LongitudeDegrees: *rec.PositionLong,
-						}
-					}
-
-					if rec.Speed != nil {
-						trackpoint.Extensions = &schema.TrackpointExtension{
-							Speed: rec.Speed,
-						}
+						Extensions: schema.TrackpointExtension{
+							Speed: rec.SpeedScaled(),
+						},
 					}
 					track.Trackpoints = append(track.Trackpoints, trackpoint)
 				} else {

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 type Application struct {
@@ -78,20 +78,20 @@ func (a *Application) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("Name"), xml.CharData(a.Name)); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("Name"), xml.CharData(a.Name)); err != nil {
 		return fmt.Errorf("name: %w", err)
 	}
 
 	if a.Build != nil {
-		if err := a.Build.MarshalXML(enc, kxml.StartElement("Build")); err != nil {
+		if err := a.Build.MarshalXML(enc, xmlutils.StartElement("Build")); err != nil {
 			return fmt.Errorf("build: %w", err)
 		}
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("LangID"), xml.CharData(a.LangID)); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("LangID"), xml.CharData(a.LangID)); err != nil {
 		return fmt.Errorf("langID: %w", err)
 	}
-	if err := kxml.EncodeElement(enc, kxml.StartElement("PartNumber"), xml.CharData(a.PartNumber)); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("PartNumber"), xml.CharData(a.PartNumber)); err != nil {
 		return fmt.Errorf("partNumber: %w", err)
 	}
 
@@ -146,12 +146,12 @@ func (b *Build) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("Type"), xml.CharData(b.Type)); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("Type"), xml.CharData(b.Type)); err != nil {
 		return fmt.Errorf("type: %w", err)
 	}
 
 	if b.Version != nil {
-		if err := b.Version.MarshalXML(enc, kxml.StartElement("Version")); err != nil {
+		if err := b.Version.MarshalXML(enc, xmlutils.StartElement("Version")); err != nil {
 			return fmt.Errorf("version: %w", err)
 		}
 	}
@@ -231,24 +231,24 @@ func (d *Device) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("Name"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("Name"),
 		xml.CharData(d.Name)); err != nil {
 		return fmt.Errorf("name: %w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("UnitId"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("UnitId"),
 		xml.CharData(strconv.FormatUint(uint64(d.UnitId), 10))); err != nil {
 		return fmt.Errorf("unitId: %w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("ProductID"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("ProductID"),
 		xml.CharData(strconv.FormatUint(uint64(d.ProductID), 10))); err != nil {
 		return fmt.Errorf("productID: %w", err)
 	}
 
 	if d.Version != nil {
-		if err := d.Version.MarshalXML(enc, kxml.StartElement("Version")); err != nil {
+		if err := d.Version.MarshalXML(enc, xmlutils.StartElement("Version")); err != nil {
 			return fmt.Errorf("version: %w", err)
 		}
 	}
@@ -319,23 +319,23 @@ func (v *Version) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("VersionMajor"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("VersionMajor"),
 		xml.CharData(strconv.FormatUint(uint64(v.VersionMajor), 10))); err != nil {
 		return fmt.Errorf("versionMajor:%w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("VersionMinor"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("VersionMinor"),
 		xml.CharData(strconv.FormatUint(uint64(v.VersionMinor), 10))); err != nil {
 		return fmt.Errorf("versionMinor:%w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("BuildMajor"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("BuildMajor"),
 		xml.CharData(strconv.FormatUint(uint64(v.BuildMajor), 10))); err != nil {
 		return fmt.Errorf("buildMajor:%w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("BuildMinor"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("BuildMinor"),
 		xml.CharData(strconv.FormatUint(uint64(v.BuildMinor), 10))); err != nil {
 		return fmt.Errorf("buildMinor:%w", err)
 	}

@@ -16,15 +16,14 @@
 package result
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/muktihari/openactivity-fit/activity"
+	"github.com/openivity/activity-service/activity"
 )
 
+// Decode is decode result.
 type Decode struct {
 	Err               error
 	DecodeTook        time.Duration
@@ -33,50 +32,50 @@ type Decode struct {
 	Activities        []activity.Activity
 }
 
-var _ json.Marshaler = &Decode{}
-
-func (d *Decode) MarshalJSON() ([]byte, error) {
+// MarshalAppendJSON appends the JSON format encoding of Decode to b, returning the result.
+func (d *Decode) MarshalAppendJSON(b []byte) []byte {
 	if d.Err != nil {
-		return []byte(fmt.Sprintf("{%q:%q}", "err", d.Err)), nil
+		return []byte(fmt.Sprintf("{%q:%q}", "err", d.Err))
 	}
 
 	begin := time.Now()
-	buf := new(bytes.Buffer)
-	buf.WriteByte('{')
+	b = append(b, '{')
 
-	buf.WriteString("\"err\":null,")
+	b = append(b, `"err":null,`...)
 
 	if len(d.Activities) != 0 {
-		buf.WriteString("\"activities\":[")
+		b = append(b, `"activities":[`...)
 		for i := range d.Activities {
-			b, _ := d.Activities[i].MarshalJSON()
-			buf.Write(b)
-			if i != len(d.Activities)-1 {
-				buf.WriteByte(',')
+			n := len(b)
+			b = d.Activities[i].MarshalAppendJSON(b)
+			if len(b) != n && i != len(d.Activities)-1 {
+				b = append(b, ',')
 			}
 		}
-		buf.WriteString("],")
+		b = append(b, ']')
+		b = append(b, ',')
 	}
 
 	d.SerializationTook = time.Since(begin)
 	d.TotalElapsed = d.DecodeTook + d.SerializationTook
 
-	buf.WriteString("\"decodeTook\":")
-	buf.WriteString(strconv.FormatInt(d.DecodeTook.Milliseconds(), 10))
-	buf.WriteByte(',')
+	b = append(b, `"decodeTook":`...)
+	b = append(b, strconv.FormatInt(d.DecodeTook.Milliseconds(), 10)...)
+	b = append(b, ',')
 
-	buf.WriteString("\"serializationTook\":")
-	buf.WriteString(strconv.FormatInt(d.SerializationTook.Milliseconds(), 10))
-	buf.WriteByte(',')
+	b = append(b, `"serializationTook":`...)
+	b = append(b, strconv.FormatInt(d.SerializationTook.Milliseconds(), 10)...)
+	b = append(b, ',')
 
-	buf.WriteString("\"totalElapsed\":")
-	buf.WriteString(strconv.FormatInt(d.TotalElapsed.Milliseconds(), 10))
+	b = append(b, `"totalElapsed":`...)
+	b = append(b, strconv.FormatInt(d.TotalElapsed.Milliseconds(), 10)...)
 
-	buf.WriteByte('}')
+	b = append(b, '}')
 
-	return buf.Bytes(), nil
+	return b
 }
 
+// DecodeWorker is a decode worker.
 type DecodeWorker struct {
 	Err      error
 	Index    int

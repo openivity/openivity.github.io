@@ -18,11 +18,15 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
-	"github.com/muktihari/openactivity-fit/kit"
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/muktihari/fit/kit/scaleoffset"
+	"github.com/muktihari/fit/kit/semicircles"
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 type Track struct {
@@ -64,7 +68,7 @@ func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	for i := range t.Trackpoints {
-		if err := t.Trackpoints[i].MarshalXML(enc, kxml.StartElement("Trackpoint")); err != nil {
+		if err := t.Trackpoints[i].MarshalXML(enc, xmlutils.StartElement("Trackpoint")); err != nil {
 			return fmt.Errorf("trackpoint[%d]: %w", i, err)
 		}
 	}
@@ -73,19 +77,55 @@ func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 }
 
 type Trackpoint struct {
-	Time           time.Time            `xml:"Time"`
-	Position       *Position            `xml:"Position,omitempty"`
-	AltitudeMeters *float64             `xml:"AltitudeMeters,omitempty"`
-	DistanceMeters *float64             `xml:"DistanceMeters,omitempty"`
-	HeartRateBpm   *uint8               `xml:"HeartRateBpm,omitempty"`
-	Cadence        *uint8               `xml:"Cadence,omitempty"`
-	SensorState    SensorState          `xml:"SensorState,omitempty"`
-	Extensions     *TrackpointExtension `xml:"Extensions>TPX,omitempty"`
+	Time           time.Time           `xml:"Time"`
+	Position       Position            `xml:"Position,omitempty"`
+	AltitudeMeters float64             `xml:"AltitudeMeters,omitempty"`
+	DistanceMeters float64             `xml:"DistanceMeters,omitempty"`
+	HeartRateBpm   uint8               `xml:"HeartRateBpm,omitempty"`
+	Cadence        uint8               `xml:"Cadence,omitempty"`
+	SensorState    SensorState         `xml:"SensorState,omitempty"`
+	Extensions     TrackpointExtension `xml:"Extensions>TPX,omitempty"`
+}
+
+func (tp *Trackpoint) reset() {
+	tp.Position.reset()
+	tp.AltitudeMeters = math.NaN()
+	tp.DistanceMeters = math.NaN()
+	tp.HeartRateBpm = basetype.Uint8Invalid
+	tp.Cadence = basetype.Uint8Invalid
+	tp.Extensions.reset()
+}
+
+func (t *Trackpoint) ToRecord() activity.Record {
+	rec := activity.CreateRecord(nil)
+
+	rec.Timestamp = t.Time
+	if !math.IsNaN(t.DistanceMeters) {
+		rec.Distance = uint32(scaleoffset.Discard(t.DistanceMeters, 100, 0))
+	}
+	if !math.IsNaN(t.AltitudeMeters) {
+		rec.Altitude = uint16(scaleoffset.Discard(t.AltitudeMeters, 5, 500))
+	}
+	rec.Cadence = t.Cadence
+	rec.HeartRate = t.HeartRateBpm
+
+	if !math.IsNaN(t.Position.LatitudeDegrees) && !math.IsNaN(t.Position.LongitudeDegrees) {
+		rec.PositionLat = semicircles.ToSemicircles(t.Position.LatitudeDegrees)
+		rec.PositionLong = semicircles.ToSemicircles(t.Position.LongitudeDegrees)
+	}
+
+	if !math.IsNaN(t.Extensions.Speed) {
+		rec.Speed = uint16(scaleoffset.Discard(t.Extensions.Speed, 1000, 0))
+	}
+
+	return rec
 }
 
 var _ xml.Unmarshaler = &Trackpoint{}
 
-func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	t.reset()
+
 	var targetCharData string
 	for {
 		token, err := dec.Token()
@@ -97,42 +137,38 @@ func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 		case xml.StartElement:
 			switch elem.Name.Local {
 			case "Position":
-				var position Position
-				if err := position.UnmarshalXML(dec, elem); err != nil {
+				if err := t.Position.UnmarshalXML(dec, elem); err != nil {
 					return fmt.Errorf("unmarshal Position: %w", err)
 				}
-				tp.Position = &position
 			case "Value":
 				targetCharData = targetCharData + "Value"
 			case "Extensions":
-				var trackpointExtension TrackpointExtension
-				if err := trackpointExtension.UnmarshalXML(dec, elem); err != nil {
+				if err := t.Extensions.UnmarshalXML(dec, elem); err != nil {
 					return fmt.Errorf("unmarshal Extensions: %w", err)
 				}
-				tp.Extensions = &trackpointExtension
 			default:
 				targetCharData = elem.Name.Local
 			}
 		case xml.CharData:
 			switch targetCharData {
 			case "Time":
-				t, err := time.Parse(time.RFC3339, string(elem))
+				_time, err := time.Parse(time.RFC3339, string(elem))
 				if err != nil {
 					return fmt.Errorf("parse Time %q: %w", elem, err)
 				}
-				tp.Time = t
+				t.Time = _time
 			case "AltitudeMeters":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
 					return fmt.Errorf("parse AltitudeMeters %q: %w", elem, err)
 				}
-				tp.AltitudeMeters = &f
+				t.AltitudeMeters = f
 			case "DistanceMeters":
 				f, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
 					return fmt.Errorf("parse DistanceMeters %q: %w", elem, err)
 				}
-				tp.DistanceMeters = &f
+				t.DistanceMeters = f
 			case "HeartRateBpm":
 				continue
 			case "HeartRateBpmValue":
@@ -140,15 +176,15 @@ func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 				if err != nil {
 					return fmt.Errorf("parse HeartRateBpm %q: %w", elem, err)
 				}
-				tp.HeartRateBpm = kit.Ptr(uint8(u))
+				t.HeartRateBpm = uint8(u)
 			case "Cadence":
 				u, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
 					return fmt.Errorf("parse Cadence %q: %w", elem, err)
 				}
-				tp.Cadence = kit.Ptr(uint8(u))
+				t.Cadence = uint8(u)
 			case "SensorState":
-				tp.SensorState = SensorState(elem)
+				t.SensorState = SensorState(elem)
 			}
 			targetCharData = ""
 		case xml.EndElement:
@@ -161,68 +197,68 @@ func (tp *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 
 var _ xml.Marshaler = &Trackpoint{}
 
-func (tp *Trackpoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+func (t *Trackpoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("Time"),
-		xml.CharData(tp.Time.Format(time.RFC3339))); err != nil {
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("Time"),
+		xml.CharData(t.Time.Format(time.RFC3339))); err != nil {
 		return fmt.Errorf("time: %w", err)
 	}
 
-	if tp.Position != nil {
-		if err := tp.Position.MarshalXML(enc, kxml.StartElement("Position")); err != nil {
+	if !math.IsNaN(t.Position.LatitudeDegrees) && !math.IsNaN(t.Position.LongitudeDegrees) {
+		if err := t.Position.MarshalXML(enc, xmlutils.StartElement("Position")); err != nil {
 			return fmt.Errorf("position: %w", err)
 		}
 	}
-	if tp.AltitudeMeters != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("AltitudeMeters"),
-			xml.CharData(strconv.FormatFloat(*tp.AltitudeMeters, 'g', -1, 64))); err != nil {
+	if !math.IsNaN(t.AltitudeMeters) {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("AltitudeMeters"),
+			xml.CharData(strconv.FormatFloat(t.AltitudeMeters, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("altitudeMeters: %w", err)
 		}
 	}
-	if tp.DistanceMeters != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("DistanceMeters"),
-			xml.CharData(strconv.FormatFloat(*tp.DistanceMeters, 'g', -1, 64))); err != nil {
+	if !math.IsNaN(t.DistanceMeters) {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("DistanceMeters"),
+			xml.CharData(strconv.FormatFloat(t.DistanceMeters, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("distanceMeters: %w", err)
 		}
 	}
-	if tp.HeartRateBpm != nil {
-		hr := kxml.StartElement("HeartRateBpm")
+	if t.HeartRateBpm != basetype.Uint8Invalid {
+		hr := xmlutils.StartElement("HeartRateBpm")
 		if err := enc.EncodeToken(hr); err != nil {
 			return fmt.Errorf("heartRateBpm start: %w", err)
 		}
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Value"),
-			xml.CharData(strconv.FormatUint(uint64(*tp.HeartRateBpm), 10))); err != nil {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Value"),
+			xml.CharData(strconv.FormatUint(uint64(t.HeartRateBpm), 10))); err != nil {
 			return fmt.Errorf("heartRateBpmValue: %w", err)
 		}
 		if err := enc.EncodeToken(hr.End()); err != nil {
 			return fmt.Errorf("heartRateBpm end: %w", err)
 		}
 	}
-	if tp.Cadence != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Cadence"),
-			xml.CharData(strconv.FormatUint(uint64(*tp.Cadence), 10))); err != nil {
+	if t.Cadence != basetype.Uint8Invalid {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Cadence"),
+			xml.CharData(strconv.FormatUint(uint64(t.Cadence), 10))); err != nil {
 			return fmt.Errorf("cadence: %w", err)
 		}
 	}
 
-	if len(tp.SensorState) != 0 {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("SensorState"),
-			xml.CharData(tp.SensorState)); err != nil {
+	if len(t.SensorState) != 0 {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("SensorState"),
+			xml.CharData(t.SensorState)); err != nil {
 			return fmt.Errorf("sensorState: %w", err)
 		}
 	}
 
-	if tp.Extensions != nil {
-		if err := tp.Extensions.MarshalXML(enc, kxml.StartElement("Extensions")); err != nil {
+	if !math.IsNaN(t.Extensions.Speed) {
+		if err := t.Extensions.MarshalXML(enc, xmlutils.StartElement("Extensions")); err != nil {
 			return fmt.Errorf("extension: %w", err)
 		}
 	}
@@ -235,9 +271,16 @@ type Position struct {
 	LongitudeDegrees float64 // -180.0 to 180.0
 }
 
+func (p *Position) reset() {
+	p.LatitudeDegrees = math.NaN()
+	p.LongitudeDegrees = math.NaN()
+}
+
 var _ xml.Unmarshaler = &Position{}
 
 func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	p.reset()
+
 	var targetCharData string
 	for {
 		token, err := dec.Token()
@@ -275,17 +318,21 @@ func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 var _ xml.Marshaler = &Position{}
 
 func (p *Position) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+	if math.IsNaN(p.LatitudeDegrees) || math.IsNaN(p.LongitudeDegrees) { // omit
+		return nil
+	}
+
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc,
+	if err := xmlutils.EncodeElement(enc,
 		xml.StartElement{Name: xml.Name{Local: "LatitudeDegrees"}},
 		xml.CharData(strconv.FormatFloat(p.LatitudeDegrees, 'g', -1, 64))); err != nil {
 		return fmt.Errorf("latitudeDegrees: %w", err)
 	}
 
-	if err := kxml.EncodeElement(enc,
+	if err := xmlutils.EncodeElement(enc,
 		xml.StartElement{Name: xml.Name{Local: "LongitudeDegrees"}},
 		xml.CharData(strconv.FormatFloat(p.LongitudeDegrees, 'g', -1, 64))); err != nil {
 		return fmt.Errorf("longitudeDegrees: %w", err)
@@ -302,12 +349,18 @@ const (
 )
 
 type TrackpointExtension struct {
-	Speed *float64 `xml:"Speed,omitempty"`
+	Speed float64 `xml:"Speed,omitempty"`
+}
+
+func (t *TrackpointExtension) reset() {
+	t.Speed = math.NaN()
 }
 
 var _ xml.Unmarshaler = &TrackpointExtension{}
 
-func (tpe *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	t.reset()
+
 	var targetCharData string
 	for {
 		token, err := dec.Token()
@@ -325,7 +378,7 @@ func (tpe *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartEleme
 				if err != nil {
 					return fmt.Errorf("parse Speed: %w", err)
 				}
-				tpe.Speed = &f
+				t.Speed = f
 			}
 			targetCharData = ""
 		case xml.EndElement:
@@ -343,15 +396,15 @@ func (tpe *TrackpointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement
 		return err
 	}
 
-	tpx := kxml.StartElement("ns1:TPX")
+	tpx := xmlutils.StartElement("ns1:TPX")
 	if err := enc.EncodeToken(tpx); err != nil {
 		return fmt.Errorf("tpx: %w", err)
 	}
 
-	if tpe.Speed != nil {
-		if err := kxml.EncodeElement(enc,
+	if !math.IsNaN(tpe.Speed) {
+		if err := xmlutils.EncodeElement(enc,
 			xml.StartElement{Name: xml.Name{Local: "ns1:Speed"}},
-			xml.CharData(strconv.FormatFloat(*tpe.Speed, 'g', -1, 64))); err != nil {
+			xml.CharData(strconv.FormatFloat(tpe.Speed, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("speed: %w", err)
 		}
 	}

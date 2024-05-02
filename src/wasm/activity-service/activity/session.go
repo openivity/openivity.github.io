@@ -16,469 +16,526 @@
 package activity
 
 import (
-	"bytes"
-	"encoding/json"
-	"math"
 	"strconv"
 	"time"
 
-	"github.com/muktihari/openactivity-fit/accumulator"
-	"github.com/muktihari/openactivity-fit/kit"
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/fit/profile/mesgdef"
+	"github.com/muktihari/fit/profile/typedef"
+	"github.com/openivity/activity-service/strutils"
 )
 
+// Session is a workout session, it wraps FIT SDK's mesgdef.Session as its base.
 type Session struct {
-	Timestamp        time.Time
-	StartTime        time.Time
-	EndTime          time.Time
-	Sport            string
-	TotalMovingTime  float64
-	TotalElapsedTime float64
-	TotalDistance    float64
-	TotalAscent      uint16
-	TotalDescent     uint16
-	TotalCalories    uint16
-	AvgSpeed         *float64
-	MaxSpeed         *float64
-	AvgHeartRate     *uint8
-	MaxHeartRate     *uint8
-	AvgCadence       *uint8
-	MaxCadence       *uint8
-	AvgPower         *uint16
-	MaxPower         *uint16
-	AvgTemperature   *int8
-	MaxTemperature   *int8
-	AvgAltitude      *float64
-	MaxAltitude      *float64
-	AvgPace          *float64
-	AvgElapsedPace   *float64
+	*mesgdef.Session
 
-	WorkoutType WorkoutType
-	Laps        []*Lap
-	Records     []*Record
+	Laps    []Lap
+	Records []Record
 }
 
-type WorkoutType byte
-
-const (
-	WorkoutTypeMoving WorkoutType = iota
-	WorkoutTypeStationary
-)
-
-func NewSessionFromLaps(laps []*Lap, sport string) *Session {
-	if len(laps) == 0 {
-		return nil
+// CreateSession creates new session.
+func CreateSession(session *mesgdef.Session) Session {
+	if session == nil {
+		session = mesgdef.NewSession(nil)
 	}
+	return Session{Session: session}
+}
 
-	ses := &Session{
-		Timestamp: laps[0].Timestamp,
-		StartTime: laps[0].StartTime,
-		EndTime:   laps[len(laps)-1].EndTime,
-		Sport:     sport,
+// EndTime returns sessions's EndTime (StartTime + TotalElapsedTime).
+func (s *Session) EndTime() time.Time {
+	if s.StartTime.IsZero() {
+		return time.Time{}
 	}
+	if s.TotalElapsedTime == basetype.Uint32Invalid {
+		return time.Time{}
+	}
+	return s.StartTime.Add(
+		time.Duration(float64(s.TotalElapsedTime)/1000) * time.Second,
+	)
+}
+
+// NewSessionFromLaps creates new session from Laps.
+func NewSessionFromLaps(laps []Lap, sport typedef.Sport) Session {
+	ses := CreateSession(
+		mesgdef.NewSession(nil).
+			SetSport(sport).
+			SetStartTime(laps[0].StartTime))
 
 	var (
-		totalElapsedTimeAccumu = new(accumulator.Accumulator[float64])
-		totalMovingTimeAccumu  = new(accumulator.Accumulator[float64])
-		totalDistanceAccumu    = new(accumulator.Accumulator[float64])
-		totalAscentAccumu      = new(accumulator.Accumulator[uint16])
-		totalDescentAccumu     = new(accumulator.Accumulator[uint16])
-		totalCaloriesAccumu    = new(accumulator.Accumulator[uint16])
-		speedAvgAccumu         = new(accumulator.Accumulator[float64])
-		speedMaxAccumu         = new(accumulator.Accumulator[float64])
-		altitudeAvgAccumu      = new(accumulator.Accumulator[float64])
-		altitudeMaxAccumu      = new(accumulator.Accumulator[float64])
-		cadenceAvgAccumu       = new(accumulator.Accumulator[uint8])
-		cadenceMaxAccumu       = new(accumulator.Accumulator[uint8])
-		heartRateAvgAccumu     = new(accumulator.Accumulator[uint8])
-		heartRateMaxAccumu     = new(accumulator.Accumulator[uint8])
-		powerAvgAccumu         = new(accumulator.Accumulator[uint16])
-		powerMaxAccumu         = new(accumulator.Accumulator[uint16])
-		temperatureAvgAccumu   = new(accumulator.Accumulator[int8])
-		temperatureMaxAccumu   = new(accumulator.Accumulator[int8])
+		avgSpeed            uint64 = 0
+		avgSpeedCount       uint64 = 0
+		avgAltitude         uint64 = 0
+		avgAltitudeCount    uint64 = 0
+		avgCadence          uint64 = 0
+		avgCadenceCount     uint64 = 0
+		avgHeartRate        uint64 = 0
+		avgHeartRateCount   uint64 = 0
+		avgPower            uint64 = 0
+		avgPowerCount       uint64 = 0
+		avgTemperature      int64  = 0
+		avgTemperatureCount int64  = 0
 	)
 
 	for i := range laps {
 		lap := laps[i]
 
-		totalElapsedTimeAccumu.Collect(&lap.TotalElapsedTime)
-		totalMovingTimeAccumu.Collect(&lap.TotalMovingTime)
-		totalDistanceAccumu.Collect(&lap.TotalDistance)
-		totalAscentAccumu.Collect(&lap.TotalAscent)
-		totalDescentAccumu.Collect(&lap.TotalDescent)
-		totalCaloriesAccumu.Collect(&lap.TotalCalories)
-		speedAvgAccumu.Collect(lap.AvgSpeed)
-		speedMaxAccumu.Collect(lap.MaxSpeed)
-		altitudeAvgAccumu.Collect(lap.AvgAltitude)
-		altitudeMaxAccumu.Collect(lap.MaxAltitude)
-		cadenceAvgAccumu.Collect(lap.AvgCadence)
-		cadenceMaxAccumu.Collect(lap.MaxCadence)
-		heartRateAvgAccumu.Collect(lap.AvgHeartRate)
-		heartRateMaxAccumu.Collect(lap.MaxHeartRate)
-		powerAvgAccumu.Collect(lap.AvgPower)
-		powerMaxAccumu.Collect(lap.MaxPower)
-		temperatureAvgAccumu.Collect(lap.AvgTemperature)
-		temperatureMaxAccumu.Collect(lap.MaxTemperature)
+		if lap.TotalElapsedTime != basetype.Uint32Invalid {
+			ses.TotalElapsedTime += lap.TotalElapsedTime
+		}
+		if lap.TotalMovingTime != basetype.Uint32Invalid {
+			ses.TotalMovingTime += lap.TotalMovingTime
+		}
+		if lap.TotalTimerTime != basetype.Uint32Invalid {
+			ses.TotalTimerTime += lap.TotalTimerTime
+		}
+		if lap.TotalDistance != basetype.Uint32Invalid {
+			ses.TotalDistance += lap.TotalDistance
+		}
+		if lap.TotalAscent != basetype.Uint16Invalid {
+			ses.TotalAscent += lap.TotalAscent
+		}
+		if lap.TotalDescent != basetype.Uint16Invalid {
+			ses.TotalDescent += lap.TotalDescent
+		}
+		if lap.TotalCalories != basetype.Uint16Invalid {
+			ses.TotalCalories += lap.TotalCalories
+		}
+		if lap.AvgSpeed != basetype.Uint16Invalid {
+			avgSpeed += uint64(lap.AvgSpeed)
+			avgSpeedCount++
+		}
+		if lap.MaxSpeed != basetype.Uint16Invalid {
+			if ses.MaxSpeed == basetype.Uint16Invalid || lap.MaxSpeed > ses.MaxSpeed {
+				ses.MaxSpeed = lap.MaxSpeed
+			}
+		}
+		if lap.AvgAltitude != basetype.Uint16Invalid {
+			avgAltitude += uint64(lap.AvgAltitude)
+			avgAltitudeCount++
+		}
+		if lap.MaxAltitude != basetype.Uint16Invalid {
+			if ses.MaxAltitude == basetype.Uint16Invalid || lap.MaxAltitude > ses.MaxAltitude {
+				ses.MaxAltitude = lap.MaxAltitude
+			}
+		}
+		if lap.AvgCadence != basetype.Uint8Invalid {
+			avgCadence += uint64(lap.AvgCadence)
+			avgCadenceCount++
+		}
+		if lap.MaxCadence != basetype.Uint8Invalid {
+			if ses.MaxCadence == basetype.Uint8Invalid || lap.MaxCadence > ses.MaxCadence {
+				ses.MaxCadence = lap.MaxCadence
+			}
+		}
+		if lap.AvgHeartRate != basetype.Uint8Invalid {
+			avgHeartRate += uint64(lap.AvgHeartRate)
+			avgHeartRateCount++
+		}
+		if lap.MaxHeartRate != basetype.Uint8Invalid {
+			if ses.MaxHeartRate == basetype.Uint8Invalid || lap.MaxHeartRate > ses.MaxHeartRate {
+				ses.MaxHeartRate = lap.MaxHeartRate
+			}
+		}
+		if lap.AvgPower != basetype.Uint16Invalid {
+			avgPower += uint64(lap.AvgPower)
+			avgPowerCount++
+		}
+		if lap.MaxPower != basetype.Uint16Invalid {
+			if ses.MaxPower == basetype.Uint16Invalid || lap.MaxPower > ses.MaxPower {
+				ses.MaxPower = lap.MaxPower
+			}
+		}
+		if lap.AvgTemperature != basetype.Sint8Invalid {
+			avgTemperature += int64(lap.AvgTemperature)
+			avgTemperatureCount++
+		}
+		if lap.MaxTemperature != basetype.Sint8Invalid {
+			if ses.MaxTemperature == basetype.Sint8Invalid || lap.MaxTemperature > ses.MaxTemperature {
+				ses.MaxTemperature = lap.MaxTemperature
+			}
+		}
 	}
 
-	if value := totalElapsedTimeAccumu.Sum(); value != nil {
-		ses.TotalElapsedTime = *value
+	if avgSpeedCount != 0 {
+		ses.AvgSpeed = uint16(avgSpeed / avgSpeedCount)
 	}
-	if value := totalMovingTimeAccumu.Sum(); value != nil {
-		ses.TotalMovingTime = *value
+	if avgAltitudeCount != 0 {
+		ses.AvgAltitude = uint16(avgAltitude / avgAltitudeCount)
 	}
-	if value := totalDistanceAccumu.Sum(); value != nil {
-		ses.TotalDistance = *value
+	if avgCadenceCount != 0 {
+		ses.AvgCadence = uint8(avgCadence / avgCadenceCount)
 	}
-	if value := totalAscentAccumu.Sum(); value != nil {
-		ses.TotalAscent = *value
+	if avgHeartRateCount != 0 {
+		ses.AvgHeartRate = uint8(avgHeartRate / avgHeartRateCount)
 	}
-	if value := totalDescentAccumu.Sum(); value != nil {
-		ses.TotalDescent = *value
+	if avgPowerCount != 0 {
+		ses.AvgPower = uint16(avgPower / avgPowerCount)
 	}
-	if value := totalCaloriesAccumu.Sum(); value != nil {
-		ses.TotalCalories = *value
-	}
-
-	ses.AvgSpeed = speedAvgAccumu.Avg()
-	ses.MaxSpeed = speedMaxAccumu.Max()
-	ses.AvgAltitude = altitudeAvgAccumu.Avg()
-	ses.MaxAltitude = altitudeMaxAccumu.Max()
-	ses.AvgCadence = cadenceAvgAccumu.Avg()
-	ses.MaxCadence = cadenceMaxAccumu.Max()
-	ses.AvgHeartRate = heartRateAvgAccumu.Avg()
-	ses.MaxHeartRate = heartRateMaxAccumu.Max()
-	ses.AvgPower = powerAvgAccumu.Avg()
-	ses.MaxPower = powerMaxAccumu.Max()
-	ses.AvgTemperature = temperatureAvgAccumu.Avg()
-	ses.MaxTemperature = temperatureMaxAccumu.Max()
-
-	if HasPace(sport) {
-		ses.AvgPace = kit.Ptr(ses.TotalMovingTime / (ses.TotalDistance / 1000))
-		ses.AvgElapsedPace = kit.Ptr(ses.TotalElapsedTime / (ses.TotalDistance / 1000))
+	if avgTemperatureCount != 0 {
+		ses.AvgTemperature = int8(avgTemperature / avgTemperatureCount)
 	}
 
 	return ses
 }
 
-var _ json.Marshaler = &Session{}
-
-func (s *Session) MarshalJSON() ([]byte, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(buf)
-	buf.Reset()
-
-	buf.WriteByte('{')
-
-	buf.WriteString("\"sport\":\"")
-	buf.WriteString(s.Sport)
-	buf.WriteString("\",")
-
-	if !s.Timestamp.IsZero() {
-		buf.WriteString("\"timestamp\":\"")
-		buf.WriteString(s.Timestamp.Format(time.RFC3339))
-		buf.WriteString("\",")
-	}
-	if !s.StartTime.IsZero() {
-		buf.WriteString("\"startTime\":\"")
-		buf.WriteString(s.StartTime.Format(time.RFC3339))
-		buf.WriteString("\",")
-	}
-	if !s.EndTime.IsZero() {
-		buf.WriteString("\"endTime\":\"")
-		buf.WriteString(s.EndTime.Format(time.RFC3339))
-		buf.WriteString("\",")
-	}
-
-	buf.WriteString("\"totalMovingTime\":")
-	buf.WriteString(strconv.FormatFloat(s.TotalMovingTime, 'g', -1, 64))
-	buf.WriteByte(',')
-
-	buf.WriteString("\"totalElapsedTime\":")
-	buf.WriteString(strconv.FormatFloat(s.TotalElapsedTime, 'g', -1, 64))
-	buf.WriteByte(',')
-
-	buf.WriteString("\"totalDistance\":")
-	buf.WriteString(strconv.FormatFloat(s.TotalDistance, 'g', -1, 64))
-	buf.WriteByte(',')
-
-	buf.WriteString("\"totalAscent\":")
-	buf.WriteString(strconv.FormatUint(uint64(s.TotalAscent), 10))
-	buf.WriteByte(',')
-
-	buf.WriteString("\"totalDescent\":")
-	buf.WriteString(strconv.FormatUint(uint64(s.TotalDescent), 10))
-	buf.WriteByte(',')
-
-	buf.WriteString("\"totalCalories\":")
-	buf.WriteString(strconv.FormatUint(uint64(s.TotalCalories), 10))
-	buf.WriteByte(',')
-
-	if s.AvgSpeed != nil && !math.IsInf(*s.AvgSpeed, 0) && !math.IsNaN(*s.AvgSpeed) {
-		buf.WriteString("\"avgSpeed\":")
-		buf.WriteString(strconv.FormatFloat(*s.AvgSpeed, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-	if s.MaxSpeed != nil && !math.IsInf(*s.MaxSpeed, 0) && !math.IsNaN(*s.MaxSpeed) {
-		buf.WriteString("\"maxSpeed\":")
-		buf.WriteString(strconv.FormatFloat(*s.MaxSpeed, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-	if s.AvgHeartRate != nil {
-		buf.WriteString("\"avgHeartRate\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.AvgHeartRate), 10))
-		buf.WriteByte(',')
-	}
-	if s.MaxHeartRate != nil {
-		buf.WriteString("\"maxHeartRate\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.MaxHeartRate), 10))
-		buf.WriteByte(',')
-	}
-	if s.AvgCadence != nil {
-		buf.WriteString("\"avgCadence\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.AvgCadence), 10))
-		buf.WriteByte(',')
-	}
-	if s.MaxCadence != nil {
-		buf.WriteString("\"maxCadence\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.MaxCadence), 10))
-		buf.WriteByte(',')
-	}
-	if s.AvgPower != nil {
-		buf.WriteString("\"avgPower\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.AvgPower), 10))
-		buf.WriteByte(',')
-	}
-	if s.MaxPower != nil {
-		buf.WriteString("\"maxPower\":")
-		buf.WriteString(strconv.FormatUint(uint64(*s.MaxPower), 10))
-		buf.WriteByte(',')
-	}
-	if s.AvgTemperature != nil {
-		buf.WriteString("\"avgTemperature\":")
-		buf.WriteString(strconv.FormatInt(int64(*s.AvgTemperature), 10))
-		buf.WriteByte(',')
-	}
-	if s.MaxTemperature != nil {
-		buf.WriteString("\"maxTemperature\":")
-		buf.WriteString(strconv.FormatInt(int64(*s.MaxTemperature), 10))
-		buf.WriteByte(',')
-	}
-	if s.AvgAltitude != nil && !math.IsInf(*s.AvgAltitude, 0) && !math.IsNaN(*s.AvgAltitude) {
-		buf.WriteString("\"avgAltitude\":")
-		buf.WriteString(strconv.FormatFloat(*s.AvgAltitude, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-	if s.MaxAltitude != nil && !math.IsInf(*s.MaxAltitude, 0) && !math.IsNaN(*s.MaxAltitude) {
-		buf.WriteString("\"maxAltitude\":")
-		buf.WriteString(strconv.FormatFloat(*s.MaxAltitude, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-	if s.AvgPace != nil && !math.IsInf(*s.AvgPace, 0) && !math.IsNaN(*s.AvgPace) {
-		buf.WriteString("\"avgPace\":")
-		buf.WriteString(strconv.FormatFloat(*s.AvgPace, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-	if s.AvgElapsedPace != nil && !math.IsInf(*s.AvgElapsedPace, 0) && !math.IsNaN(*s.AvgElapsedPace) {
-		buf.WriteString("\"avgElapsedPace\":")
-		buf.WriteString(strconv.FormatFloat(*s.AvgElapsedPace, 'g', -1, 64))
-		buf.WriteByte(',')
-	}
-
-	if len(s.Laps) != 0 {
-		buf.WriteString("\"laps\": [")
-		for i := range s.Laps {
-			b, _ := s.Laps[i].MarshalJSON()
-			buf.Write(b)
-			if i != len(s.Laps)-1 {
-				buf.WriteByte(',')
-			}
-		}
-		buf.WriteString("],")
-	}
-
-	if len(s.Records) != 0 {
-		buf.WriteString("\"records\": [")
-		for i := range s.Records {
-			b, _ := s.Records[i].MarshalJSON()
-			buf.Write(b)
-			if i != len(s.Records)-1 {
-				buf.WriteByte(',')
-			}
-		}
-		buf.WriteByte(']')
-	}
-
-	b := buf.Bytes()
-	if b[len(b)-1] == ',' {
-		b[len(b)-1] = '}'
-		return b, nil
-	}
-
-	buf.WriteByte('}')
-
-	return buf.Bytes(), nil
-}
-
+// IsBelongToThisLap check whether given t is belong to this session's time window.
 func (s *Session) IsBelongToThisSession(t time.Time) bool {
-	return isBelong(t, s.StartTime, s.EndTime)
+	return isBelong(t, s.StartTime, s.EndTime())
 }
 
 // PutLaps puts given laps into session and return any remaining laps that doesn't belong to this session.
-func (s *Session) PutLaps(laps ...*Lap) (remainings []*Lap) {
-	remainings = make([]*Lap, 0, len(laps))
-	for j := range laps {
-		lap := laps[j]
-		if s.IsBelongToThisSession(lap.StartTime) {
-			s.Laps = append(s.Laps, lap)
-		} else {
-			remainings = append(remainings, lap)
+func (s *Session) PutLaps(laps ...Lap) (remainings []Lap) {
+	var pos int
+	for i := range laps {
+		if s.IsBelongToThisSession(laps[i].StartTime) {
+			laps[i], laps[pos] = laps[pos], laps[i]
+			pos++
 		}
 	}
-	return remainings
+	s.Laps = append(s.Laps, laps[:pos]...)
+	return laps[pos:]
 }
 
 // PutRecords puts given records into session and return any remaining records that doesn't belong to this session.
-func (s *Session) PutRecords(records ...*Record) (remainings []*Record) {
-	remainings = make([]*Record, 0, len(records))
-	for j := range records {
-		rec := records[j]
-		if s.IsBelongToThisSession(rec.Timestamp) {
-			s.Records = append(s.Records, rec)
-		} else {
-			remainings = append(remainings, rec)
+func (s *Session) PutRecords(records ...Record) (remainings []Record) {
+	var pos int
+	for i := range records {
+		if s.IsBelongToThisSession(records[i].Timestamp) {
+			records[i], records[pos] = records[pos], records[i]
+			pos++
 		}
 	}
-	return remainings
+	s.Records = append(s.Records, records[:pos]...)
+	return records[pos:]
 }
 
-func (s *Session) Clone() *Session {
-	ses := &Session{
-		Timestamp:        s.Timestamp,
-		StartTime:        s.StartTime,
-		EndTime:          s.EndTime,
-		Sport:            s.Sport,
-		TotalMovingTime:  s.TotalMovingTime,
-		TotalElapsedTime: s.TotalElapsedTime,
-		TotalDistance:    s.TotalDistance,
-		TotalAscent:      s.TotalAscent,
-		TotalDescent:     s.TotalDescent,
-		TotalCalories:    s.TotalCalories,
+// ReplaceValues replaces values with the corresponding values in the given session.
+func (s *Session) ReplaceValues(session *Session) {
+	if !session.StartTime.IsZero() {
+		s.StartTime = session.StartTime
 	}
+	if session.TotalElapsedTime != basetype.Uint32Invalid {
+		s.TotalElapsedTime = session.TotalElapsedTime
+	}
+	if session.TotalMovingTime != basetype.Uint32Invalid {
+		s.TotalMovingTime = session.TotalMovingTime
+	}
+	if session.TotalTimerTime != basetype.Uint32Invalid {
+		s.TotalTimerTime = session.TotalTimerTime
+	}
+	if session.TotalDistance != basetype.Uint32Invalid {
+		s.TotalDistance = session.TotalDistance
+	}
+	if session.TotalCalories != basetype.Uint16Invalid {
+		s.TotalCalories = session.TotalCalories
+	}
+	if session.TotalAscent != basetype.Uint16Invalid {
+		s.TotalAscent = session.TotalAscent
+	}
+	if session.TotalDescent != basetype.Uint16Invalid {
+		s.TotalDescent = session.TotalDescent
+	}
+	if session.AvgSpeed != basetype.Uint16Invalid {
+		s.AvgSpeed = session.AvgSpeed
+	}
+	if session.MaxSpeed != basetype.Uint16Invalid {
+		s.MaxSpeed = session.MaxSpeed
+	}
+	if session.AvgHeartRate != basetype.Uint8Invalid {
+		s.AvgHeartRate = session.AvgHeartRate
+	}
+	if session.MaxHeartRate != basetype.Uint8Invalid {
+		s.MaxHeartRate = session.MaxHeartRate
+	}
+	if session.AvgCadence != basetype.Uint8Invalid {
+		s.AvgCadence = session.AvgCadence
+	}
+	if session.MaxCadence != basetype.Uint8Invalid {
+		s.MaxCadence = session.MaxCadence
+	}
+	if session.AvgPower != basetype.Uint16Invalid {
+		s.AvgPower = session.AvgPower
+	}
+	if session.MaxPower != basetype.Uint16Invalid {
+		s.MaxPower = session.MaxPower
+	}
+	if session.AvgTemperature != basetype.Sint8Invalid {
+		s.AvgTemperature = session.AvgTemperature
+	}
+	if session.MaxTemperature != basetype.Sint8Invalid {
+		s.MaxTemperature = session.MaxTemperature
+	}
+	if session.AvgAltitude != basetype.Uint16Invalid {
+		s.AvgAltitude = session.AvgAltitude
+	}
+	if session.MaxAltitude != basetype.Uint16Invalid {
+		s.MaxAltitude = session.MaxAltitude
+	}
+}
 
-	if s.AvgSpeed != nil {
-		ses.AvgSpeed = kit.Ptr(*s.AvgSpeed)
-	}
-	if s.MaxSpeed != nil {
-		ses.MaxSpeed = kit.Ptr(*s.MaxSpeed)
-	}
-	if s.AvgHeartRate != nil {
-		ses.AvgHeartRate = kit.Ptr(*s.AvgHeartRate)
-	}
-	if s.MaxHeartRate != nil {
-		ses.MaxHeartRate = kit.Ptr(*s.MaxHeartRate)
-	}
-	if s.AvgCadence != nil {
-		ses.AvgCadence = kit.Ptr(*s.AvgCadence)
-	}
-	if s.MaxCadence != nil {
-		ses.MaxCadence = kit.Ptr(*s.MaxCadence)
-	}
-	if s.AvgPower != nil {
-		ses.AvgPower = kit.Ptr(*s.AvgPower)
-	}
-	if s.MaxPower != nil {
-		ses.MaxPower = kit.Ptr(*s.MaxPower)
-	}
-	if s.AvgTemperature != nil {
-		ses.AvgTemperature = kit.Ptr(*s.AvgTemperature)
-	}
-	if s.MaxTemperature != nil {
-		ses.MaxTemperature = kit.Ptr(*s.MaxTemperature)
-	}
-	if s.AvgAltitude != nil {
-		ses.AvgAltitude = kit.Ptr(*s.AvgAltitude)
-	}
-	if s.MaxAltitude != nil {
-		ses.MaxAltitude = kit.Ptr(*s.MaxAltitude)
-	}
-	if s.AvgPace != nil {
-		ses.AvgPace = kit.Ptr(*s.AvgPace)
-	}
-	if s.AvgElapsedPace != nil {
-		ses.AvgElapsedPace = kit.Ptr(*s.AvgElapsedPace)
-	}
+// Accumulate accumulates values between two sesions.
+func (s *Session) Accumulate(session *Session) {
+	gap := (session.StartTime.Sub(s.EndTime()).Seconds() * 1000)
+	s.TotalElapsedTime += uint32(gap)
+	s.TotalTimerTime += uint32(gap)
 
-	ses.Records = make([]*Record, len(s.Records))
+	s.TotalMovingTime += session.TotalMovingTime
+	s.TotalElapsedTime += session.TotalElapsedTime
+	s.TotalTimerTime += session.TotalTimerTime
+
+	s.TotalDistance += session.TotalDistance
+	s.TotalAscent += session.TotalAscent
+	s.TotalDescent += session.TotalDescent
+	s.TotalCalories += session.TotalCalories
+
+	if s.AvgSpeed != basetype.Uint16Invalid && session.AvgSpeed != basetype.Uint16Invalid {
+		s.AvgSpeed = uint16((uint32(s.AvgSpeed) + uint32(session.AvgSpeed)) / 2)
+	} else if session.AvgSpeed != basetype.Uint16Invalid {
+		s.AvgSpeed = session.AvgSpeed
+	}
+	if s.MaxSpeed != basetype.Uint16Invalid && session.MaxSpeed != basetype.Uint16Invalid {
+		s.MaxSpeed = uint16((uint32(s.MaxSpeed) + uint32(session.MaxSpeed)) / 2)
+	} else if session.MaxSpeed != basetype.Uint16Invalid {
+		s.MaxSpeed = session.MaxSpeed
+	}
+	if s.AvgHeartRate != basetype.Uint8Invalid && session.AvgHeartRate != basetype.Uint8Invalid {
+		s.AvgHeartRate = uint8((uint16(s.AvgHeartRate) + uint16(session.AvgHeartRate)) / 2)
+	} else if session.AvgHeartRate != basetype.Uint8Invalid {
+		s.AvgHeartRate = session.AvgHeartRate
+	}
+	if s.MaxHeartRate != basetype.Uint8Invalid && session.MaxHeartRate != basetype.Uint8Invalid {
+		s.MaxHeartRate = uint8((uint16(s.MaxHeartRate) + uint16(session.MaxHeartRate)) / 2)
+	} else if session.MaxHeartRate != basetype.Uint8Invalid {
+		s.MaxHeartRate = session.MaxHeartRate
+	}
+	if s.AvgCadence != basetype.Uint8Invalid && session.AvgCadence != basetype.Uint8Invalid {
+		s.AvgCadence = uint8((uint16(s.AvgCadence) + uint16(session.AvgCadence)) / 2)
+	} else if session.AvgCadence != basetype.Uint8Invalid {
+		s.AvgCadence = session.AvgCadence
+	}
+	if s.MaxCadence != basetype.Uint8Invalid && session.MaxCadence != basetype.Uint8Invalid {
+		s.MaxCadence = uint8((uint16(s.MaxCadence) + uint16(session.MaxCadence)) / 2)
+	} else if session.MaxCadence != basetype.Uint8Invalid {
+		s.MaxCadence = session.MaxCadence
+	}
+	if s.AvgPower != basetype.Uint16Invalid && session.AvgPower != basetype.Uint16Invalid {
+		s.AvgPower = uint16((uint32(s.AvgPower) + uint32(session.AvgPower)) / 2)
+	} else if session.AvgPower != basetype.Uint16Invalid {
+		s.AvgPower = session.AvgPower
+	}
+	if s.MaxPower != basetype.Uint16Invalid && session.MaxPower != basetype.Uint16Invalid {
+		s.MaxPower = uint16((uint32(s.MaxPower) + uint32(session.MaxPower)) / 2)
+	} else if session.MaxPower != basetype.Uint16Invalid {
+		s.MaxPower = session.MaxPower
+	}
+	if s.AvgTemperature != basetype.Sint8Invalid && session.AvgTemperature != basetype.Sint8Invalid {
+		s.AvgTemperature = int8((int16(s.AvgTemperature) + int16(session.AvgTemperature)) / 2)
+	} else if session.AvgTemperature != basetype.Sint8Invalid {
+		s.AvgTemperature = session.AvgTemperature
+	}
+	if s.MaxTemperature != basetype.Sint8Invalid && session.MaxTemperature != basetype.Sint8Invalid {
+		s.MaxTemperature = int8((int16(s.MaxTemperature) + int16(session.MaxTemperature)) / 2)
+	} else if session.MaxTemperature != basetype.Sint8Invalid {
+		s.MaxTemperature = session.MaxTemperature
+	}
+	if s.AvgAltitude != basetype.Uint16Invalid && session.AvgAltitude != basetype.Uint16Invalid {
+		s.AvgAltitude = uint16((uint32(s.AvgAltitude) + uint32(session.AvgAltitude)) / 2)
+	} else if session.AvgAltitude != basetype.Uint16Invalid {
+		s.AvgAltitude = session.AvgAltitude
+	}
+	if s.MaxAltitude != basetype.Uint16Invalid && session.MaxAltitude != basetype.Uint16Invalid {
+		s.MaxAltitude = uint16((uint32(s.MaxAltitude) + uint32(session.MaxAltitude)) / 2)
+	} else if session.MaxAltitude != basetype.Uint16Invalid {
+		s.MaxAltitude = session.MaxAltitude
+	}
+}
+
+// Summarize summarizes the session such as updating StartPosition and EndPosition based on records.
+func (s *Session) Summarize() {
+	// Update GPS Positions
 	for i := range s.Records {
-		ses.Records[i] = s.Records[i].Clone()
+		rec := &s.Records[i]
+		if rec.PositionLat != basetype.Sint32Invalid && rec.PositionLong != basetype.Sint32Invalid {
+			s.StartPositionLat = rec.PositionLat
+			s.StartPositionLong = rec.PositionLong
+			break
+		}
 	}
-
-	ses.Laps = make([]*Lap, len(s.Laps))
-	for i := range s.Laps {
-		ses.Laps[i] = s.Laps[i].Clone()
+	for i := len(s.Records) - 1; i >= 0; i-- {
+		rec := &s.Records[i]
+		if rec.PositionLat != basetype.Sint32Invalid && rec.PositionLong != basetype.Sint32Invalid {
+			s.EndPositionLat = rec.PositionLat
+			s.EndPositionLong = rec.PositionLong
+			break
+		}
 	}
-
-	return ses
 }
 
-// CombineSession combines sesssion's values into targetSession.
-// Every zero value in targetSession will be replaced with the corresponding value in session.
-func CombineSession(targetSession, session *Session) {
-	if targetSession == nil || session == nil {
-		return
+// MarshalAppendJSON appends the JSON format encoding of Session to b, returning the result.
+func (s *Session) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+	if s.Sport != typedef.SportInvalid {
+		b = append(b, `"sport":`...)
+		b = strconv.AppendQuote(b, strutils.ToTitle(s.Sport.String()))
+		b = append(b, ',')
+	}
+	if !s.Timestamp.IsZero() {
+		b = append(b, `"timestamp":`...)
+		b = strconv.AppendQuote(b, s.Timestamp.Format(time.RFC3339))
+		b = append(b, ',')
+	}
+	if !s.StartTime.IsZero() {
+		b = append(b, `"startTime":`...)
+		b = strconv.AppendQuote(b, s.StartTime.Format(time.RFC3339))
+		b = append(b, ',')
+	}
+	if !s.EndTime().IsZero() {
+		b = append(b, `"endTime":`...)
+		b = strconv.AppendQuote(b, s.EndTime().Format(time.RFC3339))
+		b = append(b, ',')
+	}
+	if s.TotalElapsedTime != basetype.Uint32Invalid {
+		b = append(b, `"totalElapsedTime":`...)
+		b = strconv.AppendFloat(b, s.TotalElapsedTimeScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.TotalMovingTime != basetype.Uint32Invalid {
+		b = append(b, `"totalMovingTime":`...)
+		b = strconv.AppendFloat(b, s.TotalMovingTimeScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.TotalTimerTime != basetype.Uint32Invalid {
+		b = append(b, `"totalTimerTime":`...)
+		b = strconv.AppendFloat(b, s.TotalTimerTimeScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.TotalDistance != basetype.Uint32Invalid {
+		b = append(b, `"totalDistance":`...)
+		b = strconv.AppendFloat(b, s.TotalDistanceScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.TotalAscent != basetype.Uint16Invalid {
+		b = append(b, `"totalAscent":`...)
+		b = strconv.AppendUint(b, uint64(s.TotalAscent), 10)
+		b = append(b, ',')
+	}
+	if s.TotalDescent != basetype.Uint16Invalid {
+		b = append(b, `"totalDescent":`...)
+		b = strconv.AppendUint(b, uint64(s.TotalDescent), 10)
+		b = append(b, ',')
+	}
+	if s.TotalCalories != basetype.Uint16Invalid {
+		b = append(b, `"totalCalories":`...)
+		b = strconv.AppendUint(b, uint64(s.TotalCalories), 10)
+		b = append(b, ',')
+	}
+	if s.AvgSpeed != basetype.Uint16Invalid {
+		b = append(b, `"avgSpeed":`...)
+		b = strconv.AppendFloat(b, s.AvgSpeedScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.MaxSpeed != basetype.Uint16Invalid {
+		b = append(b, `"maxSpeed":`...)
+		b = strconv.AppendFloat(b, s.MaxSpeedScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.AvgHeartRate != basetype.Uint8Invalid {
+		b = append(b, `"avgHeartRate":`...)
+		b = strconv.AppendUint(b, uint64(s.AvgHeartRate), 10)
+		b = append(b, ',')
+	}
+	if s.MaxHeartRate != basetype.Uint8Invalid {
+		b = append(b, `"maxHeartRate":`...)
+		b = strconv.AppendUint(b, uint64(s.MaxHeartRate), 10)
+		b = append(b, ',')
+	}
+	if s.AvgCadence != basetype.Uint8Invalid {
+		b = append(b, `"avgCadence":`...)
+		b = strconv.AppendUint(b, uint64(s.AvgCadence), 10)
+		b = append(b, ',')
+	}
+	if s.MaxCadence != basetype.Uint8Invalid {
+		b = append(b, `"maxCadence":`...)
+		b = strconv.AppendUint(b, uint64(s.MaxCadence), 10)
+		b = append(b, ',')
+	}
+	if s.AvgPower != basetype.Uint16Invalid {
+		b = append(b, `"avgPower":`...)
+		b = strconv.AppendUint(b, uint64(s.AvgPower), 10)
+		b = append(b, ',')
+	}
+	if s.MaxPower != basetype.Uint16Invalid {
+		b = append(b, `"maxPower":`...)
+		b = strconv.AppendUint(b, uint64(s.MaxPower), 10)
+		b = append(b, ',')
+	}
+	if s.AvgTemperature != basetype.Sint8Invalid {
+		b = append(b, `"avgTemperature":`...)
+		b = strconv.AppendInt(b, int64(s.AvgTemperature), 10)
+		b = append(b, ',')
+	}
+	if s.MaxTemperature != basetype.Sint8Invalid {
+		b = append(b, `"maxTemperature":`...)
+		b = strconv.AppendInt(b, int64(s.MaxTemperature), 10)
+		b = append(b, ',')
+	}
+	if s.AvgAltitude != basetype.Uint16Invalid {
+		b = append(b, `"avgAltitude":`...)
+		b = strconv.AppendFloat(b, s.AvgAltitudeScaled(), 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if s.MaxAltitude != basetype.Uint16Invalid {
+		b = append(b, `"maxAltitude":`...)
+		b = strconv.AppendFloat(b, s.MaxAltitudeScaled(), 'g', -1, 64)
+		b = append(b, ',')
 	}
 
-	if targetSession.EndTime.IsZero() {
-		targetSession.EndTime = session.EndTime
+	hasPace := HasPace(s.Sport)
+	if hasPace && s.TotalMovingTime != basetype.Uint32Invalid && s.TotalDistance != basetype.Uint32Invalid {
+		b = append(b, `"avgPace":`...)
+		avgPace := s.TotalMovingTimeScaled() / (s.TotalDistanceScaled() / 1000)
+		b = strconv.AppendFloat(b, avgPace, 'g', -1, 64)
+		b = append(b, ',')
+	}
+	if hasPace && s.TotalMovingTime != basetype.Uint32Invalid && s.TotalDistance != basetype.Uint32Invalid {
+		b = append(b, `"avgElapsedPace":`...)
+		avgElapsedPace := s.TotalElapsedTimeScaled() / (s.TotalDistanceScaled() / 1000)
+		b = strconv.AppendFloat(b, avgElapsedPace, 'g', -1, 64)
+		b = append(b, ',')
 	}
 
-	targetSession.TotalElapsedTime = kit.PickNonZeroValue(targetSession.TotalElapsedTime, session.TotalElapsedTime)
-	targetSession.TotalMovingTime = kit.PickNonZeroValue(targetSession.TotalMovingTime, session.TotalMovingTime)
-	targetSession.TotalDistance = kit.PickNonZeroValue(targetSession.TotalDistance, session.TotalDistance)
-	targetSession.TotalCalories = kit.PickNonZeroValue(targetSession.TotalCalories, session.TotalCalories)
-	targetSession.TotalAscent = kit.PickNonZeroValue(targetSession.TotalAscent, session.TotalAscent)
-	targetSession.TotalDescent = kit.PickNonZeroValue(targetSession.TotalDescent, session.TotalDescent)
-	targetSession.AvgSpeed = kit.PickNonZeroValuePtr(targetSession.AvgSpeed, session.AvgSpeed)
-	targetSession.MaxSpeed = kit.PickNonZeroValuePtr(targetSession.MaxSpeed, session.MaxSpeed)
-	targetSession.AvgHeartRate = kit.PickNonZeroValuePtr(targetSession.AvgHeartRate, session.AvgHeartRate)
-	targetSession.MaxHeartRate = kit.PickNonZeroValuePtr(targetSession.MaxHeartRate, session.MaxHeartRate)
-	targetSession.AvgCadence = kit.PickNonZeroValuePtr(targetSession.AvgCadence, session.AvgCadence)
-	targetSession.MaxCadence = kit.PickNonZeroValuePtr(targetSession.MaxCadence, session.MaxCadence)
-	targetSession.AvgPower = kit.PickNonZeroValuePtr(targetSession.AvgPower, session.AvgPower)
-	targetSession.MaxPower = kit.PickNonZeroValuePtr(targetSession.MaxPower, session.MaxPower)
-	targetSession.AvgTemperature = kit.PickNonZeroValuePtr(targetSession.AvgTemperature, session.AvgTemperature)
-	targetSession.MaxTemperature = kit.PickNonZeroValuePtr(targetSession.MaxTemperature, session.MaxTemperature)
-	targetSession.AvgAltitude = kit.PickNonZeroValuePtr(targetSession.AvgAltitude, session.AvgAltitude)
-	targetSession.MaxAltitude = kit.PickNonZeroValuePtr(targetSession.MaxAltitude, session.MaxAltitude)
-	targetSession.AvgPace = kit.PickNonZeroValuePtr(targetSession.AvgPace, session.AvgPace)
-	targetSession.AvgElapsedPace = kit.PickNonZeroValuePtr(targetSession.AvgElapsedPace, session.AvgElapsedPace)
-}
+	if len(s.Laps) != 0 {
+		b = append(b, `"laps":[`...)
+		for i := range s.Laps {
+			n := len(b)
+			b = s.Laps[i].MarshalAppendJSON(b)
+			if len(b) != n && i != len(s.Laps)-1 {
+				b = append(b, ',')
+			}
+		}
+		b = append(b, ']')
+		b = append(b, ',')
+	}
 
-// AccumulateSession combines sesssion's values into targetSession.
-// While MergeSession is picking the first non-zero value, AccumulateSession accumulate values between two sesions.
-func AccumulateSession(targetSession, session *Session) {
-	targetSession.TotalMovingTime += session.TotalMovingTime
-	targetSession.TotalElapsedTime += session.TotalElapsedTime
-	gap := session.StartTime.Sub(targetSession.EndTime).Seconds()
-	targetSession.TotalElapsedTime += gap
-	targetSession.TotalDistance += session.TotalDistance
-	targetSession.TotalAscent += session.TotalAscent
-	targetSession.TotalDescent += session.TotalDescent
-	targetSession.TotalCalories += session.TotalCalories
-	targetSession.EndTime = session.EndTime
+	if len(s.Records) != 0 {
+		b = append(b, `"records":[`...)
+		for i := range s.Records {
+			n := len(b)
+			b = s.Records[i].MarshalAppendJSON(b)
+			if len(b) != n && i != len(s.Records)-1 {
+				b = append(b, ',')
+			}
+		}
+		b = append(b, ']')
+		b = append(b, ',')
+	}
 
-	targetSession.AvgSpeed = kit.Avg(targetSession.AvgSpeed, session.AvgSpeed)
-	targetSession.MaxSpeed = kit.Max(targetSession.MaxSpeed, session.MaxSpeed)
-	targetSession.AvgHeartRate = kit.Avg(targetSession.AvgHeartRate, session.AvgHeartRate)
-	targetSession.MaxHeartRate = kit.Max(targetSession.MaxHeartRate, session.MaxHeartRate)
-	targetSession.AvgCadence = kit.Avg(targetSession.AvgCadence, session.AvgCadence)
-	targetSession.MaxCadence = kit.Max(targetSession.MaxCadence, session.MaxCadence)
-	targetSession.AvgPower = kit.Avg(targetSession.AvgPower, session.AvgPower)
-	targetSession.MaxPower = kit.Max(targetSession.MaxPower, session.MaxPower)
-	targetSession.AvgTemperature = kit.Avg(targetSession.AvgTemperature, session.AvgTemperature)
-	targetSession.MaxTemperature = kit.Max(targetSession.MaxTemperature, session.MaxTemperature)
-	targetSession.AvgAltitude = kit.Avg(targetSession.AvgAltitude, session.AvgAltitude)
-	targetSession.MaxAltitude = kit.Max(targetSession.MaxAltitude, session.MaxAltitude)
-	targetSession.AvgPace = kit.Avg(targetSession.AvgPace, session.AvgPace)
-	targetSession.AvgElapsedPace = kit.Avg(targetSession.AvgElapsedPace, session.AvgElapsedPace)
+	if b[len(b)-1] == '{' {
+		return b[:len(b)-1]
+	}
+	if b[len(b)-1] == ',' {
+		b = b[:len(b)-1]
+	}
+
+	return append(b, '}')
 }

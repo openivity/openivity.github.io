@@ -21,11 +21,12 @@ import (
 	"io"
 )
 
-var (
-	ErrNoActivity = errors.New("no activity")
-)
+var ErrNoActivity = errors.New("no activity")
 
+// Service is activity service
 type Service interface {
+	// Decode decodes the given r into activities and returns any encountered errors.
 	Decode(ctx context.Context, r io.Reader) ([]Activity, error)
+	// Encode encodes the given activities into a slice of bytes and returns any encountered errors.
 	Encode(ctx context.Context, activities []Activity) ([][]byte, error)
 }

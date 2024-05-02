@@ -20,23 +20,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/typedef"
-	"github.com/muktihari/openactivity-fit/activity"
-	"github.com/muktihari/openactivity-fit/activity/fit"
-	"github.com/muktihari/openactivity-fit/kit"
-	"github.com/muktihari/openactivity-fit/service/result"
-	"github.com/muktihari/openactivity-fit/service/spec"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/service/result"
+	"github.com/openivity/activity-service/service/spec"
+	"github.com/openivity/activity-service/strutils"
 	"golang.org/x/exp/slices"
 )
 
-var (
-	ErrFileTypeUnsupported = errors.New("file type is unsupported")
-)
+var ErrFileTypeUnsupported = errors.New("file type is unsupported")
 
+// Service is an activity service. It handle decoding and encoding these following file formats: FIT, GPX and TCX.
 type Service interface {
 	Decode(ctx context.Context, rs []io.Reader) result.Decode
 	Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode
@@ -48,10 +48,12 @@ type service struct {
 	fitService    activity.Service
 	gpxService    activity.Service
 	tcxService    activity.Service
-	manufacturers map[uint16]fit.Manufacturer
+	manufacturers map[typedef.Manufacturer]activity.Manufacturer
 }
 
-func New(fitService, gpxService, tcxService activity.Service, manufacturers map[uint16]fit.Manufacturer) Service {
+// New creates new activity service to handle decoding and encoding these following file formats: FIT, GPX and TCX.
+func New(fitService, gpxService, tcxService activity.Service,
+	manufacturers map[typedef.Manufacturer]activity.Manufacturer) Service {
 	return &service{
 		fitService:    fitService,
 		gpxService:    gpxService,
@@ -152,6 +154,9 @@ func (s *service) decodeWorker(ctx context.Context, rc <-chan io.Reader, resc ch
 	}
 
 	for i := range activities {
+		if activities[i].Creator.Name == "" {
+			activities[i].Creator.Name = s.creatorName(activities[i].Creator.Manufacturer, activities[i].Creator.Product)
+		}
 		resc <- result.DecodeWorker{Activity: &activities[i], Index: index}
 	}
 }
@@ -183,10 +188,31 @@ func (s *service) readType(r io.Reader) (spec.FileType, error) {
 	return spec.FileType(b[0]), nil
 }
 
+func (s *service) creatorName(manufacturerID typedef.Manufacturer, productID uint16) string {
+	manufacturer, ok := s.manufacturers[manufacturerID]
+	if !ok {
+		return activity.Unknown
+	}
+
+	var productName string
+	for i := range manufacturer.Products {
+		product := manufacturer.Products[i]
+		if product.ID == productID {
+			productName = product.Name
+			break
+		}
+	}
+	if productName == "" {
+		productName = "(" + strconv.FormatUint(uint64(productID), 10) + ")"
+	}
+
+	return manufacturer.Name + " " + productName
+}
+
 func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode {
 	begin := time.Now()
 
-	activities, err := s.preprocessEncode(ctx, encodeSpec)
+	activities, err := s.preprocessEncode(encodeSpec)
 	if err != nil {
 		return result.Encode{Err: err}
 	}
@@ -212,7 +238,7 @@ func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Enc
 	}
 }
 
-func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) ([]activity.Activity, error) {
+func (s *service) preprocessEncode(encodeSpec spec.Encode) ([]activity.Activity, error) {
 	if encodeSpec.ToolMode == spec.ToolModeUnknown {
 		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.ToolMode)
 	}
@@ -234,7 +260,7 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 	}
 
 	// Preprocess data before encoding
-	var validActivityCounter int
+	var validActivityCount int
 	for i := range activities {
 		activity := &activities[i]
 		n := len(activities[i].Sessions) + i // markers is based on session across activities.
@@ -250,12 +276,12 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 			continue
 		}
 
-		validActivityCounter++
+		validActivityCount++
 		s.changeSport(activities, encodeSpec.Sports)
-		s.RemoveFields(activity, removeFields)
+		s.removeFields(activity, removeFields)
 	}
 
-	if validActivityCounter == 0 {
+	if validActivityCount == 0 {
 		return nil, fmt.Errorf("no activity data after processed")
 	}
 
@@ -263,8 +289,8 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 	switch encodeSpec.ToolMode {
 	case spec.ToolModeEdit:
 		for i := range activities {
-			activities[i].Creator.Manufacturer = &encodeSpec.ManufacturerID
-			activities[i].Creator.Product = &encodeSpec.ProductID
+			activities[i].Creator.Manufacturer = encodeSpec.ManufacturerID
+			activities[i].Creator.Product = encodeSpec.ProductID
 			activities[i].Creator.Name = encodeSpec.DeviceName
 		}
 		newActivities = activities
@@ -278,15 +304,19 @@ func (s *service) preprocessEncode(ctx context.Context, encodeSpec spec.Encode) 
 	return newActivities, nil
 }
 
-func (s *service) combineActivity(activities []activity.Activity, manufacturer, product uint16) activity.Activity {
+func (s *service) combineActivity(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) activity.Activity {
+	creator := activity.CreateCreator(nil)
+	creator.FileId.
+		SetType(typedef.FileActivity).
+		SetManufacturer(manufacturer).
+		SetProduct(product).
+		SetTimeCreated(activities[0].Creator.TimeCreated)
+
 	newActivity := activity.Activity{
-		Creator: activity.Creator{
-			Manufacturer: &manufacturer,
-			Product:      &product,
-			TimeCreated:  activities[0].Creator.TimeCreated,
-		},
-		Timezone: activities[0].Timezone,
-		Sessions: activities[0].Sessions,
+		Creator:           creator,
+		Timezone:          activities[0].Timezone,
+		Sessions:          activities[0].Sessions,
+		UnrelatedMessages: activities[0].UnrelatedMessages,
 	}
 
 	lastDistance := getLastDistanceOfRecords(newActivity.Sessions[0].Records)
@@ -294,7 +324,11 @@ func (s *service) combineActivity(activities []activity.Activity, manufacturer, 
 	for i := 1; i < len(activities); i++ {
 		cur := &activities[i]
 
-		newActLastSes := newActivity.Sessions[len(newActivity.Sessions)-1]
+		if newActivity.Creator.Name == "" {
+			newActivity.Creator.Name = cur.Creator.Name
+		}
+
+		newActLastSes := &newActivity.Sessions[len(newActivity.Sessions)-1]
 		curActFirstSes := cur.Sessions[0]
 
 		if newActLastSes.Sport != curActFirstSes.Sport { // Sport is not match, append as it is
@@ -305,8 +339,8 @@ func (s *service) combineActivity(activities []activity.Activity, manufacturer, 
 		// Adjust distance before combine
 		for j := range curActFirstSes.Records {
 			rec := curActFirstSes.Records[j]
-			if rec.Distance != nil {
-				*rec.Distance += lastDistance
+			if rec.Distance != basetype.Uint32Invalid {
+				rec.Distance += lastDistance
 			}
 		}
 
@@ -316,28 +350,31 @@ func (s *service) combineActivity(activities []activity.Activity, manufacturer, 
 
 		lastDistance = getLastDistanceOfRecords(newActLastSes.Records)
 
+		// Update summary
+		newActLastSes.Accumulate(&curActFirstSes)
+		newActLastSes.Summarize()
+
 		if len(cur.Sessions) > 1 {
 			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions[1:]...)
 		}
 
-		// Update summary
-		activity.AccumulateSession(newActLastSes, curActFirstSes)
+		newActivity.UnrelatedMessages = append(newActivity.UnrelatedMessages, cur.UnrelatedMessages...)
 	}
 
 	return newActivity
 }
 
-func getLastDistanceOfRecords(records []*activity.Record) float64 {
+func getLastDistanceOfRecords(records []activity.Record) uint32 {
 	for i := len(records) - 1; i >= 0; i-- {
 		rec := records[i]
-		if rec.Distance != nil {
-			return *rec.Distance
+		if rec.Distance != basetype.Uint32Invalid {
+			return rec.Distance
 		}
 	}
 	return 0
 }
 
-func (s *service) splitActivityPerSession(activities []activity.Activity, manufacturer, product uint16) []activity.Activity {
+func (s *service) splitActivityPerSession(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) []activity.Activity {
 	newActivities := make([]activity.Activity, 0)
 
 	for i := range activities {
@@ -346,15 +383,18 @@ func (s *service) splitActivityPerSession(activities []activity.Activity, manufa
 		for j := range act.Sessions {
 			ses := act.Sessions[j]
 
+			creator := activity.CreateCreator(nil)
+			creator.FileId.
+				SetType(typedef.FileActivity).
+				SetManufacturer(manufacturer).
+				SetProduct(product).
+				SetTimeCreated(activities[0].Creator.TimeCreated)
+
 			newActivity := activity.Activity{
-				Creator: activity.Creator{
-					Manufacturer: &manufacturer,
-					Product:      &product,
-					TimeCreated:  act.Creator.TimeCreated,
-				},
+				Creator:  creator,
 				Timezone: act.Timezone,
 			}
-			newActivity.Sessions = []*activity.Session{ses}
+			newActivity.Sessions = []activity.Session{ses}
 			newActivities = append(newActivities, newActivity)
 		}
 	}
@@ -366,8 +406,8 @@ func (s *service) changeSport(activities []activity.Activity, sports []string) {
 	for i := range activities {
 		act := &activities[i]
 		for j := range act.Sessions {
-			ses := act.Sessions[j]
-			ses.Sport = sports[cur]
+			ses := &act.Sessions[j]
+			ses.Sport = typedef.SportFromString(strutils.ToLowerSnakeCase(sports[cur]))
 			cur++
 		}
 	}
@@ -383,7 +423,7 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 	}
 
 	for i := range a.Sessions {
-		ses := a.Sessions[i]
+		ses := &a.Sessions[i]
 		marker := markers[i]
 
 		if marker.StartN == 0 && marker.EndN == len(ses.Records)-1 { // no data to be trimmed
@@ -402,62 +442,60 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 
 		// Adjust distance since ses.Records[marker.StartN] will be the beginning of record, its distance should be zero.
 		// Find the exact or nearest distance as the substraction number.
-		var distanceAdjustment float64
+		var distanceAdjustment uint32
 		for i := marker.StartN; i >= 0; i-- {
-			rec := ses.Records[i]
-			if rec.Distance != nil {
-				distanceAdjustment = *rec.Distance
+			rec := &ses.Records[i]
+			if rec.Distance != basetype.Uint32Invalid {
+				distanceAdjustment = rec.Distance
 				break
 			}
 		}
 
-		records := make([]*activity.Record, 0, marker.EndN-marker.StartN)
-		for i := marker.StartN; i <= marker.EndN; i++ {
-			rec := ses.Records[i]
-			if rec.Distance != nil {
-				*rec.Distance -= distanceAdjustment
+		ses.Records = ses.Records[marker.StartN : marker.EndN+1]
+		for i := range ses.Records {
+			rec := &ses.Records[i]
+			if rec.Distance != basetype.Uint32Invalid {
+				rec.Distance -= distanceAdjustment
 			}
-			records = append(records, rec)
 		}
 
-		if len(records) == 0 {
+		if len(ses.Records) == 0 {
 			continue
 		}
 
-		ses.Records = records
+		records := slices.Clone(ses.Records)
 
 		// Recalculate Lap and Session Summary
-		remainingRecords := make([]*activity.Record, 0)
-		sesRecords := ses.Records
-		newLaps := make([]*activity.Lap, 0)
-		for j := range ses.Laps {
-			lap := ses.Laps[j]
-			lapRecords := make([]*activity.Record, 0)
+		newLaps := make([]activity.Lap, 0)
+		for i := range ses.Laps {
+			lap := &ses.Laps[i]
 
-			for k := range sesRecords {
-				rec := sesRecords[k]
+			var pos int
+			for j := range records {
+				rec := &records[j]
 				if lap.IsBelongToThisLap(rec.Timestamp) {
-					lapRecords = append(lapRecords, rec)
-				} else {
-					remainingRecords = append(remainingRecords, rec)
+					records[j], records[pos] = records[pos], records[j]
+					pos++
 				}
 			}
+			lapRecords := records[:pos]
 
-			lapFromRecords := activity.NewLapFromRecords(lapRecords, ses.Sport)
-			if lapFromRecords != nil {
+			if len(lapRecords) != 0 {
+				lapFromRecords := activity.NewLapFromRecords(lapRecords, ses.Sport)
 				newLaps = append(newLaps, lapFromRecords)
 			}
-			sesRecords = remainingRecords
+			records = records[pos:]
 		}
 
 		newSes := activity.NewSessionFromLaps(newLaps, ses.Sport)
 		newSes.Laps = newLaps
 		newSes.Records = ses.Records
-		*ses = *newSes
+		newSes.Summarize()
+		*ses = newSes
 	}
 
 	// Validate Records in Sessions
-	validSessions := make([]*activity.Session, 0, len(a.Sessions))
+	validSessions := make([]activity.Session, 0, len(a.Sessions))
 	for i := range a.Sessions {
 		if len(a.Sessions[i].Records) == 0 {
 			continue
@@ -496,21 +534,21 @@ func (s *service) concealGPSPositions(a *activity.Activity, markers []spec.Encod
 		}
 
 		for j := 0; j < marker.StartN+1; j++ {
-			ses.Records[j].PositionLat = nil
-			ses.Records[j].PositionLong = nil
+			ses.Records[j].PositionLat = basetype.Sint32Invalid
+			ses.Records[j].PositionLong = basetype.Sint32Invalid
 		}
 
 		for j := marker.EndN + 1; j < len(ses.Records); j++ {
-			ses.Records[j].PositionLat = nil
-			ses.Records[j].PositionLong = nil
+			ses.Records[j].PositionLat = basetype.Sint32Invalid
+			ses.Records[j].PositionLong = basetype.Sint32Invalid
 		}
 	}
 
 	return nil
 }
 
-// RemoveFields removes field from the entire records as well as the summary of it.
-func (s *service) RemoveFields(a *activity.Activity, fields map[string]struct{}) {
+// removeFields removes field from the entire records as well as the summary of it.
+func (s *service) removeFields(a *activity.Activity, fields map[string]struct{}) {
 	if len(fields) == 0 {
 		return
 	}
@@ -524,28 +562,28 @@ func (s *service) RemoveFields(a *activity.Activity, fields map[string]struct{})
 		if _, ok := fields["altitude"]; ok {
 			ses.TotalAscent = 0
 			ses.TotalDescent = 0
-			ses.AvgAltitude = nil
-			ses.MaxAltitude = nil
+			ses.AvgAltitude = basetype.Uint16Invalid
+			ses.MaxAltitude = basetype.Uint16Invalid
 		}
 		if _, ok := fields["heartRate"]; ok {
-			ses.AvgHeartRate = nil
-			ses.MaxHeartRate = nil
+			ses.AvgHeartRate = basetype.Uint8Invalid
+			ses.MaxHeartRate = basetype.Uint8Invalid
 		}
 		if _, ok := fields["cadence"]; ok {
-			ses.AvgCadence = nil
-			ses.MaxCadence = nil
+			ses.AvgCadence = basetype.Uint8Invalid
+			ses.MaxCadence = basetype.Uint8Invalid
 		}
 		if _, ok := fields["speed"]; ok {
-			ses.AvgSpeed = nil
-			ses.MaxSpeed = nil
+			ses.AvgSpeed = basetype.Uint16Invalid
+			ses.MaxSpeed = basetype.Uint16Invalid
 		}
 		if _, ok := fields["power"]; ok {
-			ses.AvgPower = nil
-			ses.MaxPower = nil
+			ses.AvgPower = basetype.Uint16Invalid
+			ses.MaxPower = basetype.Uint16Invalid
 		}
 		if _, ok := fields["temperature"]; ok {
-			ses.AvgTemperature = nil
-			ses.MaxTemperature = nil
+			ses.AvgTemperature = basetype.Sint8Invalid
+			ses.MaxTemperature = basetype.Sint8Invalid
 		}
 
 		for j := range ses.Laps {
@@ -557,28 +595,28 @@ func (s *service) RemoveFields(a *activity.Activity, fields map[string]struct{})
 			if _, ok := fields["altitude"]; ok {
 				lap.TotalAscent = 0
 				lap.TotalDescent = 0
-				lap.AvgAltitude = nil
-				lap.MaxAltitude = nil
+				lap.AvgAltitude = basetype.Uint16Invalid
+				lap.MaxAltitude = basetype.Uint16Invalid
 			}
 			if _, ok := fields["heartRate"]; ok {
-				lap.AvgHeartRate = nil
-				lap.MaxHeartRate = nil
+				lap.AvgHeartRate = basetype.Uint8Invalid
+				lap.MaxHeartRate = basetype.Uint8Invalid
 			}
 			if _, ok := fields["cadence"]; ok {
-				lap.AvgCadence = nil
-				lap.MaxCadence = nil
+				lap.AvgCadence = basetype.Uint8Invalid
+				lap.MaxCadence = basetype.Uint8Invalid
 			}
 			if _, ok := fields["speed"]; ok {
-				lap.AvgSpeed = nil
-				lap.MaxSpeed = nil
+				lap.AvgSpeed = basetype.Uint16Invalid
+				lap.MaxSpeed = basetype.Uint16Invalid
 			}
 			if _, ok := fields["power"]; ok {
-				lap.AvgPower = nil
-				lap.MaxPower = nil
+				lap.AvgPower = basetype.Uint16Invalid
+				lap.MaxPower = basetype.Uint16Invalid
 			}
 			if _, ok := fields["temperature"]; ok {
-				lap.AvgTemperature = nil
-				lap.MaxTemperature = nil
+				lap.AvgTemperature = basetype.Sint8Invalid
+				lap.MaxTemperature = basetype.Sint8Invalid
 			}
 		}
 
@@ -586,42 +624,42 @@ func (s *service) RemoveFields(a *activity.Activity, fields map[string]struct{})
 			rec := ses.Records[j]
 
 			if _, ok := fields["positionLat"]; ok {
-				rec.PositionLat = nil
+				rec.PositionLat = basetype.Sint32Invalid
 			}
 			if _, ok := fields["positionLong"]; ok {
-				rec.PositionLong = nil
+				rec.PositionLong = basetype.Sint32Invalid
 			}
 			if _, ok := fields["distance"]; ok {
-				rec.Distance = nil
+				rec.Distance = basetype.Uint32Invalid
 			}
 			if _, ok := fields["altitude"]; ok {
-				rec.Altitude = nil
+				rec.Altitude = basetype.Uint16Invalid
 			}
 			if _, ok := fields["heartRate"]; ok {
-				rec.HeartRate = nil
+				rec.HeartRate = basetype.Uint8Invalid
 			}
 			if _, ok := fields["cadence"]; ok {
-				rec.Cadence = nil
+				rec.Cadence = basetype.Uint8Invalid
 			}
 			if _, ok := fields["speed"]; ok {
-				rec.Speed = nil
+				rec.Speed = basetype.Uint16Invalid
 			}
 			if _, ok := fields["power"]; ok {
-				rec.Power = nil
+				rec.Power = basetype.Uint16Invalid
 			}
 			if _, ok := fields["temperature"]; ok {
-				rec.Temperature = nil
+				rec.Temperature = basetype.Sint8Invalid
 			}
 		}
 	}
 }
 
 func (s *service) ManufacturerList() result.ManufacturerList {
-	manufacturers := make([]fit.Manufacturer, 0, len(s.manufacturers))
+	manufacturers := make([]activity.Manufacturer, 0, len(s.manufacturers))
 	for _, v := range s.manufacturers {
 		manufacturers = append(manufacturers, v)
 	}
-	slices.SortFunc(manufacturers, func(a, b fit.Manufacturer) int {
+	slices.SortFunc(manufacturers, func(a, b activity.Manufacturer) int {
 		if strings.ToLower(a.Name) < strings.ToLower(b.Name) {
 			return -1
 		}
@@ -631,30 +669,23 @@ func (s *service) ManufacturerList() result.ManufacturerList {
 }
 
 func (s *service) SportList() result.SportList {
-	rawSports := typedef.ListSport()
-	sports := make([]result.Sport, 0, len(rawSports)-1)
+	sportList := typedef.ListSport()
+	sports := make([]activity.Sport, 0, len(sportList))
 
-	for i := range rawSports {
-		rs := rawSports[i]
-		if rs == typedef.SportInvalid {
-			continue
+	for _, v := range sportList {
+		sport := activity.Sport{
+			ID:   v,
+			Name: strutils.ToTitle(v.String()),
 		}
-
-		sport := result.Sport{
-			ID:   uint8(rs),
-			Name: kit.FormatTitle(rs.String()),
-		}
-
-		sport.ToleranceMovingSpeed = activity.ToleranceMovingSpeed(sport.Name)
-
+		sport.ToleranceMovingSpeed = activity.ToleranceMovingSpeed(sport.ID)
 		sports = append(sports, sport)
 	}
 
-	slices.SortFunc(sports, func(a, b result.Sport) int {
+	slices.SortFunc(sports, func(a, b activity.Sport) int {
 		if a.Name < b.Name {
 			return -1
 		}
-		return 1
+		return 0
 	})
 
 	return result.SportList{Sports: sports}
