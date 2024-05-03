@@ -16,13 +16,12 @@
 package result
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 )
 
+// Encode is encode result.
 type Encode struct {
 	Err                  error
 	DeserializeInputTook time.Duration
@@ -34,59 +33,59 @@ type Encode struct {
 	FilesBytes           [][]byte
 }
 
-var _ json.Marshaler = &Encode{}
-
-func (e *Encode) MarshalJSON() ([]byte, error) {
+// MarshalAppendJSON appends the JSON format encoding of Encode to b, returning the result.
+func (e *Encode) MarshalAppendJSON(b []byte) []byte {
 	if e.Err != nil {
-		return []byte(fmt.Sprintf("{%q:%q}", "err", e.Err)), nil
+		return []byte(fmt.Sprintf("{%q:%q}", "err", e.Err))
 	}
 
 	begin := time.Now()
-	buf := new(bytes.Buffer)
 
-	buf.WriteByte('{')
-	buf.WriteString("\"fileName\":\"")
-	buf.WriteString(e.FileName)
-	buf.WriteString("\",")
+	b = append(b, '{')
 
-	buf.WriteString("\"fileType\":\"")
-	buf.WriteString(e.FileType)
-	buf.WriteString("\",")
+	b = append(b, `"fileName":`...)
+	b = strconv.AppendQuote(b, e.FileName)
+	b = append(b, ',')
 
-	buf.WriteString("\"encodeTook\":")
-	buf.WriteString(strconv.FormatInt(e.EncodeTook.Milliseconds(), 10))
-	buf.WriteByte(',')
+	b = append(b, `"fileType":`...)
+	b = strconv.AppendQuote(b, e.FileType)
+	b = append(b, ',')
 
-	buf.WriteString("\"deserializeInputTook\":")
-	buf.WriteString(strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10))
-	buf.WriteByte(',')
+	b = append(b, `"encodeTook":`...)
+	b = strconv.AppendInt(b, e.EncodeTook.Milliseconds(), 10)
+	b = append(b, ',')
 
-	buf.WriteString("\"filesBytes\":[")
+	b = append(b, `"deserializeInputTook":`...)
+	b = strconv.AppendInt(b, e.DeserializeInputTook.Milliseconds(), 10)
+	b = append(b, ',')
+
+	b = append(b, `"filesBytes":[`...)
 	for i := range e.FilesBytes {
-		buf.WriteByte('[')
+		b = append(b, '[')
 		for j := range e.FilesBytes[i] {
-			buf.WriteString(strconv.Itoa(int(e.FilesBytes[i][j]))) // keep it as number
+			b = strconv.AppendInt(b, int64(e.FilesBytes[i][j]), 10)
 			if j != len(e.FilesBytes[i])-1 {
-				buf.WriteByte(',')
+				b = append(b, ',')
 			}
 		}
-		buf.WriteByte(']')
+		b = append(b, ']')
 		if i != len(e.FilesBytes)-1 {
-			buf.WriteByte(',')
+			b = append(b, ',')
 		}
 	}
-	buf.WriteString("],")
+	b = append(b, `],`...)
 
 	e.SerializationTook = time.Since(begin)
 	e.TotalElapsed = e.DeserializeInputTook + e.EncodeTook + e.SerializationTook
 
-	buf.WriteString("\"serializationTook\":")
-	buf.WriteString(strconv.FormatInt(e.DeserializeInputTook.Milliseconds(), 10))
-	buf.WriteByte(',')
+	b = append(b, `"serializationTook":`...)
+	b = strconv.AppendInt(b, e.SerializationTook.Milliseconds(), 10)
+	b = append(b, ',')
 
-	buf.WriteString("\"totalElapsed\":")
-	buf.WriteString(strconv.FormatInt(e.TotalElapsed.Milliseconds(), 10))
+	b = append(b, `"totalElapsed":`...)
+	b = strconv.AppendInt(b, e.TotalElapsed.Milliseconds(), 10)
 
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
+	b = append(b, '}')
+
+	return b
 }

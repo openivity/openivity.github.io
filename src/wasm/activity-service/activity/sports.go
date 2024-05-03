@@ -16,13 +16,32 @@
 package activity
 
 import (
-	"bytes"
-	"sync"
+	"strconv"
+
+	"github.com/muktihari/fit/profile/typedef"
 )
 
-// Safe for concurrency, used for performance-critical situation such as marshaling activity.
-var bufPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
+// Sport is a sport structure.
+type Sport struct {
+	ID                   typedef.Sport
+	Name                 string
+	ToleranceMovingSpeed float64
+}
+
+// MarshalAppendJSON appends the JSON format encoding of Sport to b, returning the result.
+func (s *Sport) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+	b = append(b, `"id":`...)
+	b = strconv.AppendUint(b, uint64(s.ID), 10)
+	b = append(b, ',')
+
+	b = append(b, `"name":`...)
+	b = strconv.AppendQuote(b, s.Name)
+	b = append(b, ',')
+
+	b = append(b, `"toleranceMovingSpeed":`...)
+	b = strconv.AppendFloat(b, s.ToleranceMovingSpeed, 'g', -1, 64)
+	b = append(b, '}')
+
+	return b
 }

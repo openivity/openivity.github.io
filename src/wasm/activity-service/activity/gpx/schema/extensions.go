@@ -18,10 +18,11 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strconv"
 
-	"github.com/muktihari/openactivity-fit/kit"
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 // TrackPointExtension is a GPX extension for health-related data.
@@ -33,16 +34,26 @@ import (
 //
 // However, we will marshal into Garmin’s Track Point Extension v1 schema so some fields will be omitted.
 type TrackPointExtension struct {
-	Cadence     *uint8
-	Distance    *float64
-	HeartRate   *uint8
-	Temperature *int8
-	Power       *uint16
+	Cadence     uint8
+	Distance    float64
+	HeartRate   uint8
+	Temperature int8
+	Power       uint16
+}
+
+func (t *TrackPointExtension) reset() {
+	t.Cadence = basetype.Uint8Invalid
+	t.Distance = math.NaN()
+	t.HeartRate = basetype.Uint8Invalid
+	t.Temperature = basetype.Sint8Invalid
+	t.Power = basetype.Uint16Invalid
 }
 
 var _ xml.Unmarshaler = &TrackPointExtension{}
 
 func (t *TrackPointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	t.reset()
+
 	var targetCharData string
 	for {
 		token, err := dec.Token()
@@ -60,31 +71,31 @@ func (t *TrackPointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement
 				if err != nil {
 					return err
 				}
-				t.Cadence = kit.Ptr(uint8(val))
+				t.Cadence = uint8(val)
 			case "distance":
 				val, err := strconv.ParseFloat(string(elem), 64)
 				if err != nil {
 					return err
 				}
-				t.Distance = &val
+				t.Distance = val
 			case "hr", "heartrate":
 				val, err := strconv.ParseUint(string(elem), 10, 8)
 				if err != nil {
 					return err
 				}
-				t.HeartRate = kit.Ptr(uint8(val))
+				t.HeartRate = uint8(val)
 			case "atemp", "temp", "temperature":
 				val, err := strconv.ParseInt(string(elem), 10, 8)
 				if err != nil {
 					return err
 				}
-				t.Temperature = kit.Ptr(int8(val))
+				t.Temperature = int8(val)
 			case "power":
 				val, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
 					return err
 				}
-				t.Power = kit.Ptr(uint16(val))
+				t.Power = uint16(val)
 			}
 			targetCharData = ""
 		case xml.EndElement:
@@ -96,38 +107,38 @@ func (t *TrackPointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement
 }
 
 type garminTrackpoinExtensionV1 struct {
-	Atemp *int8  `xml:"gpxtpx:atemp,omitempty"`
-	HR    *uint8 `xml:"gpxtpx:hr,omitempty"`
-	Cad   *uint8 `xml:"gpxtpx:cad,omitempty"`
+	Atemp int8  `xml:"gpxtpx:atemp,omitempty"`
+	HR    uint8 `xml:"gpxtpx:hr,omitempty"`
+	Cad   uint8 `xml:"gpxtpx:cad,omitempty"`
 }
 
 var _ xml.Marshaler = &garminTrackpoinExtensionV1{}
 
-func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
-	if err := enc.EncodeToken(se); err != nil {
+func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
+	if err = enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	if g.Atemp != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("gpxtpx:atemp"),
-			xml.CharData(strconv.FormatInt(int64(*g.Atemp), 10))); err != nil {
+	if g.Atemp != basetype.Sint8Invalid {
+		if err = xmlutils.EncodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "gpxtpx:atemp"}},
+			xml.CharData(strconv.FormatInt(int64(g.Atemp), 10))); err != nil {
 			return fmt.Errorf("atemp: %w", err)
 		}
 	}
 
-	if g.HR != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("gpxtpx:hr"),
-			xml.CharData(strconv.FormatUint(uint64(*g.HR), 10))); err != nil {
+	if g.HR != basetype.Uint8Invalid {
+		if err = xmlutils.EncodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "gpxtpx:hr"}},
+			xml.CharData(strconv.FormatUint(uint64(g.HR), 10))); err != nil {
 			return fmt.Errorf("hr: %w", err)
 		}
 	}
 
-	if g.Cad != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("gpxtpx:cad"),
-			xml.CharData(strconv.FormatUint(uint64(*g.Cad), 10))); err != nil {
+	if g.Cad != basetype.Uint8Invalid {
+		if err = xmlutils.EncodeElement(enc,
+			xml.StartElement{Name: xml.Name{Local: "gpxtpx:cad"}},
+			xml.CharData(strconv.FormatUint(uint64(g.Cad), 10))); err != nil {
 			return fmt.Errorf("cad: %w", err)
 		}
 	}
@@ -137,22 +148,22 @@ func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartEl
 
 var _ xml.Marshaler = &TrackPointExtension{}
 
-func (t *TrackPointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+func (t *TrackPointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
 	m := garminTrackpoinExtensionV1{
 		Atemp: t.Temperature,
 		HR:    t.HeartRate,
 		Cad:   t.Cadence,
 	}
 
-	if m.Atemp == nil && m.HR == nil && m.Cad == nil { // omit
+	if m.Atemp == basetype.Sint8Invalid && m.HR == basetype.Uint8Invalid && m.Cad == basetype.Uint8Invalid { // omit
 		return nil
 	}
 
-	if err := enc.EncodeToken(se); err != nil {
+	if err = enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	if err := m.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "gpxtpx:TrackPointExtension"}}); err != nil {
+	if err = m.MarshalXML(enc, xml.StartElement{Name: xml.Name{Local: "gpxtpx:TrackPointExtension"}}); err != nil {
 		return fmt.Errorf("gpxtpx: %w", err)
 	}
 

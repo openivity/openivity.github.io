@@ -16,49 +16,24 @@
 package result
 
 import (
-	"bytes"
-	"encoding/json"
-	"strconv"
+	"github.com/openivity/activity-service/activity"
 )
 
 type SportList struct {
-	Sports []Sport
+	Sports []activity.Sport
 }
 
-var _ json.Marshaler = &SportList{}
-
-func (s *SportList) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	buf.WriteByte('{')
-
-	buf.WriteString("\"sports\":[")
+// MarshalAppendJSON appends the JSON format encoding of SportList to b, returning the result.
+func (s *SportList) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+	b = append(b, `"sports":[`...)
 	for i := range s.Sports {
-		b, _ := s.Sports[i].MarshalJSON()
-		buf.Write(b)
+		b = s.Sports[i].MarshalAppendJSON(b)
 		if i != len(s.Sports)-1 {
-			buf.WriteByte(',')
+			b = append(b, ',')
 		}
 	}
-	buf.WriteByte(']')
-
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
-}
-
-type Sport struct {
-	ID                   uint8
-	Name                 string
-	ToleranceMovingSpeed float64
-}
-
-var _ json.Marshaler = &Sport{}
-
-func (s *Sport) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	buf.WriteByte('{')
-	buf.WriteString("\"id\":" + strconv.FormatUint(uint64(s.ID), 10) + ",")
-	buf.WriteString("\"name\":\"" + s.Name + "\",")
-	buf.WriteString("\"toleranceMovingSpeed\":" + strconv.FormatFloat(s.ToleranceMovingSpeed, 'g', -1, 64))
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
+	b = append(b, ']')
+	b = append(b, '}')
+	return b
 }

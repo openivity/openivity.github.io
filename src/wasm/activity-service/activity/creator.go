@@ -16,72 +16,64 @@
 package activity
 
 import (
-	"bytes"
 	"strconv"
 	"time"
 
-	"github.com/muktihari/openactivity-fit/kit"
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/fit/profile/mesgdef"
+	"github.com/muktihari/fit/profile/typedef"
 )
 
 const Unknown = "Unknown"
 
 type Creator struct {
-	Name         string
-	Manufacturer *uint16
-	Product      *uint16
-	TimeCreated  time.Time
+	*mesgdef.FileId
+
+	Name string
 }
 
-func (c *Creator) MarshalJSON() ([]byte, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(buf)
-	buf.Reset()
-
-	buf.WriteByte('{')
-
-	buf.WriteString("\"name\":\"")
-	buf.WriteString(c.Name)
-	buf.WriteString("\",")
-
-	if c.Manufacturer != nil {
-		buf.WriteString("\"manufacturer\":")
-		buf.WriteString(strconv.FormatUint(uint64(*c.Manufacturer), 10))
-		buf.WriteByte(',')
+// CreateCreator creates new creator.
+func CreateCreator(fileId *mesgdef.FileId) Creator {
+	if fileId == nil {
+		fileId = mesgdef.NewFileId(nil).
+			SetType(typedef.FileActivity)
 	}
-	if c.Product != nil {
-		buf.WriteString("\"product\":")
-		buf.WriteString(strconv.FormatUint(uint64(*c.Product), 10))
-		buf.WriteByte(',')
+	return Creator{FileId: fileId}
+}
+
+// MarshalAppendJSON appends the JSON format encoding of Creator to b, returning the result.
+func (c *Creator) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+
+	if c.Name == "" {
+		c.Name = "Unknown"
+	}
+
+	b = append(b, `"name":`...)
+	b = strconv.AppendQuote(b, c.Name)
+	b = append(b, ',')
+
+	if c.Manufacturer != typedef.ManufacturerInvalid {
+		b = append(b, `"manufacturer":`...)
+		b = strconv.AppendUint(b, uint64(c.Manufacturer), 10)
+		b = append(b, ',')
+	}
+	if c.Product != basetype.Uint16Invalid {
+		b = append(b, `"product":`...)
+		b = strconv.AppendUint(b, uint64(c.Product), 10)
+		b = append(b, ',')
 	}
 	if !c.TimeCreated.IsZero() {
-		buf.WriteString("\"timeCreated\":\"")
-		buf.WriteString(c.TimeCreated.Format(time.RFC3339))
-		buf.WriteString("\"")
+		b = append(b, `"timeCreated":`...)
+		b = strconv.AppendQuote(b, c.TimeCreated.Format(time.RFC3339))
 	}
 
-	b := buf.Bytes()
+	if b[len(b)-1] == '{' {
+		return b[:len(b)-1]
+	}
 	if b[len(b)-1] == ',' {
-		b[len(b)-1] = '}'
-		return b, nil
+		b = b[:len(b)-1]
 	}
 
-	buf.WriteByte('}')
-
-	return buf.Bytes(), nil
-}
-
-func (c *Creator) Clone() *Creator {
-	cre := &Creator{
-		Name:        c.Name,
-		TimeCreated: c.TimeCreated,
-	}
-
-	if c.Manufacturer != nil {
-		cre.Manufacturer = kit.Ptr(*c.Manufacturer)
-	}
-	if c.Product != nil {
-		cre.Product = kit.Ptr(*c.Product)
-	}
-
-	return cre
+	return append(b, '}')
 }

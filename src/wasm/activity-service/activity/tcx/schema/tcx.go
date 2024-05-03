@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 // TODO: for implementing xml.Marshaler
@@ -90,13 +90,13 @@ func (t *TCX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	for i := range t.Activities {
-		if err := t.Activities[i].MarshalXML(enc, kxml.StartElement("Activities")); err != nil {
+		if err := t.Activities[i].MarshalXML(enc, xmlutils.StartElement("Activities")); err != nil {
 			return fmt.Errorf("activities[%d]: %w", i, err)
 		}
 	}
 
 	if t.Author != nil {
-		if err := t.Author.MarshalXML(enc, kxml.StartElement("Author")); err != nil {
+		if err := t.Author.MarshalXML(enc, xmlutils.StartElement("Author")); err != nil {
 			return fmt.Errorf("author: %w", err)
 		}
 	}

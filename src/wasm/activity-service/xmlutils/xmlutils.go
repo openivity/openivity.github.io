@@ -13,18 +13,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package xml
+package xmlutils
 
 import (
-	"bytes"
 	"encoding/xml"
-	"strings"
+	"io"
 )
 
+// StartElement is syntax sugar for xml.StartElement{Name: xml.Name{Local: name}}
 func StartElement(name string) xml.StartElement {
 	return xml.StartElement{Name: xml.Name{Local: name}}
 }
 
+// EncodeElement is syntax sugar for encoding a full element: <se>charData<se.End()>.
 func EncodeElement(enc *xml.Encoder, se xml.StartElement, charData xml.CharData) error {
 	if err := enc.EncodeToken(se); err != nil {
 		return err
@@ -37,21 +38,17 @@ func EncodeElement(enc *xml.Encoder, se xml.StartElement, charData xml.CharData)
 	return enc.EncodeToken(se.End())
 }
 
-func Marshal(marshaler xml.Marshaler) (b []byte, err error) {
-	w := bytes.NewBuffer(nil)
+// MarshalWrite marshals and write to w.
+func MarshalWrite(w io.Writer, marshaler xml.Marshaler) error {
 	w.Write([]byte(xml.Header))
-
 	enc := xml.NewEncoder(w)
-	defer func() {
-		err = enc.Close()
-		b = w.Bytes()
-	}()
-
-	enc.Indent("", strings.Repeat(" ", 1))
-
-	if err = marshaler.MarshalXML(enc, xml.StartElement{}); err != nil {
-		return nil, err
+	enc.Indent("", " ")
+	if err := marshaler.MarshalXML(enc, xml.StartElement{}); err != nil {
+		_ = enc.Close()
+		return err
 	}
-
-	return
+	if err := enc.Close(); err != nil {
+		return err
+	}
+	return nil
 }
