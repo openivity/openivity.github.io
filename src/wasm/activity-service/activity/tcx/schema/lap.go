@@ -18,31 +18,44 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
-	"github.com/muktihari/openactivity-fit/kit"
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 type ActivityLap struct {
 	StartTime           time.Time     `xml:"StartTime,attr"`
 	TotalTimeSeconds    float64       `xml:"TotalTimeSeconds"`
 	DistanceMeters      float64       `xml:"DistanceMeters"`
-	MaximumSpeed        *float64      `xml:"MaximumSpeed,omitempty"`
+	MaximumSpeed        float64       `xml:"MaximumSpeed,omitempty"`
 	Calories            uint16        `xml:"Calories"`
-	AverageHeartRateBpm *uint8        `xml:"AverageHeartRateBpm"`
-	MaximumHeartRateBpm *uint8        `xml:"MaximumHeartRateBpm"`
+	AverageHeartRateBpm uint8         `xml:"AverageHeartRateBpm"`
+	MaximumHeartRateBpm uint8         `xml:"MaximumHeartRateBpm"`
 	Intensity           Intensity     `xml:"Intensity,omitempty"`
-	Cadence             *uint8        `xml:"Cadence,omitempty"`
+	Cadence             uint8         `xml:"Cadence,omitempty"`
 	TriggerMethod       TriggerMethod `xml:"TriggerMethod,omitempty"`
 	Tracks              []Track       `xml:"Track,omitempty"`
 	Notes               string        `xml:"Notes,omitempty"`
 }
 
+func (a *ActivityLap) reset() {
+	a.TotalTimeSeconds = math.NaN()
+	a.DistanceMeters = math.NaN()
+	a.MaximumSpeed = math.NaN()
+	a.Calories = basetype.Uint16Invalid
+	a.AverageHeartRateBpm = basetype.Uint8Invalid
+	a.MaximumHeartRateBpm = basetype.Uint8Invalid
+	a.Cadence = basetype.Uint8Invalid
+}
+
 var _ xml.Unmarshaler = &ActivityLap{}
 
 func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	a.reset()
+
 	for i := range se.Attr {
 		attr := &se.Attr[i]
 
@@ -96,7 +109,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 				if err != nil {
 					return fmt.Errorf("parse MaximumSpeed: %w", err)
 				}
-				a.MaximumSpeed = &f
+				a.MaximumSpeed = f
 			case "Calories":
 				u, err := strconv.ParseUint(string(elem), 10, 16)
 				if err != nil {
@@ -110,7 +123,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 				if err != nil {
 					return fmt.Errorf("parse AverageHeartRateBpm: %w", err)
 				}
-				a.AverageHeartRateBpm = kit.Ptr(uint8(u))
+				a.AverageHeartRateBpm = uint8(u)
 			case "MaximumHeartRateBpm":
 				continue
 			case "MaximumHeartRateBpmValue":
@@ -118,7 +131,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 				if err != nil {
 					return fmt.Errorf("parse MaximumHeartRateBpm: %w", err)
 				}
-				a.MaximumHeartRateBpm = kit.Ptr(uint8(u))
+				a.MaximumHeartRateBpm = uint8(u)
 			case "Intensity":
 				a.Intensity = Intensity(elem)
 			case "Cadence":
@@ -126,7 +139,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 				if err != nil {
 					return fmt.Errorf("parse Cadence: %w", err)
 				}
-				a.Cadence = kit.Ptr(uint8(u))
+				a.Cadence = uint8(u)
 			case "TriggerMethod":
 				a.TriggerMethod = TriggerMethod(elem)
 			case "Notes":
@@ -153,53 +166,53 @@ func (a *ActivityLap) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("TotalTimeSeconds"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("TotalTimeSeconds"),
 		xml.CharData(strconv.FormatFloat(a.TotalTimeSeconds, 'g', -1, 64))); err != nil {
 		return fmt.Errorf("totalTimeSeconds: %w", err)
 	}
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("DistanceMeters"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("DistanceMeters"),
 		xml.CharData(strconv.FormatFloat(a.DistanceMeters, 'g', -1, 64))); err != nil {
 		return fmt.Errorf("distanceMeters: %w", err)
 	}
 
-	if a.MaximumSpeed != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("MaximumSpeed"),
-			xml.CharData(strconv.FormatFloat(*a.MaximumSpeed, 'g', -1, 64))); err != nil {
+	if !math.IsNaN(a.MaximumSpeed) {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("MaximumSpeed"),
+			xml.CharData(strconv.FormatFloat(a.MaximumSpeed, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("maximumSpeed: %w", err)
 		}
 	}
 
-	if err := kxml.EncodeElement(enc,
-		kxml.StartElement("Calories"),
+	if err := xmlutils.EncodeElement(enc,
+		xmlutils.StartElement("Calories"),
 		xml.CharData(strconv.FormatUint(uint64(a.Calories), 10))); err != nil {
 		return fmt.Errorf("calories: %w", err)
 	}
 
-	if a.AverageHeartRateBpm != nil {
-		avgHR := kxml.StartElement("AverageHeartRateBpm")
+	if a.AverageHeartRateBpm != basetype.Uint8Invalid {
+		avgHR := xmlutils.StartElement("AverageHeartRateBpm")
 		if err := enc.EncodeToken(avgHR); err != nil {
 			return fmt.Errorf("averageHeartRateBpm start: %w", err)
 		}
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Value"),
-			xml.CharData(strconv.FormatUint(uint64(*a.AverageHeartRateBpm), 10))); err != nil {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Value"),
+			xml.CharData(strconv.FormatUint(uint64(a.AverageHeartRateBpm), 10))); err != nil {
 			return fmt.Errorf("averageHeartRateBpmValue: %w", err)
 		}
 		if err := enc.EncodeToken(avgHR.End()); err != nil {
 			return fmt.Errorf("averageHeartRateBpm end: %w", err)
 		}
 	}
-	if a.MaximumHeartRateBpm != nil {
-		maxHR := kxml.StartElement("MaximumHeartRateBpm")
+	if a.MaximumHeartRateBpm != basetype.Uint8Invalid {
+		maxHR := xmlutils.StartElement("MaximumHeartRateBpm")
 		if err := enc.EncodeToken(maxHR); err != nil {
 			return fmt.Errorf("maximumHeartRateBpm start: %w", err)
 		}
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Value"),
-			xml.CharData(strconv.FormatUint(uint64(*a.MaximumHeartRateBpm), 10))); err != nil {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Value"),
+			xml.CharData(strconv.FormatUint(uint64(a.MaximumHeartRateBpm), 10))); err != nil {
 			return fmt.Errorf("maximumHeartRateBpmValue: %w", err)
 		}
 		if err := enc.EncodeToken(maxHR.End()); err != nil {
@@ -208,39 +221,39 @@ func (a *ActivityLap) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	if len(a.Intensity) != 0 {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Intensity"),
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Intensity"),
 			xml.CharData(a.Intensity)); err != nil {
 			return fmt.Errorf("intensity: %w", err)
 		}
 	}
 
-	if a.Cadence != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Cadence"),
-			xml.CharData(strconv.FormatUint(uint64(*a.Cadence), 10))); err != nil {
+	if a.Cadence != basetype.Uint8Invalid {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Cadence"),
+			xml.CharData(strconv.FormatUint(uint64(a.Cadence), 10))); err != nil {
 			return fmt.Errorf("cadence: %w", err)
 		}
 
 	}
 
 	if len(a.TriggerMethod) != 0 {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("TriggerMethod"),
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("TriggerMethod"),
 			xml.CharData(a.TriggerMethod)); err != nil {
 			return fmt.Errorf("triggerMethod: %w", err)
 		}
 	}
 
 	for i := range a.Tracks {
-		if err := a.Tracks[i].MarshalXML(enc, kxml.StartElement("Track")); err != nil {
+		if err := a.Tracks[i].MarshalXML(enc, xmlutils.StartElement("Track")); err != nil {
 			return fmt.Errorf("track[%d]: %w", i, err)
 		}
 	}
 
 	if len(a.Notes) != 0 {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("Notes"),
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("Notes"),
 			xml.CharData(a.Notes)); err != nil {
 			return fmt.Errorf("notes: %w", err)
 		}

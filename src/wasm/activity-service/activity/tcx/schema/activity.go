@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 type ActivityList struct {
-	Activity *Activity `xml:"Activity,omitempty"`
+	Activity Activity `xml:"Activity"`
 }
 
 var _ xml.Unmarshaler = &ActivityList{}
@@ -44,7 +44,7 @@ func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error
 				if err := activity.UnmarshalXML(dec, elem); err != nil {
 					return fmt.Errorf("unmarshal Activity: %w", err)
 				}
-				a.Activity = &activity
+				a.Activity = activity
 			}
 		case xml.EndElement:
 			if elem == se.End() {
@@ -61,10 +61,8 @@ func (a *ActivityList) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if a.Activity != nil {
-		if err := a.Activity.MarshalXML(enc, kxml.StartElement("Activity")); err != nil {
-			return fmt.Errorf("activity: %w", err)
-		}
+	if err := a.Activity.MarshalXML(enc, xmlutils.StartElement("Activity")); err != nil {
+		return fmt.Errorf("activity: %w", err)
 	}
 
 	return enc.EncodeToken(se.End())
@@ -147,22 +145,22 @@ func (a *Activity) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 		return err
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("Id"), xml.CharData(a.ID.Format(time.RFC3339))); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("Id"), xml.CharData(a.ID.Format(time.RFC3339))); err != nil {
 		return fmt.Errorf("id: %w", err)
 	}
 
 	for i := range a.Laps {
-		if err := a.Laps[i].MarshalXML(enc, kxml.StartElement("Lap")); err != nil {
+		if err := a.Laps[i].MarshalXML(enc, xmlutils.StartElement("Lap")); err != nil {
 			return fmt.Errorf("lap[%d]: %w", i, err)
 		}
 	}
 
-	if err := kxml.EncodeElement(enc, kxml.StartElement("Notes"), xml.CharData(a.Notes)); err != nil {
+	if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("Notes"), xml.CharData(a.Notes)); err != nil {
 		return fmt.Errorf("notes: %w", err)
 	}
 
 	if a.Creator != nil {
-		if err := a.Creator.MarshalXML(enc, kxml.StartElement("Creator")); err != nil {
+		if err := a.Creator.MarshalXML(enc, xmlutils.StartElement("Creator")); err != nil {
 			return fmt.Errorf("creator: %w", err)
 		}
 	}

@@ -18,10 +18,14 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
+	"github.com/muktihari/fit/kit/scaleoffset"
+	"github.com/muktihari/fit/kit/semicircles"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/xmlutils"
 )
 
 type Track struct {
@@ -82,26 +86,25 @@ func (t *Track) Validate() error {
 
 var _ xml.Marshaler = &Track{}
 
-func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
-
-	if err := enc.EncodeToken(se); err != nil {
+func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
+	if err = enc.EncodeToken(se); err != nil {
 		return err
 	}
 
 	if len(t.Name) != 0 {
-		if err := kxml.EncodeElement(enc, kxml.StartElement("name"), xml.CharData(t.Name)); err != nil {
+		if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("name"), xml.CharData(t.Name)); err != nil {
 			return fmt.Errorf("name: %w", err)
 		}
 	}
 
 	if len(t.Type) != 0 {
-		if err := kxml.EncodeElement(enc, kxml.StartElement("type"), xml.CharData(t.Type)); err != nil {
+		if err := xmlutils.EncodeElement(enc, xmlutils.StartElement("type"), xml.CharData(t.Name)); err != nil {
 			return fmt.Errorf("type: %w", err)
 		}
 	}
 
 	for i := range t.TrackSegments {
-		if err := t.TrackSegments[i].MarshalXML(enc, kxml.StartElement("trkseg")); err != nil {
+		if err := t.TrackSegments[i].MarshalXML(enc, xmlutils.StartElement("trkseg")); err != nil {
 			return fmt.Errorf("trkseg[%d]: %w", i, err)
 		}
 	}
@@ -140,12 +143,12 @@ func (t *TrackSegment) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error
 	}
 }
 
-func (ts *TrackSegment) Validate() error {
-	if ts == nil {
+func (t *TrackSegment) Validate() error {
+	if t == nil {
 		return nil
 	}
-	for i, trackpoint := range ts.Trackpoints {
-		if err := trackpoint.Validate(); err != nil {
+	for i := range t.Trackpoints {
+		if err := t.Trackpoints[i].Validate(); err != nil {
 			return fmt.Errorf("trackpoints[%d]: %w", i, err)
 		}
 	}
@@ -154,13 +157,13 @@ func (ts *TrackSegment) Validate() error {
 
 var _ xml.Marshaler = &TrackSegment{}
 
-func (ts *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
+func (t *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	for i := range ts.Trackpoints {
-		if err := ts.Trackpoints[i].MarshalXML(enc, kxml.StartElement("trkpt")); err != nil {
+	for i := range t.Trackpoints {
+		if err := t.Trackpoints[i].MarshalXML(enc, xmlutils.StartElement("trkpt")); err != nil {
 			return fmt.Errorf("trkpt[%d]: %w", i, err)
 		}
 	}
@@ -169,16 +172,52 @@ func (ts *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error 
 }
 
 type Waypoint struct {
-	Lat                 *float64             `xml:"lat,attr,omitempty"`
-	Lon                 *float64             `xml:"lon,attr,omitempty"`
-	Ele                 *float64             `xml:"ele,omitempty"`
-	Time                time.Time            `xml:"time,omitempty"`
-	TrackPointExtension *TrackPointExtension `xml:"extensions>TrackPointExtension,omitempty"`
+	Lat                 float64             `xml:"lat,attr,omitempty"`
+	Lon                 float64             `xml:"lon,attr,omitempty"`
+	Ele                 float64             `xml:"ele,omitempty"`
+	Time                time.Time           `xml:"time,omitempty"`
+	TrackPointExtension TrackPointExtension `xml:"extensions>TrackPointExtension,omitempty"`
+}
+
+func (w *Waypoint) reset() {
+	w.Lat = math.NaN()
+	w.Lon = math.NaN()
+	w.Ele = math.NaN()
+	w.Time = time.Time{}
+	w.TrackPointExtension.reset()
+}
+
+func (w *Waypoint) ToRecord() activity.Record {
+	rec := activity.CreateRecord(nil)
+
+	rec.Timestamp = w.Time
+	if !math.IsNaN(w.Lat) {
+		rec.PositionLat = semicircles.ToSemicircles(w.Lat)
+	}
+	if !math.IsNaN(w.Lon) {
+		rec.PositionLong = semicircles.ToSemicircles(w.Lon)
+	}
+	if !math.IsNaN(w.Ele) {
+		rec.Altitude = uint16(scaleoffset.Discard(w.Ele, 5, 500))
+	}
+
+	ext := w.TrackPointExtension
+	if !math.IsNaN(ext.Distance) {
+		rec.Distance = uint32(scaleoffset.Discard(ext.Distance, 100, 0))
+	}
+	rec.Cadence = ext.Cadence
+	rec.HeartRate = ext.HeartRate
+	rec.Power = ext.Power
+	rec.Temperature = ext.Temperature
+
+	return rec
 }
 
 var _ xml.Unmarshaler = &Waypoint{}
 
 func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+	w.reset()
+
 	for i := range se.Attr {
 		attr := se.Attr[i]
 
@@ -188,13 +227,13 @@ func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 			if err != nil {
 				return err
 			}
-			w.Lat = &f
+			w.Lat = f
 		case "lon":
 			f, err := strconv.ParseFloat(attr.Value, 64)
 			if err != nil {
 				return err
 			}
-			w.Lon = &f
+			w.Lon = f
 		}
 	}
 
@@ -209,11 +248,9 @@ func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 		case xml.StartElement:
 			switch elem.Name.Local {
 			case "extensions":
-				var ext TrackPointExtension
-				if err := ext.UnmarshalXML(dec, elem); err != nil {
+				if err := w.TrackPointExtension.UnmarshalXML(dec, elem); err != nil {
 					return err
 				}
-				w.TrackPointExtension = &ext
 			default:
 				targetCharData = elem.Name.Local
 			}
@@ -224,7 +261,7 @@ func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 				if err != nil {
 					return fmt.Errorf("parsing ele:  %w", err)
 				}
-				w.Ele = &f
+				w.Ele = f
 			case "time":
 				t, err := time.Parse(time.RFC3339, string(elem))
 				if err != nil {
@@ -242,14 +279,14 @@ func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 }
 
 func (w *Waypoint) Validate() error {
-	if w.Lat != nil {
-		if *w.Lat < -90 || *w.Lat > 90 {
-			return fmt.Errorf("lat %f is outside range -90.0 to 90.0", *w.Lat)
+	if !math.IsNaN(w.Lat) {
+		if w.Lat < -90 || w.Lat > 90 {
+			return fmt.Errorf("lat %f is outside range -90.0 to 90.0", w.Lat)
 		}
 	}
-	if w.Lon != nil {
-		if *w.Lon < -180 || *w.Lon > 180 {
-			return fmt.Errorf("lon %f is outside range -180.0 to 180.0", *w.Lon)
+	if !math.IsNaN(w.Lon) {
+		if w.Lon < -180 || w.Lon > 180 {
+			return fmt.Errorf("lon %f is outside range -180.0 to 180.0", w.Lon)
 		}
 	}
 	return nil
@@ -258,41 +295,39 @@ func (w *Waypoint) Validate() error {
 var _ xml.Marshaler = &Waypoint{}
 
 func (w *Waypoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
-	if w.Lat != nil {
+	if !math.IsNaN(w.Lat) {
 		se.Attr = append(se.Attr, xml.Attr{
 			Name:  xml.Name{Local: "lat"},
-			Value: strconv.FormatFloat(*w.Lat, 'g', -1, 64)})
+			Value: strconv.FormatFloat(w.Lat, 'g', -1, 64)})
 	}
-	if w.Lon != nil {
+	if !math.IsNaN(w.Lon) {
 		se.Attr = append(se.Attr, xml.Attr{
 			Name:  xml.Name{Local: "lon"},
-			Value: strconv.FormatFloat(*w.Lon, 'g', -1, 64)})
+			Value: strconv.FormatFloat(w.Lon, 'g', -1, 64)})
 	}
 
 	if err := enc.EncodeToken(se); err != nil {
 		return err
 	}
 
-	if w.Ele != nil {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("ele"),
-			xml.CharData(strconv.FormatFloat(*w.Ele, 'g', -1, 64))); err != nil {
+	if !math.IsNaN(w.Ele) {
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("ele"),
+			xml.CharData(strconv.FormatFloat(w.Ele, 'g', -1, 64))); err != nil {
 			return fmt.Errorf("ele: %w", err)
 		}
 	}
 
 	if !w.Time.IsZero() {
-		if err := kxml.EncodeElement(enc,
-			kxml.StartElement("time"),
+		if err := xmlutils.EncodeElement(enc,
+			xmlutils.StartElement("time"),
 			xml.CharData(w.Time.Format(time.RFC3339))); err != nil {
 			return fmt.Errorf("time: %w", err)
 		}
 	}
 
-	if w.TrackPointExtension != nil {
-		if err := w.TrackPointExtension.MarshalXML(enc, kxml.StartElement("extensions")); err != nil {
-			return fmt.Errorf("extensions: %w", err)
-		}
+	if err := w.TrackPointExtension.MarshalXML(enc, xmlutils.StartElement("extensions")); err != nil {
+		return fmt.Errorf("extensions: %w", err)
 	}
 
 	return enc.EncodeToken(se.End())

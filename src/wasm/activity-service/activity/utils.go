@@ -16,17 +16,10 @@
 package activity
 
 import (
+	"math"
 	"time"
-)
 
-const (
-	SportCycling    = "Cycling"
-	SportGeneric    = "Generic"
-	SportHiking     = "Hiking"
-	SportWalking    = "Walking"
-	SportRunning    = "Running"
-	SportSwimming   = "Swimming"
-	SportTransition = "Transition" // Multisport transition
+	"github.com/muktihari/fit/profile/typedef"
 )
 
 const (
@@ -35,19 +28,20 @@ const (
 	ToleranceMovingSpeedCyclingLikeSport = 1.41   // = 5.07 km/h
 )
 
-func IsConsideredMoving(sport string, speed *float64) bool {
-	if speed == nil {
+// IsConsideredMoving check whether given speed in a given sport is considered moving.
+func IsConsideredMoving(sport typedef.Sport, speed float64) bool {
+	if math.IsNaN(speed) {
 		return false
 	}
-
-	return *speed > ToleranceMovingSpeed(sport)
+	return speed > ToleranceMovingSpeed(sport)
 }
 
-func ToleranceMovingSpeed(sport string) float64 {
+// ToleranceMovingSpeed returns the tolerance moving speed of given record.
+func ToleranceMovingSpeed(sport typedef.Sport) float64 {
 	switch sport {
-	case SportRunning:
+	case typedef.SportRunning:
 		return ToleranceMovingSpeedRunningLikeSport
-	case SportCycling:
+	case typedef.SportCycling:
 		return ToleranceMovingSpeedCyclingLikeSport
 	default:
 		// Generic: since we don't know the specific sport, let's assume the slowest possible speed as our tolerance.
@@ -56,13 +50,14 @@ func ToleranceMovingSpeed(sport string) float64 {
 	}
 }
 
-func HasPace(sport string) bool {
+// HasPace check whether given sport has pace for analytic.
+func HasPace(sport typedef.Sport) bool {
 	switch sport {
-	case SportGeneric:
+	case typedef.SportGeneric:
 		// Since we don't know the specific sport, let's calculate the pace for now and allow the user to decide for themselves.
 		// It's better to provide additional information than to have none. (TBD)
 		fallthrough
-	case SportHiking, SportWalking, SportRunning, SportSwimming, SportTransition:
+	case typedef.SportHiking, typedef.SportWalking, typedef.SportRunning, typedef.SportSwimming, typedef.SportTransition:
 		return true
 	default:
 		return false

@@ -24,52 +24,46 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall/js"
 	"time"
 
 	"github.com/muktihari/fit/profile/typedef"
-	"github.com/muktihari/openactivity-fit/activity"
-	"github.com/muktihari/openactivity-fit/activity/fit"
-	"github.com/muktihari/openactivity-fit/activity/gpx"
-	"github.com/muktihari/openactivity-fit/activity/tcx"
-	"github.com/muktihari/openactivity-fit/kit"
-	"github.com/muktihari/openactivity-fit/preprocessor"
-	"github.com/muktihari/openactivity-fit/service"
-	"github.com/muktihari/openactivity-fit/service/spec"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/activity/fit"
+	"github.com/openivity/activity-service/activity/gpx"
+	"github.com/openivity/activity-service/activity/tcx"
+	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/service"
+	"github.com/openivity/activity-service/service/spec"
+	"github.com/openivity/activity-service/strutils"
 	"golang.org/x/exp/slices"
 )
 
-// Since we don't require concurrency on functions invocation, let's cache previously decoded activities
-// for a faster encoding process. Serializing and deserializing data is quite expensive in the current
-// WebAssembly specification, especially in Golang, as the [syscall/js] library is still considered EXPERIMENTAL.
+// decodedActivities is previously decoded activities.
 //
-// This implementation is similiar on how Linier Memory work in WebAssembly.
-// ref:
-//   - https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Memory
-//   - https://wasmbyexample.dev/examples/webassembly-linear-memory/webassembly-linear-memory.go.en-us.html
-var decodedActivitiesCache = [1][]activity.Activity{} // 1 single process is allowed at a time.
-const pointer = 0                                     // now, it's always pointing to zero
-var mu sync.Mutex                                     // cache access lock
+// NOTE: We cache this for faster encoding process, serializing and deserializing data
+// in the current Go WebAssembly implementation is expensive, as the [syscall/js] library
+// is still considered EXPERIMENTAL. This is safe since every WebAssembly Instance is isolated.
+var decodedActivities = []activity.Activity{}
 
 //go:embed manufacturers.json
 var manufacturerJson []byte
 
 func main() {
-	manufacturers := makeManufacturers()
+	preproc := activity.NewPreprocessor()
 
-	preproc := preprocessor.New()
-
-	fs := fit.NewService(preproc, manufacturers)
+	fs := fit.NewService(preproc)
 	gs := gpx.NewService(preproc)
 	ts := tcx.NewService(preproc)
 
-	s := service.New(fs, gs, ts, manufacturers)
+	manufacturers := makeManufacturers()
 
-	js.Global().Set("decode", createDecodeFunc(s))
-	js.Global().Set("encode", createEncodeFunc(s))
-	js.Global().Set("manufacturerList", createManufacturerListFunc(s))
-	js.Global().Set("sportList", createSportListFunc(s))
+	svc := service.New(fs, gs, ts, manufacturers)
+
+	js.Global().Set("decode", createDecodeFunc(svc))
+	js.Global().Set("encode", createEncodeFunc(svc))
+	js.Global().Set("manufacturerList", createManufacturerListFunc(svc))
+	js.Global().Set("sportList", createSportListFunc(svc))
 
 	// Add shutdown hook
 	quitc := make(chan struct{})
@@ -83,87 +77,41 @@ func main() {
 	fmt.Println("WebAssembly: Activity Service Exited!")
 }
 
-// cache caches decoded result to be used on encoding later.
-func cache(activities []activity.Activity) {
-	mu.Lock()
-	decodedActivitiesCache[pointer] = activities
-	mu.Unlock()
-}
+func makeManufacturers() map[typedef.Manufacturer]activity.Manufacturer {
+	manufacturers := make(map[typedef.Manufacturer]activity.Manufacturer)
 
-// retrieveCache retrieves a cloned version of latest decoded value.
-func retrieveCache(pointer byte) []activity.Activity {
-	mu.Lock()
-	cachedActivities := decodedActivitiesCache[pointer]
-	activities := make([]activity.Activity, len(cachedActivities))
-	for i := range cachedActivities {
-		activities[i] = *cachedActivities[i].Clone()
-	}
-	mu.Unlock()
-	return activities
-}
-
-func makeManufacturers() map[uint16]fit.Manufacturer {
-	manufacturers := make(map[uint16]fit.Manufacturer)
-
-	var source map[string]fit.Manufacturer
-	if err := json.Unmarshal(manufacturerJson, &source); err != nil {
+	var manufacturerJsonData map[string]activity.Manufacturer
+	if err := json.Unmarshal(manufacturerJson, &manufacturerJsonData); err != nil {
 		// Only happen if manufacturers.json is corrupted on build, less likely to happen. Let's just log it.
-		fmt.Printf("Could not make manufactures mapping: %v\n", err)
+		fmt.Printf("could not make manufactures mapping: %v\n", err)
 		return manufacturers
 	}
 
-	manufacturerIDs := typedef.ListManufacturer()
-	garminProductIDs := typedef.ListGarminProduct()
+	manufacturerList := typedef.ListManufacturer()
 
-	for i := range manufacturerIDs {
-		if manufacturerIDs[i] == typedef.ManufacturerInvalid {
-			continue
+	for i := range manufacturerList {
+		manufacturer := activity.Manufacturer{
+			ID:   manufacturerList[i],
+			Name: strutils.ToTitle(manufacturerList[i].String()),
 		}
 
-		manufacturerID := manufacturerIDs[i]
-		manufacturer := fit.Manufacturer{
-			ID:   uint16(manufacturerID),
-			Name: kit.FormatTitle(manufacturerID.String()),
-		}
-
-		if manufacturer.ID == uint16(typedef.ManufacturerGarmin) {
+		if manufacturer.ID == typedef.ManufacturerGarmin {
+			garminProductIDs := typedef.ListGarminProduct()
 			for j := range garminProductIDs {
-				if garminProductIDs[j] == typedef.GarminProductInvalid {
-					continue
-				}
-
-				product := fit.ManufacturerProduct{
-					ID:   uint16(garminProductIDs[j]),
-					Name: kit.FormatTitle(garminProductIDs[j].String()),
+				product := activity.Product{
+					ID:   garminProductIDs[j].Uint16(),
+					Name: strutils.ToTitle(garminProductIDs[j].String()),
 				}
 				manufacturer.Products = append(manufacturer.Products, product)
 			}
 		}
 
-		if m, ok := source[strconv.FormatUint(uint64(manufacturer.ID), 10)]; ok {
+		if m, ok := manufacturerJsonData[strconv.FormatUint(uint64(manufacturer.ID), 10)]; ok {
 			manufacturer.Name = m.Name
-			if len(manufacturer.Products) == 0 {
-				manufacturer.Products = m.Products
-			} else {
-				for i := range m.Products {
-					mp := m.Products[i]
-					var exist bool
-					for j := range manufacturer.Products {
-						p := &manufacturer.Products[j]
-						if p.ID == mp.ID {
-							p.Name = mp.Name // Rename product name
-							exist = true
-							break
-						}
-					}
-					if !exist {
-						manufacturer.Products = append(manufacturer.Products, mp)
-					}
-				}
-			}
+			manufacturer.Products = append(manufacturer.Products, m.Products...)
 		}
 
-		slices.SortFunc(manufacturer.Products, func(a, b fit.ManufacturerProduct) int {
+		slices.SortFunc(manufacturer.Products, func(a, b activity.Product) int {
 			if strings.ToLower(a.Name) < strings.ToLower(b.Name) {
 				return -1
 			}
@@ -180,7 +128,7 @@ func createDecodeFunc(s service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an Array<Uint8Array>
 		if input.Length() == 0 {
-			return map[string]any{"err": fmt.Errorf("no input is passed")}
+			return "{\"err\":\"no input is passed.\"}"
 		}
 
 		rs := make([]io.Reader, input.Length())
@@ -193,15 +141,18 @@ func createDecodeFunc(s service.Service) js.Func {
 
 		result := s.Decode(context.Background(), rs)
 
-		cache(result.Activities)
+		decodedActivities = result.Activities
 
-		b, _ := result.MarshalJSON()
+		buf := mem.GetBuffer()
+		defer mem.PutBuffer(buf)
+
+		b := result.MarshalAppendJSON(buf.Bytes())
 
 		return string(b)
 	})
 }
 
-func createEncodeFunc(s service.Service) js.Func {
+func createEncodeFunc(svc service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an JSON string
 		if input.Length() == 0 {
@@ -217,31 +168,64 @@ func createEncodeFunc(s service.Service) js.Func {
 			return "{\"err\":\"could not unmarshal input\"}"
 		}
 
-		encodeSpec.Activities = retrieveCache(pointer)
+		encodeSpec.Activities = cloneActivities(decodedActivities)
 
 		elapsed := time.Since(begin)
 
-		result := s.Encode(context.Background(), encodeSpec)
+		result := svc.Encode(context.Background(), encodeSpec)
+
 		result.DeserializeInputTook = elapsed
 
-		b, _ = result.MarshalJSON()
+		buf := mem.GetBuffer()
+		defer mem.PutBuffer(buf)
+
+		b = result.MarshalAppendJSON(buf.Bytes())
 
 		return string(b)
 	})
 }
 
-func createManufacturerListFunc(s service.Service) js.Func {
+func createManufacturerListFunc(svc service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		manufacturerList := s.ManufacturerList()
-		b, _ := manufacturerList.MarshalJSON()
+		manufacturerList := svc.ManufacturerList()
+		b := manufacturerList.MarshalAppendJSON(make([]byte, 0, 50<<10))
 		return string(b)
 	})
 }
 
-func createSportListFunc(s service.Service) js.Func {
+func createSportListFunc(svc service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		sportList := s.SportList()
-		b, _ := sportList.MarshalJSON()
+		sportList := svc.SportList()
+		b := sportList.MarshalAppendJSON(make([]byte, 0, 8<<10))
 		return string(b)
 	})
+}
+
+// cloneActivities clones activities so each encode invocation has isolated activities data.
+func cloneActivities(activities []activity.Activity) []activity.Activity {
+	activities = slices.Clone(activities)
+	for i := range activities {
+		sessions := slices.Clone(activities[i].Sessions)
+		for j := range sessions {
+			base := *sessions[j].Session
+			sessions[j].Session = &base
+
+			records := slices.Clone(sessions[j].Records)
+			for k := range records {
+				base := *records[k].Record
+				records[k].Record = &base
+			}
+			sessions[j].Records = records
+
+			laps := slices.Clone(sessions[j].Laps)
+			for k := range laps {
+				base := *laps[k].Lap
+				laps[k].Lap = &base
+			}
+			sessions[j].Laps = laps
+		}
+		activities[i].Sessions = sessions
+	}
+
+	return activities
 }

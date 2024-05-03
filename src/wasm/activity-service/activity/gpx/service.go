@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/muktihari/openactivity-fit/activity"
-	"github.com/muktihari/openactivity-fit/activity/gpx/schema"
-	"github.com/muktihari/openactivity-fit/kit"
-	kxml "github.com/muktihari/openactivity-fit/kit/xml"
-	"github.com/muktihari/openactivity-fit/preprocessor"
+	"github.com/muktihari/fit/profile/typedef"
+	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/activity/gpx/schema"
+	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/strutils"
+	"github.com/openivity/activity-service/xmlutils"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -36,36 +38,27 @@ const (
 var _ activity.Service = &service{}
 
 type service struct {
-	preprocessor *preprocessor.Preprocessor
+	preprocessor *activity.Preprocessor
 }
 
-func NewService(preproc *preprocessor.Preprocessor) activity.Service {
+// NewService creates new GPX service.
+func NewService(preproc *activity.Preprocessor) activity.Service {
 	return &service{preprocessor: preproc}
 }
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	dec := xml.NewDecoder(r)
 
-	// NOTE: We manually define xml.Unmarshaler to void the reflection used
-	//       in default decoder, which is particularly slow expecially in WASM.
-
 	// Find start element
 	var start *xml.StartElement
-	if start == nil {
-		for {
-			tok, err := dec.Token()
-			if err != nil {
-				return nil, err
-			}
-			if t, ok := tok.(xml.StartElement); ok {
-				start = &t
-				break
-			}
+	for start == nil {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	if start == nil { // In case we got invalid xml, avoid panic.
-		return nil, fmt.Errorf("not a valid xml")
+		if t, ok := tok.(xml.StartElement); ok {
+			start = &t
+		}
 	}
 
 	var gpx schema.GPX
@@ -73,37 +66,35 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		return nil, err
 	}
 
-	act := new(activity.Activity)
+	act := activity.CreateActivity()
 	act.Creator.Name = gpx.Creator
 	act.Creator.TimeCreated = gpx.Metadata.Time
 
-	sessions := make([]*activity.Session, 0, len(gpx.Tracks))
+	sessions := make([]activity.Session, 0, len(gpx.Tracks))
 
 	for i := range gpx.Tracks { // Sessions
 		trk := gpx.Tracks[i]
 
-		sport := kit.FormatTitle(trk.Type)
-		if sport == "" || sport == "Other" {
-			sport = activity.SportGeneric
+		sport := typedef.SportFromString(strutils.ToLowerSnakeCase(trk.Type))
+		if sport == typedef.SportInvalid {
+			sport = typedef.SportGeneric
 		}
-
-		laps := make([]*activity.Lap, 0, len(trk.TrackSegments))
 
 		var recordCount int
 		for i := range trk.TrackSegments {
 			recordCount += len(trk.TrackSegments[i].Trackpoints)
 		}
-		records := make([]*activity.Record, 0, recordCount)
 
-		recordsByLap := make([][]*activity.Record, 0, len(trk.TrackSegments))
+		laps := make([]activity.Lap, 0, len(trk.TrackSegments))
+		records := make([]activity.Record, 0, recordCount)
+		recordsByLap := make([][]activity.Record, 0, len(trk.TrackSegments))
 		for j := range trk.TrackSegments { // Laps
 			trkseg := trk.TrackSegments[j]
 
-			lapRecords := make([]*activity.Record, 0, len(trkseg.Trackpoints))
+			lapRecords := make([]activity.Record, 0, len(trkseg.Trackpoints))
 			for k := range trkseg.Trackpoints { // Records
 				trkpt := &trkseg.Trackpoints[k]
-				rec := NewRecord(trkpt)
-				lapRecords = append(lapRecords, rec)
+				lapRecords = append(lapRecords, trkpt.ToRecord())
 			}
 
 			if len(lapRecords) == 0 {
@@ -119,7 +110,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		if activity.HasPace(sport) {
 			s.preprocessor.CalculatePace(sport, records)
 		}
-		s.preprocessor.SmoothingElev(records)
+		s.preprocessor.SmoothingElevation(records)
 		s.preprocessor.CalculateGrade(records)
 
 		// We can only calculate laps' summary after preprocessing.
@@ -135,6 +126,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		session := activity.NewSessionFromLaps(laps, sport)
 		session.Records = records
 		session.Laps = laps
+		session.Summarize()
 
 		sessions = append(sessions, session)
 
@@ -149,31 +141,32 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 
 	act.Sessions = sessions
 
-	s.preprocessor.SetSessionsWorkoutType(act.Sessions...)
-
-	return []activity.Activity{*act}, nil
+	return []activity.Activity{act}, nil
 }
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	bs := make([][]byte, len(activities))
+
+	buf := mem.GetBuffer()
+	defer mem.PutBuffer(buf)
 
 	for i := range activities {
 		gpx := s.convertActivityToGPX(&activities[i])
 		if err := gpx.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid gpx: %w", err)
 		}
-		b, err := kxml.Marshal(gpx)
-		if err != nil {
+		buf.Reset()
+		if err := xmlutils.MarshalWrite(buf, &gpx); err != nil {
 			return nil, fmt.Errorf("could not marshal gpx[%d]: %w", i, err)
 		}
-		bs[i] = b
+		bs[i] = slices.Clone(buf.Bytes())
 	}
 
 	return bs, nil
 }
 
-func (s *service) convertActivityToGPX(act *activity.Activity) *schema.GPX {
-	gpx := &schema.GPX{
+func (s *service) convertActivityToGPX(act *activity.Activity) schema.GPX {
+	gpx := schema.GPX{
 		Creator: act.Creator.Name,
 		Metadata: schema.Metadata{
 			Time: act.Creator.TimeCreated,
@@ -184,32 +177,31 @@ func (s *service) convertActivityToGPX(act *activity.Activity) *schema.GPX {
 	}
 
 	for i := range act.Sessions {
-		ses := act.Sessions[i]
-
+		ses := &act.Sessions[i]
 		track := schema.Track{
-			Name:          ses.Sport,
-			Type:          ses.Sport,
+			Name:          strutils.ToTitle(ses.Sport.String()),
+			Type:          strutils.ToTitle(ses.Sport.String()),
 			TrackSegments: make([]schema.TrackSegment, 0, len(ses.Laps)),
 		}
 
 		sesRecords := ses.Records
 		for j := range ses.Laps {
-			lap := ses.Laps[j]
+			lap := &ses.Laps[j]
 			trackSegment := schema.TrackSegment{}
 
-			remainingRecords := make([]*activity.Record, 0)
+			remainingRecords := make([]activity.Record, 0)
 			for k := range sesRecords {
 				rec := sesRecords[k]
 
 				if lap.IsBelongToThisLap(rec.Timestamp) {
 					waypoint := schema.Waypoint{
 						Time: rec.Timestamp,
-						Lat:  rec.PositionLat,
-						Lon:  rec.PositionLong,
-						Ele:  rec.Altitude,
-						TrackPointExtension: &schema.TrackPointExtension{
+						Lat:  rec.PositionLatDegrees(),
+						Lon:  rec.PositionLongDegrees(),
+						Ele:  rec.AltitudeScaled(),
+						TrackPointExtension: schema.TrackPointExtension{
 							Cadence:     rec.Cadence,
-							Distance:    rec.Distance,
+							Distance:    rec.DistanceScaled(),
 							HeartRate:   rec.HeartRate,
 							Temperature: rec.Temperature,
 							Power:       rec.Power,

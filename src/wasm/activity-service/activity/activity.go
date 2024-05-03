@@ -16,65 +16,127 @@
 package activity
 
 import (
-	"bytes"
 	"strconv"
+	"time"
+
+	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/fit/profile/mesgdef"
+	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/fit/proto"
+	"golang.org/x/exp/slices"
 )
 
+// Activity is an activity. It use FIT SDK's structure as its base since FIT is currently the most advance format.
 type Activity struct {
 	Creator  Creator
-	Timezone int
-	Sessions []*Session
+	Timezone int8
+	Sessions []Session
+
+	// UnrelatedMessages contains all messages not used by our service
+	// such as DeveloperDataIds, FieldDescriptions, Events, etc.
+	// We will restore these messages as it is when we recreate the FIT files.
+	UnrelatedMessages []proto.Message
 }
 
-func (a *Activity) MarshalJSON() ([]byte, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(buf)
-	buf.Reset()
+// CreateActivity creates new activity.
+func CreateActivity() Activity {
+	return Activity{
+		Creator: CreateCreator(nil),
+	}
+}
 
-	buf.WriteByte('{')
+// ToFIT converts Activity into proto.FIT.
+func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
+	size := 1 + len(a.Sessions) + len(a.UnrelatedMessages)
+	for i := range a.Sessions {
+		ses := &a.Sessions[i]
+		size += len(ses.Records) + len(ses.Laps)
+	}
 
-	buf.WriteString("\"creator\":")
-	b, _ := a.Creator.MarshalJSON()
-	buf.Write(b)
-	buf.WriteByte(',')
+	fit := proto.FIT{Messages: make([]proto.Message, 0, size)}
+	fit.Messages = append(fit.Messages, a.Creator.FileId.ToMesg(options))
+	fit.Messages = append(fit.Messages, a.UnrelatedMessages...)
 
-	buf.WriteString("\"timezone\":")
-	buf.WriteString(strconv.FormatInt(int64(a.Timezone), 10))
-	buf.WriteByte(',')
+	var totalTimerTime uint32
+	var lastTimestamp time.Time
+	for i := range a.Sessions {
+		ses := &a.Sessions[i]
+		if ses.Timestamp.After(lastTimestamp) {
+			lastTimestamp = ses.Timestamp
+		}
+		totalTimerTime += ses.TotalTimerTime
+
+		for j := range ses.Records {
+			rec := &ses.Records[j]
+			fit.Messages = append(fit.Messages, rec.Record.ToMesg(options))
+		}
+		for j := range ses.Laps {
+			lap := &ses.Laps[j]
+			fit.Messages = append(fit.Messages, lap.Lap.ToMesg(options))
+		}
+		fit.Messages = append(fit.Messages, ses.Session.ToMesg(options))
+	}
+
+	activityMesg := mesgdef.NewActivity(nil).
+		SetType(typedef.ActivityAutoMultiSport).
+		SetTimestamp(lastTimestamp).
+		SetLocalTimestamp(lastTimestamp.Add(time.Duration(a.Timezone) * time.Hour)).
+		SetTotalTimerTime(totalTimerTime).
+		SetNumSessions(uint16(len(a.Sessions)))
+
+	fit.Messages = append(fit.Messages, activityMesg.ToMesg(options))
+
+	slices.SortStableFunc(fit.Messages, func(m1, m2 proto.Message) int {
+		timestamp1 := m1.FieldValueByNum(proto.FieldNumTimestamp).Uint32()
+		if timestamp1 == basetype.Uint32Invalid {
+			return 0
+		}
+		timestamp2 := m2.FieldValueByNum(proto.FieldNumTimestamp).Uint32()
+		if timestamp2 == basetype.Uint32Invalid {
+			return 0
+		}
+		if timestamp1 < timestamp2 {
+			return -1
+		}
+		if timestamp1 > timestamp2 {
+			return 1
+		}
+		return 0
+	})
+
+	return fit
+}
+
+// MarshalAppendJSON appends the JSON format encoding of Activity to b, returning the result.
+func (a *Activity) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+
+	b = append(b, `"creator":`...)
+	b = a.Creator.MarshalAppendJSON(b)
+	b = append(b, ',')
+
+	b = append(b, `"timezone":`...)
+	b = strconv.AppendInt(b, int64(a.Timezone), 10)
+	b = append(b, ',')
 
 	if len(a.Sessions) != 0 {
-		buf.WriteString("\"sessions\":[")
+		b = append(b, `"sessions":[`...)
 		for i := range a.Sessions {
-			b, _ = a.Sessions[i].MarshalJSON()
-			buf.Write(b)
-			if i != len(a.Sessions)-1 {
-				buf.WriteByte(',')
+			n := len(b)
+			b = a.Sessions[i].MarshalAppendJSON(b)
+			if len(b) != n && i != len(a.Sessions)-1 {
+				b = append(b, ',')
 			}
 		}
-		buf.WriteByte(']')
+		b = append(b, ']')
 	}
 
-	b = buf.Bytes()
+	if b[len(b)-1] == '{' {
+		return b[:len(b)-1]
+	}
 	if b[len(b)-1] == ',' {
-		b[len(b)-1] = '}'
-		return b, nil
+		b = b[:len(b)-1]
 	}
 
-	buf.WriteByte('}')
-
-	return buf.Bytes(), nil
-}
-
-func (a *Activity) Clone() *Activity {
-	act := &Activity{
-		Creator:  *a.Creator.Clone(),
-		Timezone: a.Timezone,
-	}
-
-	act.Sessions = make([]*Session, len(a.Sessions))
-	for i := range a.Sessions {
-		act.Sessions[i] = a.Sessions[i].Clone()
-	}
-
-	return act
+	return append(b, '}')
 }

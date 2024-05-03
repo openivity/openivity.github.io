@@ -16,32 +16,24 @@
 package result
 
 import (
-	"bytes"
-	"encoding/json"
-
-	"github.com/muktihari/openactivity-fit/activity/fit"
+	"github.com/openivity/activity-service/activity"
 )
 
 type ManufacturerList struct {
-	Manufacturers []fit.Manufacturer
+	Manufacturers []activity.Manufacturer
 }
 
-var _ json.Marshaler = &ManufacturerList{}
-
-func (m *ManufacturerList) MarshalJSON() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	buf.WriteByte('{')
-
-	buf.WriteString("\"manufacturers\":[")
+// MarshalAppendJSON appends the JSON format encoding of ManufacturerList to b, returning the result.
+func (m *ManufacturerList) MarshalAppendJSON(b []byte) []byte {
+	b = append(b, '{')
+	b = append(b, `"manufacturers":[`...)
 	for i := range m.Manufacturers {
-		b, _ := m.Manufacturers[i].MarshalJSON()
-		buf.Write(b)
+		b = m.Manufacturers[i].MarshalAppendJSON(b)
 		if i != len(m.Manufacturers)-1 {
-			buf.WriteByte(',')
+			b = append(b, ',')
 		}
 	}
-	buf.WriteByte(']')
-
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
+	b = append(b, ']')
+	b = append(b, '}')
+	return b
 }
