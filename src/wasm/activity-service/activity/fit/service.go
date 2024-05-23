@@ -27,7 +27,6 @@ import (
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/typedef"
-	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/mem"
@@ -264,22 +263,42 @@ func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []prot
 
 	unrelatedMessages := make([]proto.Message, 0, size)
 
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.DeveloperDataId, activityFile.DeveloperDataIds)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.DeveloperDataId, activityFile.FieldDescriptions)
-
+	for i := range activityFile.DeveloperDataIds {
+		unrelatedMessages = append(unrelatedMessages, activityFile.DeveloperDataIds[i].ToMesg(nil))
+	}
+	for i := range activityFile.FieldDescriptions {
+		unrelatedMessages = append(unrelatedMessages, activityFile.FieldDescriptions[i].ToMesg(nil))
+	}
 	if activityFile.UserProfile != nil {
 		unrelatedMessages = append(unrelatedMessages, activityFile.UserProfile.ToMesg(nil))
 	}
-
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.DeviceInfo, activityFile.DeviceInfos)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.Event, activityFile.Events)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.Length, activityFile.Lengths)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.SegmentLap, activityFile.SegmentLap)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.ZonesTarget, activityFile.ZonesTargets)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.Workout, activityFile.Workouts)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.WorkoutStep, activityFile.WorkoutSteps)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.Hr, activityFile.HRs)
-	filedef.ToMesgs(&unrelatedMessages, nil, mesgnum.Hrv, activityFile.HRVs)
+	for i := range activityFile.DeviceInfos {
+		unrelatedMessages = append(unrelatedMessages, activityFile.DeviceInfos[i].ToMesg(nil))
+	}
+	for i := range activityFile.Events {
+		unrelatedMessages = append(unrelatedMessages, activityFile.Events[i].ToMesg(nil))
+	}
+	for i := range activityFile.Lengths {
+		unrelatedMessages = append(unrelatedMessages, activityFile.Lengths[i].ToMesg(nil))
+	}
+	for i := range activityFile.SegmentLap {
+		unrelatedMessages = append(unrelatedMessages, activityFile.SegmentLap[i].ToMesg(nil))
+	}
+	for i := range activityFile.ZonesTargets {
+		unrelatedMessages = append(unrelatedMessages, activityFile.ZonesTargets[i].ToMesg(nil))
+	}
+	for i := range activityFile.Workouts {
+		unrelatedMessages = append(unrelatedMessages, activityFile.Workouts[i].ToMesg(nil))
+	}
+	for i := range activityFile.WorkoutSteps {
+		unrelatedMessages = append(unrelatedMessages, activityFile.WorkoutSteps[i].ToMesg(nil))
+	}
+	for i := range activityFile.HRs {
+		unrelatedMessages = append(unrelatedMessages, activityFile.HRs[i].ToMesg(nil))
+	}
+	for i := range activityFile.HRVs {
+		unrelatedMessages = append(unrelatedMessages, activityFile.HRVs[i].ToMesg(nil))
+	}
 
 	unrelatedMessages = append(unrelatedMessages, activityFile.UnrelatedMessages...)
 
