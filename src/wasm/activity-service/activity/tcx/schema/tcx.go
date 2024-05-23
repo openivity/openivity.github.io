@@ -41,7 +41,7 @@ type TCX struct {
 	Author     *Application   `xml:"Author,omitempty"`
 }
 
-var _ xml.Unmarshaler = &TCX{}
+var _ xml.Unmarshaler = (*TCX)(nil)
 
 func (t *TCX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for {
@@ -74,7 +74,7 @@ func (t *TCX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &TCX{}
+var _ xml.Marshaler = (*TCX)(nil)
 
 func (t *TCX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	se.Name = xml.Name{Local: "TrainingCenterDatabase"}

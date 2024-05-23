@@ -50,7 +50,7 @@ type GPX struct {
 	Tracks   []Track  `xml:"trk,omitempty"`
 }
 
-var _ xml.Unmarshaler = &GPX{}
+var _ xml.Unmarshaler = (*GPX)(nil)
 
 func (g *GPX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for i := range se.Attr {
@@ -115,7 +115,7 @@ func (g *GPX) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &GPX{}
+var _ xml.Marshaler = (*GPX)(nil)
 
 func (g *GPX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	version := g.Version

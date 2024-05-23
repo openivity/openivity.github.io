@@ -34,7 +34,7 @@ type Track struct {
 	TrackSegments []TrackSegment `xml:"trkseg,omitempty"`
 }
 
-var _ xml.Unmarshaler = &Track{}
+var _ xml.Unmarshaler = (*Track)(nil)
 
 func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -84,7 +84,7 @@ func (t *Track) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &Track{}
+var _ xml.Marshaler = (*Track)(nil)
 
 func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
 	if err = enc.EncodeToken(se); err != nil {
@@ -116,7 +116,7 @@ type TrackSegment struct {
 	Trackpoints []Waypoint `xml:"trkpt,omitempty"`
 }
 
-var _ xml.Unmarshaler = &TrackSegment{}
+var _ xml.Unmarshaler = (*TrackSegment)(nil)
 
 func (t *TrackSegment) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for {
@@ -155,7 +155,7 @@ func (t *TrackSegment) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &TrackSegment{}
+var _ xml.Marshaler = (*TrackSegment)(nil)
 
 func (t *TrackSegment) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -213,7 +213,7 @@ func (w *Waypoint) ToRecord() activity.Record {
 	return rec
 }
 
-var _ xml.Unmarshaler = &Waypoint{}
+var _ xml.Unmarshaler = (*Waypoint)(nil)
 
 func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	w.reset()
@@ -292,7 +292,7 @@ func (w *Waypoint) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &Waypoint{}
+var _ xml.Marshaler = (*Waypoint)(nil)
 
 func (w *Waypoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if !math.IsNaN(w.Lat) {

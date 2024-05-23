@@ -49,7 +49,7 @@ func (t *TrackPointExtension) reset() {
 	t.Power = basetype.Uint16Invalid
 }
 
-var _ xml.Unmarshaler = &TrackPointExtension{}
+var _ xml.Unmarshaler = (*TrackPointExtension)(nil)
 
 func (t *TrackPointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	t.reset()
@@ -112,7 +112,7 @@ type garminTrackpoinExtensionV1 struct {
 	Cad   uint8 `xml:"gpxtpx:cad,omitempty"`
 }
 
-var _ xml.Marshaler = &garminTrackpoinExtensionV1{}
+var _ xml.Marshaler = (*garminTrackpoinExtensionV1)(nil)
 
 func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
 	if err = enc.EncodeToken(se); err != nil {
@@ -146,7 +146,7 @@ func (g *garminTrackpoinExtensionV1) MarshalXML(enc *xml.Encoder, se xml.StartEl
 	return enc.EncodeToken(se.End())
 }
 
-var _ xml.Marshaler = &TrackPointExtension{}
+var _ xml.Marshaler = (*TrackPointExtension)(nil)
 
 func (t *TrackPointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) (err error) {
 	m := garminTrackpoinExtensionV1{

@@ -35,7 +35,7 @@ const (
 	metadataLink = "https://openivity.github.io"
 )
 
-var _ activity.Service = &service{}
+var _ activity.Service = (*service)(nil)
 
 type service struct {
 	preprocessor *activity.Preprocessor

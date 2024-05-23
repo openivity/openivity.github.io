@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/muktihari/fit/decoder"
@@ -33,7 +34,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var _ activity.Service = &service{}
+var _ activity.Service = (*service)(nil)
+
+var decoderPool = sync.Pool{New: func() any { return decoder.New(nil) }}
+
+// NOTE: Use encoderPool when The FIT SDK for Go releases new version, since the current version (v0.18.2) still has bug on Reset.
+// var encoderPool = sync.Pool{New: func() any { return encoder.New(nil) }}
 
 type service struct {
 	preprocessor *activity.Preprocessor
@@ -50,7 +56,10 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	lis := filedef.NewListener()
 	defer lis.Close()
 
-	dec := decoder.New(r,
+	dec := decoderPool.Get().(*decoder.Decoder)
+	defer decoderPool.Put(dec)
+
+	dec.Reset(r,
 		decoder.WithMesgListener(lis),
 		decoder.WithBroadcastOnly(),
 		decoder.WithIgnoreChecksum(),
