@@ -26,7 +26,6 @@ import (
 	"github.com/muktihari/fit/encoder"
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/profile/filedef"
-	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
@@ -64,6 +63,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		if err != nil {
 			return nil, err
 		}
+
 		if fileId.Type != typedef.FileActivity {
 			if err = dec.Discard(); err != nil {
 				return nil, err
@@ -88,12 +88,27 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 		return nil, fmt.Errorf("fit: %w", activity.ErrNoActivity)
 	}
 
+	// Sumarizing...
+	for i := range activities {
+		act := &activities[i]
+		for j := range act.Sessions {
+			ses := &act.Sessions[j]
+
+			s.preprocessor.CalculateDistanceAndSpeed(ses.Records)
+			s.preprocessor.SmoothingElevation(ses.Records)
+			s.preprocessor.CalculateGrade(ses.Records)
+			if activity.HasPace(ses.Sport) {
+				s.preprocessor.CalculatePace(ses.Sport, ses.Records)
+			}
+
+			s.recalculateSummary(ses)
+		}
+	}
+
 	return activities, nil
 }
 
 func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Activity {
-	s.sanitize(activityFile)
-
 	var timezone int8
 	if activityFile.Activity != nil {
 		localTimestamp := activityFile.Activity.LocalTimestamp
@@ -103,8 +118,9 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 		}
 	}
 
+	fileId := activityFile.FileId
 	act := activity.Activity{
-		Creator:           activity.CreateCreator(&activityFile.FileId),
+		Creator:           activity.CreateCreator(&fileId),
 		Timezone:          timezone,
 		UnrelatedMessages: s.handleUnrelatedMessages(activityFile),
 	}
@@ -117,7 +133,7 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 
 	laps := make([]activity.Lap, len(activityFile.Laps))
 	for i := range activityFile.Laps {
-		laps[i] = activity.Lap{Lap: activityFile.Laps[i]}
+		laps[i] = activity.CreateLap(activityFile.Laps[i])
 	}
 
 	sessions := make([]activity.Session, len(activityFile.Sessions))
@@ -137,16 +153,14 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 			laps = append(laps, lap)
 		}
 
-		ses := activity.NewSessionFromLaps(laps, typedef.SportGeneric)
+		ses := activity.NewSessionFromLaps(laps)
 		ses.Records = records
 		ses.Laps = laps
-		s.preprocessingRecords(ses.Records, ses.Sport)
 		act.Sessions = []activity.Session{ses}
 
 		return act
 	} else if len(laps) == 0 {
-		// Some devices may only create sessions without laps, to ensure we don't lose any summary data in session
-		// since there are information that only available in session but not in records.
+		// Some devices may only create sessions without laps.
 		// Let's create laps from sessions, 1 session should at least have 1 lap.
 		laps = make([]activity.Lap, len(sessions))
 		for i := range sessions {
@@ -154,19 +168,23 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 		}
 	}
 
+	const anomalyThreshold = 10
+	act.Sessions = make([]activity.Session, 0, len(sessions))
 	for i := range sessions {
 		ses := sessions[i]
 
 		laps = ses.PutLaps(laps...)
 		records = ses.PutRecords(records...)
 
-		if len(ses.Records) == 0 {
-			continue
+		if len(ses.Laps) == 0 {
+			ses.Laps = append(ses.Laps, activity.NewLapFromSession(&sessions[i]))
 		}
 
-		s.preprocessingRecords(ses.Records, ses.Sport)
-		s.finalizeSession(&ses)
-
+		// Include anomaly records below threshold to the last session.
+		if i == len(sessions)-1 && len(records) < anomalyThreshold {
+			ses.Records = append(ses.Records, records...)
+			records = records[:0]
+		}
 		act.Sessions = append(act.Sessions, ses)
 	}
 
@@ -176,34 +194,54 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 
 	// Handle remaining laps and records that don't belong any session
 	// This could happen when file is truncated or file is not properly encoded.
-	sport := typedef.SportGeneric // Mark as Generic
-	s.preprocessingRecords(records, sport)
-
 	if len(laps) != 0 {
-		ses := activity.NewSessionFromLaps(laps, sport)
+		ses := activity.NewSessionFromLaps(laps)
 		ses.Laps = laps
-
 		records = ses.PutRecords(records...)
-
-		if len(ses.Records) != 0 {
-			s.finalizeSession(&ses)
-			act.Sessions = append(act.Sessions, ses)
-		}
+		act.Sessions = append(act.Sessions, ses)
 	}
 
 	// Handle remaining records that don't belong anywhere.
 	if len(records) != 0 {
-		lap := activity.NewLapFromRecords(records, sport)
-		newLaps := []activity.Lap{lap}
-
-		ses := activity.NewSessionFromLaps(newLaps, sport)
-		ses.Laps = newLaps
+		lap := activity.NewLapFromRecords(records, typedef.SportGeneric)
+		laps = []activity.Lap{lap}
+		ses := activity.NewSessionFromLaps(laps)
+		ses.Laps = laps
 		ses.Records = records
-
 		act.Sessions = append(act.Sessions, ses)
 	}
 
 	return act
+}
+
+// recalculateSummary recalculates values based on Laps and Records.
+func (s *service) recalculateSummary(ses *activity.Session) {
+	records := slices.Clone(ses.Records)
+	if len(ses.Laps) == 1 { // Ensure lap's time windows match with session, FIT produces by Strava contains wrong time.
+		ses.Laps[0].StartTime = ses.StartTime
+		ses.Laps[0].TotalElapsedTime = ses.TotalElapsedTime
+		ses.Laps[0].TotalTimerTime = ses.TotalTimerTime
+	}
+	for i := range ses.Laps {
+		lap := &ses.Laps[i]
+		var pos int
+
+		for j := range records {
+			if lap.IsBelongToThisLap(records[j].Timestamp) {
+				records[j], records[pos] = records[pos], records[j]
+				pos++
+			}
+		}
+		if len(records) == 0 {
+			continue
+		}
+		lapFromRecords := activity.NewLapFromRecords(records[:pos], ses.Sport)
+		lap.ReplaceValues(&lapFromRecords)
+		records = records[pos:]
+	}
+	sesFromLaps := activity.NewSessionFromLaps(ses.Laps)
+	ses.ReplaceValues(&sesFromLaps)
+	ses.Summarize()
 }
 
 func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []proto.Message {
@@ -246,111 +284,6 @@ func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []prot
 	unrelatedMessages = append(unrelatedMessages, activityFile.UnrelatedMessages...)
 
 	return unrelatedMessages
-}
-
-// sanitize removes any invalid item from given result.
-func (s *service) sanitize(raw *filedef.Activity) {
-	if len(raw.Records) == 0 {
-		return
-	}
-
-	validLaps := make([]*mesgdef.Lap, 0)
-
-	for i := range raw.Laps {
-		lap := raw.Laps[i]
-
-		// Timestamp, Start Time, and Total Elapsed Time are required fields for all summary messages.
-		// If any of this field is missing, let's mark as invalid and use our own lap calculation later.
-		if lap.Timestamp.IsZero() {
-			continue
-		}
-		if lap.StartTime.IsZero() {
-			continue
-		}
-		if lap.TotalElapsedTime == 0 {
-			continue
-		}
-
-		// Most activity has 1 Lap and first Lap's StartTime should match first record's timestamp.
-		// We should not try to accommodate all bad encoding practices and this guard should be sufficient for most cases.
-		if i == 0 && !lap.StartTime.Equal(raw.Records[0].Timestamp) {
-			continue
-		}
-
-		validLaps = append(validLaps, lap)
-	}
-
-	raw.Laps = validLaps
-}
-
-// preprocessingRecords pre-processes records per session since 1 session corresponds to 1 sport.
-// We should not process different sports as one.
-func (s *service) preprocessingRecords(records []activity.Record, sport typedef.Sport) {
-	s.preprocessor.CalculateDistanceAndSpeed(records)
-	s.preprocessor.SmoothingElevation(records)
-	s.preprocessor.CalculateGrade(records)
-	if activity.HasPace(sport) {
-		s.preprocessor.CalculatePace(sport, records)
-	}
-}
-
-// finalizeSession finalises session by creating lap if not exist and calculating its summary as well as calculating session's summary.
-func (s *service) finalizeSession(ses *activity.Session) {
-	if len(ses.Laps) == 0 {
-		lap := activity.NewLapFromRecords(ses.Records, ses.Sport)
-		ses.Laps = append(ses.Laps, lap)
-		sesFromLaps := activity.NewSessionFromLaps(ses.Laps, ses.Sport)
-		ses.ReplaceValues(&sesFromLaps)
-		return
-	}
-
-	remainingRecords := ses.Records
-	for j := range ses.Laps {
-		lap := ses.Laps[j]
-
-		lapRecords := make([]activity.Record, 0)
-		remainingLapRecords := make([]activity.Record, 0)
-		for k := range remainingRecords {
-			rec := remainingRecords[k]
-
-			if lap.IsBelongToThisLap(rec.Timestamp) {
-				lapRecords = append(lapRecords, rec)
-			} else {
-				remainingLapRecords = append(remainingLapRecords, rec)
-			}
-		}
-		remainingRecords = remainingLapRecords
-
-		lapFromRecords := activity.NewLapFromRecords(lapRecords, ses.Sport)
-		lap.ReplaceValues(&lapFromRecords)
-	}
-
-	// Handle remaining records that don't belong to any lap.
-	if len(remainingRecords) != 0 {
-		lap := activity.NewLapFromRecords(remainingRecords, ses.Sport)
-		ses.Laps = append(ses.Laps, lap)
-	}
-
-	slices.SortFunc(ses.Laps, func(l1, l2 activity.Lap) int {
-		if l1.StartTime.Equal(l2.StartTime) {
-			return 0
-		}
-		if l1.StartTime.Before(l2.StartTime) {
-			return -1
-		}
-		return 1
-	})
-
-	sesFromLaps := activity.NewSessionFromLaps(ses.Laps, ses.Sport)
-	ses.ReplaceValues(&sesFromLaps)
-
-	// Calculate TotalElapsedTime
-	for i := len(ses.Records) - 1; i >= 0; i-- {
-		if !ses.Records[i].Timestamp.IsZero() {
-			ses.TotalElapsedTime = uint32(ses.Records[i].Timestamp.Sub(ses.StartTime).Seconds() * 1000)
-			break
-		}
-	}
 }
 
 func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
