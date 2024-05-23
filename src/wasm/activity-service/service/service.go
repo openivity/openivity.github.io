@@ -487,7 +487,7 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 			records = records[pos:]
 		}
 
-		newSes := activity.NewSessionFromLaps(newLaps, ses.Sport)
+		newSes := activity.NewSessionFromLaps(newLaps)
 		newSes.Laps = newLaps
 		newSes.Records = ses.Records
 		newSes.Summarize()

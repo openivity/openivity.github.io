@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
@@ -142,7 +141,7 @@ func NewLapFromRecords(records []Record, sport typedef.Sport) Lap {
 		lap.AvgTemperature = int8(avgTemperature / avgTemperatureCount)
 	}
 
-	var startDistance, endDistance uint32
+	var startDistance, endDistance uint32 = basetype.Uint32Invalid, basetype.Uint32Invalid
 	for i := 0; i < len(records); i++ {
 		if records[i].Distance != basetype.Uint32Invalid {
 			startDistance = records[i].Distance
@@ -170,56 +169,13 @@ func NewLapFromRecords(records []Record, sport typedef.Sport) Lap {
 			break
 		}
 	}
-	lap.TotalElapsedTime = uint32((endTimestamp.Sub(startTimestamp).Seconds() + 1) * 1000)
+	if !startTimestamp.IsZero() && !endTimestamp.IsZero() {
+		lap.TotalElapsedTime = uint32((endTimestamp.Sub(startTimestamp).Seconds() + 1) * 1000)
+	}
 	lap.TotalTimerTime = lap.TotalElapsedTime
 
-	// Calculate Total Moving Time
-	for i := 0; i < len(records); i++ {
-		rec := &records[i]
-		if rec.Timestamp.IsZero() {
-			continue
-		}
-
-		// Find next non-zero timestamp
-		for j := i + 1; j < len(records); j++ {
-			next := &records[j]
-			if !next.Timestamp.IsZero() {
-				delta := next.Timestamp.Sub(rec.Timestamp).Seconds()
-				if IsConsideredMoving(sport, rec.SpeedScaled()) {
-					lap.TotalMovingTime += uint32(scaleoffset.Discard(delta, 1000, 0))
-				}
-				i = j - 1 // move cursor
-				break
-			}
-		}
-	}
-
-	// Calculate Total Ascent and Total Descent
-	var totalAscent, totalDescent float64
-	for i := 0; i < len(records)-1; i++ {
-		rec := &records[i]
-		if math.IsNaN(rec.SmoothedAltitude) {
-			continue
-		}
-
-		// Find next non-nil altitude
-		for j := i + 1; j < len(records); j++ {
-			next := &records[j]
-			if !math.IsNaN(rec.SmoothedAltitude) {
-				delta := next.SmoothedAltitude - rec.SmoothedAltitude
-				if delta > 0 {
-					totalAscent += delta
-				} else {
-					totalDescent += math.Abs(delta)
-				}
-				i = j - 1 // move cursor
-				break
-			}
-		}
-	}
-
-	lap.TotalAscent = uint16(math.Round(totalAscent))
-	lap.TotalDescent = uint16(math.Round(totalDescent))
+	lap.TotalMovingTime = TotalMovingTime(records, lap.Sport)
+	lap.TotalAscent, lap.TotalDescent = TotalAscentAndDescent(records)
 
 	return lap
 }
@@ -447,18 +403,19 @@ func (l *Lap) MarshalAppendJSON(b []byte) []byte {
 		b = append(b, ',')
 	}
 
-	hasPace := HasPace(l.Sport)
-	if hasPace && l.TotalMovingTime != basetype.Uint32Invalid && l.TotalDistance != basetype.Uint32Invalid {
-		b = append(b, `"avgPace":`...)
+	if HasPace(l.Sport) {
 		avgPace := l.TotalMovingTimeScaled() / (l.TotalDistanceScaled() / 1000)
-		b = strconv.AppendFloat(b, avgPace, 'g', -1, 64)
-		b = append(b, ',')
-	}
-	if hasPace && l.TotalMovingTime != basetype.Uint32Invalid && l.TotalDistance != basetype.Uint32Invalid {
-		b = append(b, `"avgElapsedPace":`...)
+		if !math.IsNaN(avgPace) && !math.IsInf(avgPace, 0) {
+			b = append(b, `"avgPace":`...)
+			b = strconv.AppendFloat(b, avgPace, 'g', -1, 64)
+			b = append(b, ',')
+		}
 		avgElapsedPace := l.TotalElapsedTimeScaled() / (l.TotalDistanceScaled() / 1000)
-		b = strconv.AppendFloat(b, avgElapsedPace, 'g', -1, 64)
-		b = append(b, ',')
+		if !math.IsNaN(avgElapsedPace) && !math.IsInf(avgElapsedPace, 0) {
+			b = append(b, `"avgElapsedPace":`...)
+			b = strconv.AppendFloat(b, avgElapsedPace, 'g', -1, 64)
+			b = append(b, ',')
+		}
 	}
 
 	if b[len(b)-1] == '{' {
