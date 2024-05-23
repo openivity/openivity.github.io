@@ -6,34 +6,7 @@ import (
 	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/typedef"
-	"golang.org/x/exp/constraints"
 )
-
-func Avg[T constraints.Integer](records []Record, fn func(*Record) (T, bool)) T {
-	var sum, count uint64
-	for i := range records {
-		v, ok := fn(&records[i])
-		if !ok {
-			continue
-		}
-		sum += uint64(v)
-		count++
-	}
-	return T(sum / count)
-}
-
-func Max[T constraints.Integer](records []Record, fn func(*Record) (T, bool)) T {
-	var sum, count uint64
-	for i := range records {
-		v, ok := fn(&records[i])
-		if !ok {
-			continue
-		}
-		sum += uint64(v)
-		count++
-	}
-	return T(sum / count)
-}
 
 // AvgMaxSpeed returns average and max speed of the given records.
 func AvgMaxSpeed(records []Record) (avgSpeed, maxSpeed uint16) {
