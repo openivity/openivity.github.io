@@ -19,11 +19,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/proto"
-	"golang.org/x/exp/slices"
 )
 
 // Activity is an activity. It use FIT SDK's structure as its base since FIT is currently the most advance format.
@@ -86,23 +85,7 @@ func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
 
 	fit.Messages = append(fit.Messages, activityMesg.ToMesg(options))
 
-	slices.SortStableFunc(fit.Messages, func(m1, m2 proto.Message) int {
-		timestamp1 := m1.FieldValueByNum(proto.FieldNumTimestamp).Uint32()
-		if timestamp1 == basetype.Uint32Invalid {
-			return 0
-		}
-		timestamp2 := m2.FieldValueByNum(proto.FieldNumTimestamp).Uint32()
-		if timestamp2 == basetype.Uint32Invalid {
-			return 0
-		}
-		if timestamp1 < timestamp2 {
-			return -1
-		}
-		if timestamp1 > timestamp2 {
-			return 1
-		}
-		return 0
-	})
+	filedef.SortMessagesByTimestamp(fit.Messages[1:]) // Exclude FileId
 
 	return fit
 }
