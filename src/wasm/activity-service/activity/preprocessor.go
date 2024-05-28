@@ -77,78 +77,69 @@ func NewPreprocessor(opts ...Option) *Preprocessor {
 // The FIT files produced by Strava is splitting values into multiple records with the same timestamp, so
 // we think it's possible for other platforms/devices to produce similiar files.
 func (p *Preprocessor) AggregateByTimestamp(records []Record) []Record {
-	newRecords := make([]Record, 0, len(records))
-
 	for i := 0; i < len(records); i++ {
-		rec := records[i]
+		rec := &records[i]
 
-		candidates := make([]Record, 0)
+		// Find forward
 		for j := i + 1; j < len(records); j++ {
 			next := records[j]
 			if !rec.Timestamp.Equal(next.Timestamp) {
-				i = j - 1
+				records = append(records[:i+1], records[j:]...) // Remove aggregated records
 				break
 			}
-			candidates = append(candidates, next)
-		}
-
-		for j := range candidates {
-			can := candidates[j]
 
 			if rec.PositionLat == basetype.Sint32Invalid {
-				rec.PositionLat = can.PositionLat
+				rec.PositionLat = next.PositionLat
 			}
 			if rec.PositionLong == basetype.Sint32Invalid {
-				rec.PositionLong = can.PositionLong
+				rec.PositionLong = next.PositionLong
 			}
 
-			if rec.Altitude != basetype.Uint16Invalid && can.Altitude != basetype.Uint16Invalid {
-				rec.Altitude = uint16((uint32(rec.Altitude) + uint32(can.Altitude)) / 2)
-			} else if can.Altitude != basetype.Uint16Invalid {
-				rec.Altitude = can.Altitude
+			if rec.Altitude != basetype.Uint16Invalid && next.Altitude != basetype.Uint16Invalid {
+				rec.Altitude = uint16((uint32(rec.Altitude) + uint32(next.Altitude)) / 2)
+			} else if next.Altitude != basetype.Uint16Invalid {
+				rec.Altitude = next.Altitude
 			}
 
-			if rec.Cadence != basetype.Uint8Invalid && can.Cadence != basetype.Uint8Invalid {
-				rec.Cadence = uint8((uint16(rec.Cadence) + uint16(can.Cadence)) / 2)
-			} else if can.Cadence != basetype.Uint8Invalid {
-				rec.Cadence = can.Cadence
+			if rec.Cadence != basetype.Uint8Invalid && next.Cadence != basetype.Uint8Invalid {
+				rec.Cadence = uint8((uint16(rec.Cadence) + uint16(next.Cadence)) / 2)
+			} else if next.Cadence != basetype.Uint8Invalid {
+				rec.Cadence = next.Cadence
 			}
 
-			if rec.Speed != basetype.Uint16Invalid && can.Speed != basetype.Uint16Invalid {
-				rec.Speed = uint16((uint32(rec.Speed) + uint32(can.Speed)) / 2)
-			} else if can.Speed != basetype.Uint16Invalid {
-				rec.Speed = can.Speed
+			if rec.Speed != basetype.Uint16Invalid && next.Speed != basetype.Uint16Invalid {
+				rec.Speed = uint16((uint32(rec.Speed) + uint32(next.Speed)) / 2)
+			} else if next.Speed != basetype.Uint16Invalid {
+				rec.Speed = next.Speed
 			}
 
-			if rec.Distance != basetype.Uint32Invalid && can.Distance != basetype.Uint32Invalid {
-				rec.Distance = uint32((uint64(rec.Distance) + uint64(can.Distance)) / 2)
-			} else if can.Distance != basetype.Uint32Invalid {
-				rec.Distance = can.Distance
+			if rec.Distance != basetype.Uint32Invalid && next.Distance != basetype.Uint32Invalid {
+				rec.Distance = uint32((uint64(rec.Distance) + uint64(next.Distance)) / 2)
+			} else if next.Distance != basetype.Uint32Invalid {
+				rec.Distance = next.Distance
 			}
 
-			if rec.HeartRate != basetype.Uint8Invalid && can.HeartRate != basetype.Uint8Invalid {
-				rec.HeartRate = uint8((uint16(rec.HeartRate) + uint16(can.HeartRate)) / 2)
-			} else if can.HeartRate != basetype.Uint8Invalid {
-				rec.HeartRate = can.HeartRate
+			if rec.HeartRate != basetype.Uint8Invalid && next.HeartRate != basetype.Uint8Invalid {
+				rec.HeartRate = uint8((uint16(rec.HeartRate) + uint16(next.HeartRate)) / 2)
+			} else if next.HeartRate != basetype.Uint8Invalid {
+				rec.HeartRate = next.HeartRate
 			}
 
-			if rec.Power != basetype.Uint16Invalid && can.Power != basetype.Uint16Invalid {
-				rec.Power = uint16((uint32(rec.Power) + uint32(can.Power)) / 2)
-			} else if can.Power != basetype.Uint16Invalid {
-				rec.Power = can.Power
+			if rec.Power != basetype.Uint16Invalid && next.Power != basetype.Uint16Invalid {
+				rec.Power = uint16((uint32(rec.Power) + uint32(next.Power)) / 2)
+			} else if next.Power != basetype.Uint16Invalid {
+				rec.Power = next.Power
 			}
 
-			if rec.Temperature != basetype.Sint8Invalid && can.Temperature != basetype.Sint8Invalid {
-				rec.Temperature = int8((int16(rec.Temperature) + int16(can.Temperature)) / 2)
-			} else if can.Temperature != basetype.Sint8Invalid {
-				rec.Temperature = can.Temperature
+			if rec.Temperature != basetype.Sint8Invalid && next.Temperature != basetype.Sint8Invalid {
+				rec.Temperature = int8((int16(rec.Temperature) + int16(next.Temperature)) / 2)
+			} else if next.Temperature != basetype.Sint8Invalid {
+				rec.Temperature = next.Temperature
 			}
 		}
-
-		newRecords = append(newRecords, rec)
 	}
 
-	return newRecords
+	return records
 }
 
 // CalculateDistanceAndSpeed calculates distance from latitude and longitude and speed when those values are missing.

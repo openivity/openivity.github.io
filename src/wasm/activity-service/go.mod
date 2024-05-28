@@ -3,8 +3,8 @@ module github.com/openivity/activity-service
 go 1.20
 
 require (
-	github.com/muktihari/fit v0.16.4
-	golang.org/x/text v0.14.0
+	github.com/muktihari/fit v0.19.0
+	golang.org/x/text v0.15.0
 )
 
 require (

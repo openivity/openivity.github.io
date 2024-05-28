@@ -35,7 +35,7 @@ const (
 	metadataLink = "https://openivity.github.io"
 )
 
-var _ activity.Service = &service{}
+var _ activity.Service = (*service)(nil)
 
 type service struct {
 	preprocessor *activity.Preprocessor
@@ -123,7 +123,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 			continue
 		}
 
-		session := activity.NewSessionFromLaps(laps, sport)
+		session := activity.NewSessionFromLaps(laps)
 		session.Records = records
 		session.Laps = laps
 		session.Summarize()

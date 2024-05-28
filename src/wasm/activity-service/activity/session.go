@@ -16,6 +16,7 @@
 package activity
 
 import (
+	"math"
 	"strconv"
 	"time"
 
@@ -55,10 +56,9 @@ func (s *Session) EndTime() time.Time {
 }
 
 // NewSessionFromLaps creates new session from Laps.
-func NewSessionFromLaps(laps []Lap, sport typedef.Sport) Session {
+func NewSessionFromLaps(laps []Lap) Session {
 	ses := CreateSession(
 		mesgdef.NewSession(nil).
-			SetSport(sport).
 			SetStartTime(laps[0].StartTime))
 
 	var (
@@ -78,6 +78,10 @@ func NewSessionFromLaps(laps []Lap, sport typedef.Sport) Session {
 
 	for i := range laps {
 		lap := laps[i]
+
+		if ses.Sport == typedef.SportInvalid {
+			ses.Sport = lap.Sport
+		}
 
 		if lap.TotalElapsedTime != basetype.Uint32Invalid {
 			ses.TotalElapsedTime += lap.TotalElapsedTime
@@ -369,6 +373,25 @@ func (s *Session) Summarize() {
 			break
 		}
 	}
+
+	for i := len(s.Records) - 1; i >= 0; i-- {
+		if !s.Records[i].Timestamp.IsZero() {
+			s.TotalElapsedTime = uint32(s.Records[i].Timestamp.Sub(s.StartTime).Seconds() * 1000)
+			break
+		}
+	}
+
+	if s.TotalMovingTime == basetype.Uint32Invalid {
+		s.TotalMovingTime = TotalMovingTime(s.Records, s.Sport)
+	}
+
+	if s.TotalAscent == basetype.Uint16Invalid || s.TotalDescent == basetype.Uint16Invalid {
+		s.TotalAscent, s.TotalDescent = TotalAscentAndDescent(s.Records)
+	}
+
+	if s.AvgSpeed == basetype.Uint16Invalid || s.MaxSpeed == basetype.Uint16Invalid {
+		s.AvgSpeed, s.MaxSpeed = AvgMaxSpeed(s.Records)
+	}
 }
 
 // MarshalAppendJSON appends the JSON format encoding of Session to b, returning the result.
@@ -490,45 +513,42 @@ func (s *Session) MarshalAppendJSON(b []byte) []byte {
 		b = append(b, ',')
 	}
 
-	hasPace := HasPace(s.Sport)
-	if hasPace && s.TotalMovingTime != basetype.Uint32Invalid && s.TotalDistance != basetype.Uint32Invalid {
-		b = append(b, `"avgPace":`...)
+	if HasPace(s.Sport) {
 		avgPace := s.TotalMovingTimeScaled() / (s.TotalDistanceScaled() / 1000)
-		b = strconv.AppendFloat(b, avgPace, 'g', -1, 64)
-		b = append(b, ',')
-	}
-	if hasPace && s.TotalMovingTime != basetype.Uint32Invalid && s.TotalDistance != basetype.Uint32Invalid {
-		b = append(b, `"avgElapsedPace":`...)
+		if !math.IsNaN(avgPace) && !math.IsInf(avgPace, 0) {
+			b = append(b, `"avgPace":`...)
+			b = strconv.AppendFloat(b, avgPace, 'g', -1, 64)
+			b = append(b, ',')
+		}
 		avgElapsedPace := s.TotalElapsedTimeScaled() / (s.TotalDistanceScaled() / 1000)
-		b = strconv.AppendFloat(b, avgElapsedPace, 'g', -1, 64)
-		b = append(b, ',')
+		if !math.IsNaN(avgElapsedPace) && !math.IsInf(avgElapsedPace, 0) {
+			b = append(b, `"avgElapsedPace":`...)
+			b = strconv.AppendFloat(b, avgElapsedPace, 'g', -1, 64)
+			b = append(b, ',')
+		}
 	}
 
-	if len(s.Laps) != 0 {
-		b = append(b, `"laps":[`...)
-		for i := range s.Laps {
-			n := len(b)
-			b = s.Laps[i].MarshalAppendJSON(b)
-			if len(b) != n && i != len(s.Laps)-1 {
-				b = append(b, ',')
-			}
+	b = append(b, `"laps":[`...)
+	for i := range s.Laps {
+		n := len(b)
+		b = s.Laps[i].MarshalAppendJSON(b)
+		if len(b) != n && i != len(s.Laps)-1 {
+			b = append(b, ',')
 		}
-		b = append(b, ']')
-		b = append(b, ',')
 	}
+	b = append(b, ']')
+	b = append(b, ',')
 
-	if len(s.Records) != 0 {
-		b = append(b, `"records":[`...)
-		for i := range s.Records {
-			n := len(b)
-			b = s.Records[i].MarshalAppendJSON(b)
-			if len(b) != n && i != len(s.Records)-1 {
-				b = append(b, ',')
-			}
+	b = append(b, `"records":[`...)
+	for i := range s.Records {
+		n := len(b)
+		b = s.Records[i].MarshalAppendJSON(b)
+		if len(b) != n && i != len(s.Records)-1 {
+			b = append(b, ',')
 		}
-		b = append(b, ']')
-		b = append(b, ',')
 	}
+	b = append(b, ']')
+	b = append(b, ',')
 
 	if b[len(b)-1] == '{' {
 		return b[:len(b)-1]
