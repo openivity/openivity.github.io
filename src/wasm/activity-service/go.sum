@@ -1,7 +1,7 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/muktihari/fit v0.18.2 h1:NAFwREiQwoIFJdSJ0Ah3xU2Fl4osw+z918vXUgJ1mIA=
-github.com/muktihari/fit v0.18.2/go.mod h1:h+rmkwcRvbq4WlTYXgjw/AAOqipfwyULT32lM/DIixo=
+github.com/muktihari/fit v0.19.0 h1:VoF/diZ4c0E4JPlNXePZC6Ih7kwxDRv5IxNukyTnKS4=
+github.com/muktihari/fit v0.19.0/go.mod h1:h+rmkwcRvbq4WlTYXgjw/AAOqipfwyULT32lM/DIixo=
 golang.org/x/exp v0.0.0-20230905200255-921286631fa9 h1:GoHiUyI/Tp2nVkLI2mCxVkOjsbSXD66ic0XW0js0R9g=
 golang.org/x/exp v0.0.0-20230905200255-921286631fa9/go.mod h1:S2oDrQGGwySpoQPVqRShND87VCbxmc6bL1Yd2oYrm6k=
 golang.org/x/text v0.15.0 h1:h1V/4gjBv8v9cjcR6+AR5+/cIYK5N/WAgiv4xlsEtAk=

@@ -37,9 +37,7 @@ import (
 var _ activity.Service = (*service)(nil)
 
 var decoderPool = sync.Pool{New: func() any { return decoder.New(nil) }}
-
-// NOTE: Use encoderPool when The FIT SDK for Go releases new version, since the current version (v0.18.2) still has bug on Reset.
-// var encoderPool = sync.Pool{New: func() any { return encoder.New(nil) }}
+var encoderPool = sync.Pool{New: func() any { return encoder.New(nil) }}
 
 type service struct {
 	preprocessor *activity.Preprocessor
@@ -258,7 +256,7 @@ func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []prot
 		len(activityFile.DeviceInfos) +
 		len(activityFile.Events) +
 		len(activityFile.Lengths) +
-		len(activityFile.SegmentLap) +
+		len(activityFile.SegmentLaps) +
 		len(activityFile.ZonesTargets) +
 		len(activityFile.Workouts) +
 		len(activityFile.WorkoutSteps) +
@@ -290,8 +288,8 @@ func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []prot
 	for i := range activityFile.Lengths {
 		unrelatedMessages = append(unrelatedMessages, activityFile.Lengths[i].ToMesg(nil))
 	}
-	for i := range activityFile.SegmentLap {
-		unrelatedMessages = append(unrelatedMessages, activityFile.SegmentLap[i].ToMesg(nil))
+	for i := range activityFile.SegmentLaps {
+		unrelatedMessages = append(unrelatedMessages, activityFile.SegmentLaps[i].ToMesg(nil))
 	}
 	for i := range activityFile.ZonesTargets {
 		unrelatedMessages = append(unrelatedMessages, activityFile.ZonesTargets[i].ToMesg(nil))
@@ -320,24 +318,23 @@ func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([
 
 	bufAt := &bytesBufferAt{buf}
 
-	opts := []encoder.Option{
-		encoder.WithProtocolVersion(proto.V2),
-		encoder.WithNormalHeader(15),
-	}
-	enc := encoder.New(bufAt, opts...)
+	enc := encoderPool.Get().(*encoder.Encoder)
+	defer encoderPool.Put(enc)
 
 	bs := make([][]byte, len(activities))
 	for i := range activities {
 		s.makeLastSummary(&activities[i])
 		fit := activities[i].ToFIT(nil)
 
+		enc.Reset(bufAt,
+			encoder.WithProtocolVersion(proto.V2),
+			encoder.WithNormalHeader(15),
+		)
 		if err := enc.EncodeWithContext(ctx, &fit); err != nil {
 			return nil, fmt.Errorf("could not encode: %w", err)
 		}
-
 		bs[i] = slices.Clone(bufAt.Buffer.Bytes())
 		bufAt.Buffer.Reset()
-		enc.Reset(bufAt, opts...)
 	}
 
 	return bs, nil
