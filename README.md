@@ -7,7 +7,7 @@
     <hr>
 
 ![GitHub Workflow Status](https://github.com/openivity/openivity.github.io/actions/workflows/main.yml/badge.svg)
-[![Project icense](https://img.shields.io/github/license/openivity/openivity.github.io.svg?style=flat-square)](LICENSE)
+[![Project license](https://img.shields.io/github/license/openivity/openivity.github.io.svg?style=flat-square)](LICENSE)
 [![Pull Requests welcome](https://img.shields.io/badge/PRs-Welcome!-33CC56.svg?style=flat-square)](https://github.com/openivity/openivity.github.io/issues?q=is%3Aissue+is%3Aopen)
 
 </div>
