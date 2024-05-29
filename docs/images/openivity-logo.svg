@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="100mm"
+   height="100mm"
+   viewBox="0 0 100 100"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   sodipodi:docname="openivity-logo.svg"
+   inkscape:export-filename="openivity-logo.svg"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showguides="true"
+     inkscape:zoom="0.82371959"
+     inkscape:cx="72.233319"
+     inkscape:cy="216.09295"
+     inkscape:window-width="1680"
+     inkscape:window-height="961"
+     inkscape:window-x="0"
+     inkscape:window-y="23"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="24.830841,272.16917"
+       orientation="1,0"
+       id="guide2"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="-3.4115946,214.99989"
+       orientation="0,-1"
+       id="guide3"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="75.069986,267.74196"
+       orientation="1,0"
+       id="guide4"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="50.046657,264.46968"
+       orientation="1,0"
+       id="guide5"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="37.342507,276.21139"
+       orientation="1,0"
+       id="guide6"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="62.05428,193.36935"
+       orientation="1,0"
+       id="guide7"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="47.351838,287.37564"
+       orientation="1,0"
+       id="guide8"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="55.512513,241.40841"
+       orientation="1,0"
+       id="guide9"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="43.453171,239.90593"
+       orientation="1,0"
+       id="guide10"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="57.746144,252.1505"
+       orientation="1,0"
+       id="guide11"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="60.055989,260.42745"
+       orientation="1,0"
+       id="guide12"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="39.844839,259.6575"
+       orientation="1,0"
+       id="guide13"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="49.423534,241.28979"
+       orientation="1,0"
+       id="guide14"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="50.530621,237.25683"
+       orientation="1,0"
+       id="guide15"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="44.441642,239.55009"
+       orientation="1,0"
+       id="guide16"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Logo"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline"
+     inkscape:export-filename="layer1.svg"
+     inkscape:export-xdpi="130.048"
+     inkscape:export-ydpi="130.048">
+    <rect
+       style="fill:#1e1919;fill-opacity:1;stroke-width:0.264583"
+       id="rect1"
+       width="100"
+       height="100"
+       x="-7.1054274e-15"
+       y="0"
+       inkscape:label="Background" />
+    <circle
+       style="fill:#f15a22;fill-opacity:1;stroke-width:0.148829"
+       id="path1"
+       cx="50"
+       cy="50"
+       r="45"
+       inkscape:label="Big Circle" />
+    <circle
+       style="fill:#1e1919;fill-opacity:1;stroke-width:0.257968"
+       id="path16"
+       cx="50"
+       cy="50"
+       r="39" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.209132"
+       id="rect2"
+       width="5"
+       height="17"
+       x="38.417"
+       y="65"
+       inkscape:label="Bar 1" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.237906"
+       id="rect2-7"
+       width="5"
+       height="22"
+       x="44.5"
+       y="60"
+       inkscape:label="Bar 2" />
+    <rect
+       style="display:inline;fill:#ffffff;fill-opacity:1;stroke-width:0.202888"
+       id="rect2-7-8"
+       width="5"
+       height="16"
+       x="50.5"
+       y="66"
+       inkscape:label="Bar 3" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.263559"
+       id="rect2-7-1"
+       width="5"
+       height="27"
+       x="56.5"
+       y="55"
+       inkscape:label="Bar 4" />
+  </g>
+  <g
+     inkscape:label="Logo Header"
+     inkscape:groupmode="layer"
+     id="g32"
+     style="display:inline"
+     inkscape:export-filename="layer1.png"
+     inkscape:export-xdpi="130.048"
+     inkscape:export-ydpi="130.048">
+    <rect
+       style="fill:#1e1919;fill-opacity:1;stroke-width:0.264583"
+       id="rect28"
+       width="100"
+       height="100"
+       x="-7.1054274e-15"
+       y="110"
+       inkscape:label="Background"
+       inkscape:export-filename="openivity-header.png"
+       inkscape:export-xdpi="100"
+       inkscape:export-ydpi="100" />
+    <circle
+       style="fill:#f15a22;fill-opacity:1;stroke-width:0.148829"
+       id="circle28"
+       cx="50"
+       cy="160"
+       r="45"
+       inkscape:label="Big Circle" />
+    <circle
+       style="fill:#1e1919;fill-opacity:1;stroke-width:0.257968"
+       id="circle29"
+       cx="50"
+       cy="160"
+       r="39" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.209132"
+       id="rect29"
+       width="5"
+       height="17"
+       x="38.417"
+       y="175"
+       inkscape:label="Bar 1" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.237906"
+       id="rect30"
+       width="5"
+       height="22"
+       x="44.5"
+       y="170"
+       inkscape:label="Bar 2" />
+    <rect
+       style="display:inline;fill:#ffffff;fill-opacity:1;stroke-width:0.202888"
+       id="rect31"
+       width="5"
+       height="16"
+       x="50.5"
+       y="176"
+       inkscape:label="Bar 3" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke-width:0.263559"
+       id="rect32"
+       width="5"
+       height="27"
+       x="56.5"
+       y="165"
+       inkscape:label="Bar 4" />
+    <text
+       xml:space="preserve"
+       style="font-size:56.4444px;fill:#f15a22;fill-opacity:1;stroke-width:0.264583"
+       x="116.83051"
+       y="181.89233"
+       id="text32"
+       inkscape:label="Text"><tspan
+         sodipodi:role="line"
+         id="tspan32"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:56.4444px;font-family:sans-serif;-inkscape-font-specification:sans-serif;fill:#f15a22;fill-opacity:1;stroke-width:0.264583"
+         x="116.83051"
+         y="181.89233">Open Activity </tspan></text>
+  </g>
+</svg>
