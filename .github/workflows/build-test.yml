@@ -13,15 +13,15 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Set up Go 🔧 # Currently using wasm_exec.js go-version 1.20.8
-        uses: actions/setup-go@v4
+      - name: Set up Go 🔧 # Build using latest Go version (stable)
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.20.8'
+          go-version: 'stable'
 
       - name: Set up Node 🔧
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # LTS (May 2024 - April 2026)
           cache: 'npm'
 
       - name: Install dependencies
@@ -29,6 +29,8 @@ jobs:
 
       - name: Build Wasm & Web 🔧
         run: |
+          cp $(go env GOROOT)/misc/wasm/wasm_exec.js src/assets/wasm/wasm_exec.js
+
           npm ci
           npm run build-wasm
           npm run build-only
