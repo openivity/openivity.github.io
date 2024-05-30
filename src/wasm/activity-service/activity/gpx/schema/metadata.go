@@ -32,7 +32,7 @@ type Metadata struct {
 	Time   time.Time `xml:"time,omitempty"`
 }
 
-var _ xml.Unmarshaler = &Metadata{}
+var _ xml.Unmarshaler = (*Metadata)(nil)
 
 func (m *Metadata) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -87,7 +87,7 @@ func (m *Metadata) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &Metadata{}
+var _ xml.Marshaler = (*Metadata)(nil)
 
 func (m *Metadata) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -135,7 +135,7 @@ type Author struct {
 	Link *Link  `xml:"link"`
 }
 
-var _ xml.Unmarshaler = &Author{}
+var _ xml.Unmarshaler = (*Author)(nil)
 
 func (a *Author) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -187,7 +187,7 @@ func (p *Author) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &Author{}
+var _ xml.Marshaler = (*Author)(nil)
 
 func (a *Author) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -216,7 +216,7 @@ type Link struct {
 	Type string `xml:"type,omitempty"`
 }
 
-var _ xml.Unmarshaler = &Link{}
+var _ xml.Unmarshaler = (*Link)(nil)
 
 func (a *Link) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for i := range se.Attr {
@@ -264,7 +264,7 @@ func (l *Link) Validate() error {
 	return nil
 }
 
-var _ xml.Marshaler = &Link{}
+var _ xml.Marshaler = (*Link)(nil)
 
 func (l *Link) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	se.Attr = append(se.Attr, xml.Attr{

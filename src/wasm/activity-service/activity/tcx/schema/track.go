@@ -33,7 +33,7 @@ type Track struct {
 	Trackpoints []Trackpoint `xml:"Trackpoint,omitempty"`
 }
 
-var _ xml.Unmarshaler = &Track{}
+var _ xml.Unmarshaler = (*Track)(nil)
 
 func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for {
@@ -60,7 +60,7 @@ func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Track{}
+var _ xml.Marshaler = (*Track)(nil)
 
 func (t *Track) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -121,7 +121,7 @@ func (t *Trackpoint) ToRecord() activity.Record {
 	return rec
 }
 
-var _ xml.Unmarshaler = &Trackpoint{}
+var _ xml.Unmarshaler = (*Trackpoint)(nil)
 
 func (t *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	t.reset()
@@ -195,7 +195,7 @@ func (t *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Trackpoint{}
+var _ xml.Marshaler = (*Trackpoint)(nil)
 
 func (t *Trackpoint) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -276,7 +276,7 @@ func (p *Position) reset() {
 	p.LongitudeDegrees = math.NaN()
 }
 
-var _ xml.Unmarshaler = &Position{}
+var _ xml.Unmarshaler = (*Position)(nil)
 
 func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	p.reset()
@@ -315,7 +315,7 @@ func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Position{}
+var _ xml.Marshaler = (*Position)(nil)
 
 func (p *Position) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if math.IsNaN(p.LatitudeDegrees) || math.IsNaN(p.LongitudeDegrees) { // omit
@@ -356,7 +356,7 @@ func (t *TrackpointExtension) reset() {
 	t.Speed = math.NaN()
 }
 
-var _ xml.Unmarshaler = &TrackpointExtension{}
+var _ xml.Unmarshaler = (*TrackpointExtension)(nil)
 
 func (t *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	t.reset()
@@ -389,7 +389,7 @@ func (t *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement
 	}
 }
 
-var _ xml.Marshaler = &TrackpointExtension{}
+var _ xml.Marshaler = (*TrackpointExtension)(nil)
 
 func (tpe *TrackpointExtension) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {

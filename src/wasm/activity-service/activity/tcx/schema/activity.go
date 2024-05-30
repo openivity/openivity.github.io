@@ -27,7 +27,7 @@ type ActivityList struct {
 	Activity Activity `xml:"Activity"`
 }
 
-var _ xml.Unmarshaler = &ActivityList{}
+var _ xml.Unmarshaler = (*ActivityList)(nil)
 
 func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for {
@@ -54,7 +54,7 @@ func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error
 	}
 }
 
-var _ xml.Marshaler = &ActivityList{}
+var _ xml.Marshaler = (*ActivityList)(nil)
 
 func (a *ActivityList) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -76,7 +76,7 @@ type Activity struct {
 	Creator *Device       `xml:"Creator,omitempty"`
 }
 
-var _ xml.Unmarshaler = &Activity{}
+var _ xml.Unmarshaler = (*Activity)(nil)
 
 func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	for i := range se.Attr {
@@ -133,7 +133,7 @@ func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Activity{}
+var _ xml.Marshaler = (*Activity)(nil)
 
 func (a *Activity) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	se.Attr = append(se.Attr, xml.Attr{

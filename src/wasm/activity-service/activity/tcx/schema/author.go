@@ -30,7 +30,7 @@ type Application struct {
 	PartNumber string `xml:"PartNumber"` // The formatted XXX-XXXXX-XX Garmin part number of a PC application.
 }
 
-var _ xml.Unmarshaler = &Application{}
+var _ xml.Unmarshaler = (*Application)(nil)
 
 func (a *Application) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -71,7 +71,7 @@ func (a *Application) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 	}
 }
 
-var _ xml.Marshaler = &Application{}
+var _ xml.Marshaler = (*Application)(nil)
 
 func (a *Application) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -103,7 +103,7 @@ type Build struct {
 	Version *Version
 }
 
-var _ xml.Unmarshaler = &Build{}
+var _ xml.Unmarshaler = (*Build)(nil)
 
 func (b *Build) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -139,7 +139,7 @@ func (b *Build) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Build{}
+var _ xml.Marshaler = (*Build)(nil)
 
 func (b *Build) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -175,7 +175,7 @@ type Device struct {
 	Version   *Version `xml:"Version"`
 }
 
-var _ xml.Unmarshaler = &Device{}
+var _ xml.Unmarshaler = (*Device)(nil)
 
 func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -224,7 +224,7 @@ func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Device{}
+var _ xml.Marshaler = (*Device)(nil)
 
 func (d *Device) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -263,7 +263,7 @@ type Version struct {
 	BuildMinor   uint16 `xml:"BuildMinor"`
 }
 
-var _ xml.Unmarshaler = &Version{}
+var _ xml.Unmarshaler = (*Version)(nil)
 
 func (v *Version) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	var targetCharData string
@@ -312,7 +312,7 @@ func (v *Version) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	}
 }
 
-var _ xml.Marshaler = &Version{}
+var _ xml.Marshaler = (*Version)(nil)
 
 func (v *Version) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {

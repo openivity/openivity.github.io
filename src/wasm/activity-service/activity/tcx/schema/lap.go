@@ -51,7 +51,7 @@ func (a *ActivityLap) reset() {
 	a.Cadence = basetype.Uint8Invalid
 }
 
-var _ xml.Unmarshaler = &ActivityLap{}
+var _ xml.Unmarshaler = (*ActivityLap)(nil)
 
 func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
 	a.reset()
@@ -154,7 +154,7 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 	}
 }
 
-var _ xml.Marshaler = &ActivityLap{}
+var _ xml.Marshaler = (*ActivityLap)(nil)
 
 func (a *ActivityLap) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	se.Attr = append(se.Attr, xml.Attr{
