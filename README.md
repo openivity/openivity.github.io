@@ -14,7 +14,7 @@
 
 Open Activity, also known as Openivity, is a free and open-source fitness analytic platform offering seamless integration with OpenStreetMap. Effortlessly visualize, edit, convert, and combine multiple FIT, GPX, and TCX activity files. Enjoy the full power of client-side processing for first-class privacy. Try right away at [https://openivity.github.io](https://openivity.github.io).
 
-<img src="docs/images/sample.png" title="App Page" width="100%">
+<img src="docs/images/sample.jpeg" title="App Page" width="100%">
 
 ### Crafted with ❤️; made possible by:
 
