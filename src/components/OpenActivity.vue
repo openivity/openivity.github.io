@@ -54,7 +54,10 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
           <div>
             <div :class="[isActivityFileReady ? 'default-border-top' : '']">
               <div class="pt-4 pb-2">
-                <h5 class="title">Open Activity</h5>
+                <h5 class="title">
+                  <img src="@/assets/logo.svg" width="32" />
+                  Open Activity
+                </h5>
                 <div style="font-size: 0.9em">
                   Your data stays in your computer: 100% client-side power.
                 </div>
