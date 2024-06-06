@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="100mm"
-   height="100mm"
-   viewBox="0 0 100 100"
+   width="90mm"
+   height="90mm"
+   viewBox="0 0 90 90"
    version="1.1"
    id="svg1"
    inkscape:version="1.3.2 (091e20e, 2023-11-25)"
@@ -27,92 +27,92 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showguides="true"
-     inkscape:zoom="0.31197693"
-     inkscape:cx="559.33623"
-     inkscape:cy="583.37647"
+     inkscape:zoom="0.82200909"
+     inkscape:cx="170.31442"
+     inkscape:cy="248.17244"
      inkscape:window-width="1680"
      inkscape:window-height="961"
      inkscape:window-x="0"
      inkscape:window-y="23"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1">
+     inkscape:current-layer="svg1">
     <sodipodi:guide
-       position="24.830841,272.16917"
+       position="19.830841,277.16917"
        orientation="1,0"
        id="guide2"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="-3.4115946,214.99989"
+       position="-8.4115947,219.99989"
        orientation="0,-1"
        id="guide3"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="75.069986,267.74196"
+       position="70.069986,272.74196"
        orientation="1,0"
        id="guide4"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="50.046657,264.46968"
+       position="45.046657,269.46968"
        orientation="1,0"
        id="guide5"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="37.342507,276.21139"
+       position="32.342507,281.21139"
        orientation="1,0"
        id="guide6"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="62.05428,193.36935"
+       position="57.05428,198.36935"
        orientation="1,0"
        id="guide7"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="47.351838,287.37564"
+       position="42.351838,292.37564"
        orientation="1,0"
        id="guide8"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="55.512513,241.40841"
+       position="50.512513,246.40841"
        orientation="1,0"
        id="guide9"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="43.453171,239.90593"
+       position="38.453171,244.90593"
        orientation="1,0"
        id="guide10"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="57.746144,252.1505"
+       position="52.746144,257.1505"
        orientation="1,0"
        id="guide11"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="60.055989,260.42745"
+       position="55.055989,265.42745"
        orientation="1,0"
        id="guide12"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="39.844839,259.6575"
+       position="34.844839,264.6575"
        orientation="1,0"
        id="guide13"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="49.423534,241.28979"
+       position="44.423534,246.28979"
        orientation="1,0"
        id="guide14"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="50.053577,257.0534"
+       position="45.053577,262.0534"
        orientation="1,0"
        id="guide15"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="44.441642,239.55009"
+       position="39.441642,244.55009"
        orientation="1,0"
        id="guide16"
        inkscape:locked="false" />
     <sodipodi:guide
-       position="8.8676375,246.75006"
+       position="3.8676374,251.75006"
        orientation="0,-1"
        id="guide1"
        inkscape:locked="false" />
@@ -126,15 +126,8 @@
      style="display:inline"
      inkscape:export-filename="openivity-logo.png"
      inkscape:export-xdpi="130.048"
-     inkscape:export-ydpi="130.048">
-    <rect
-       style="fill:#1e1919;fill-opacity:1;stroke-width:0.264583"
-       id="rect1"
-       width="100"
-       height="100"
-       x="-7.1054274e-15"
-       y="0"
-       inkscape:label="Background" />
+     inkscape:export-ydpi="130.048"
+     transform="translate(-5.0000001,-5.0000003)">
     <circle
        style="fill:#f15a22;fill-opacity:1;stroke-width:0.148829"
        id="path1"
