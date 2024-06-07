@@ -54,7 +54,9 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
           <div>
             <div :class="[isActivityFileReady ? 'default-border-top' : '']">
               <div class="pt-4 pb-2">
-                <h5 class="title">Open Activity</h5>
+                <h5 class="title">
+                  <img src="@/assets/openivity-header.svg" />
+                </h5>
                 <div style="font-size: 0.9em">
                   Your data stays in your computer: 100% client-side power.
                 </div>
@@ -930,6 +932,10 @@ export default {
 </script>
 
 <style scoped>
+.title img {
+  height: 1.5em;
+}
+
 .v-enter-active,
 .v-leave-active {
   transition: opacity 100ms ease;
