@@ -17,13 +17,13 @@ package tcx
 
 import (
 	"context"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"math"
 
 	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/activity/tcx/schema"
 	"github.com/openivity/activity-service/mem"
@@ -48,23 +48,29 @@ func NewService(preproc *activity.Preprocessor) activity.Service {
 }
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
-	dec := xml.NewDecoder(r)
+	tok := xmltokenizer.New(r)
 
-	// Find start element
-	var start *xml.StartElement
-	for start == nil {
-		tok, err := dec.Token()
+	var tcx schema.TCX
+loop:
+	for {
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return nil, err
 		}
-		if t, ok := tok.(xml.StartElement); ok {
-			start = &t
-		}
-	}
 
-	var tcx schema.TCX
-	if err := tcx.UnmarshalXML(dec, *start); err != nil {
-		return nil, err
+		switch string(token.Name.Local) {
+		case "TrainingCenterDatabase":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = tcx.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return nil, err
+			}
+			break loop
+		}
 	}
 
 	act := activity.CreateActivity()

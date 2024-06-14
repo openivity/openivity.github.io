@@ -18,10 +18,12 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 
 	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -49,61 +51,60 @@ func (t *TrackPointExtension) reset() {
 	t.Power = basetype.Uint16Invalid
 }
 
-var _ xml.Unmarshaler = (*TrackPointExtension)(nil)
-
-func (t *TrackPointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *TrackPointExtension) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	t.reset()
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			targetCharData = elem.Name.Local
-		case xml.CharData:
-			switch targetCharData {
-			case "cad", "cadence":
-				val, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return err
-				}
-				t.Cadence = uint8(val)
-			case "distance":
-				val, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return err
-				}
-				t.Distance = val
-			case "hr", "heartrate":
-				val, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return err
-				}
-				t.HeartRate = uint8(val)
-			case "atemp", "temp", "temperature":
-				val, err := strconv.ParseInt(string(elem), 10, 8)
-				if err != nil {
-					return err
-				}
-				t.Temperature = int8(val)
-			case "power":
-				val, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return err
-				}
-				t.Power = uint16(val)
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "cad", "cadence":
+			val, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return err
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			t.Cadence = uint8(val)
+		case "distance":
+			val, err := strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return err
 			}
+			t.Distance = val
+		case "hr", "heartrate":
+			val, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return err
+			}
+			t.HeartRate = uint8(val)
+		case "atemp", "temp", "temperature":
+			val, err := strconv.ParseInt(string(token.Data), 10, 8)
+			if err != nil {
+				return err
+			}
+			t.Temperature = int8(val)
+		case "power":
+			val, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return err
+			}
+			t.Power = uint16(val)
 		}
 	}
+
+	return nil
 }
 
 type garminTrackpoinExtensionV1 struct {
