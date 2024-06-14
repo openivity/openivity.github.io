@@ -18,8 +18,10 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -32,48 +34,53 @@ type Metadata struct {
 	Time   time.Time `xml:"time,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*Metadata)(nil)
-
-func (m *Metadata) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (m *Metadata) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "author":
-				var author Author
-				if err := author.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				m.Author = &author
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "name":
+			m.Name = string(token.Data)
+		case "desc":
+			m.Desc = string(token.Data)
+		case "author":
+			m.Author = new(Author)
+			se := xmltokenizer.GetToken().Copy(token)
+			err = m.Author.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("author: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "name":
-				m.Name = string(elem)
-			case "desc":
-				m.Desc = string(elem)
-			case "time":
-				t, err := time.Parse(time.RFC3339, string(elem))
-				if err != nil {
-					return err
-				}
-				m.Time = t
+		case "link":
+			m.Link = new(Link)
+			se := xmltokenizer.GetToken().Copy(token)
+			err = m.Link.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("link: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		case "time":
+			m.Time, err = time.Parse(time.RFC3339, string(token.Data))
+			if err != nil {
+				return fmt.Errorf("time: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 func (m *Metadata) Validate() error {
@@ -135,40 +142,38 @@ type Author struct {
 	Link *Link  `xml:"link"`
 }
 
-var _ xml.Unmarshaler = (*Author)(nil)
-
-func (a *Author) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (a *Author) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("author: %w", err)
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "link":
-				var link Link
-				if err := link.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				a.Link = &link
-			default:
-				targetCharData = elem.Name.Local
-			}
-		case xml.CharData:
-			switch targetCharData {
-			case "name":
-				a.Name = string(elem)
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "name":
+			a.Name = string(token.Data)
+		case "link":
+			a.Link = new(Link)
+			se := xmltokenizer.GetToken().Copy(token)
+			err := a.Link.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("link: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 func (p *Author) Validate() error {
@@ -216,42 +221,40 @@ type Link struct {
 	Type string `xml:"type,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*Link)(nil)
-
-func (a *Link) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	for i := range se.Attr {
-		attr := se.Attr[i]
-
-		switch attr.Name.Local {
+func (a *Link) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
+	for i := range se.Attrs {
+		attr := &se.Attrs[i]
+		switch string(attr.Name.Local) {
 		case "href":
-			a.Href = attr.Value
+			a.Href = string(attr.Value)
 		}
 	}
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("link: %w", err)
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			targetCharData = elem.Name.Local
-		case xml.CharData:
-			switch targetCharData {
-			case "text":
-				a.Text = string(elem)
-			case "type":
-				a.Type = string(elem)
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "text":
+			a.Text = string(token.Data)
+		case "type":
+			a.Type = string(token.Data)
 		}
 	}
+
+	return nil
 }
 
 func (l *Link) Validate() error {

@@ -18,8 +18,10 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -41,37 +43,46 @@ type TCX struct {
 	Author     *Application   `xml:"Author,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*TCX)(nil)
-
-func (t *TCX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *TCX) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Activities":
-				var al ActivityList
-				if err := al.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Activities: %w", err)
-				}
-				t.Activities = append(t.Activities, al)
-			case "Author":
-				var application Application
-				if err := application.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Author: %w", err)
-				}
-				t.Author = &application
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Activities":
+			var al ActivityList
+			se := xmltokenizer.GetToken().Copy(token)
+			err = al.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Activities: %w", err)
 			}
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			t.Activities = append(t.Activities, al)
+		case "Author":
+			var application Application
+			se := xmltokenizer.GetToken().Copy(token)
+			err = application.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Author: %w", err)
 			}
+			t.Author = &application
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*TCX)(nil)
@@ -102,4 +113,15 @@ func (t *TCX) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	}
 
 	return enc.EncodeToken(se.End())
+}
+
+func getValueToken(tok *xmltokenizer.Tokenizer) (xmltokenizer.Token, error) {
+	token, err := tok.Token()
+	if err != nil {
+		return xmltokenizer.Token{}, err
+	}
+	if string(token.Name.Local) != "Value" {
+		return xmltokenizer.Token{}, fmt.Errorf("not a Value")
+	}
+	return token, nil
 }

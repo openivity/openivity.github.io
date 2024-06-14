@@ -18,12 +18,14 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"time"
 
 	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/kit/semicircles"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/xmlutils"
 )
@@ -34,42 +36,41 @@ type Track struct {
 	TrackSegments []TrackSegment `xml:"trkseg,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*Track)(nil)
-
-func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (t *Track) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "trkseg":
-				var trkseg TrackSegment
-				if err := trkseg.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				t.TrackSegments = append(t.TrackSegments, trkseg)
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "name":
+			t.Name = string(token.Data)
+		case "type":
+			t.Type = string(token.Data)
+		case "trkseg":
+			var trkseg TrackSegment
+			se := xmltokenizer.GetToken().Copy(token)
+			err = trkseg.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return err
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "name":
-				t.Name = string(elem)
-			case "type":
-				t.Type = string(elem)
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			t.TrackSegments = append(t.TrackSegments, trkseg)
 		}
 	}
+
+	return nil
 }
 
 func (t *Track) Validate() error {
@@ -116,31 +117,37 @@ type TrackSegment struct {
 	Trackpoints []Waypoint `xml:"trkpt,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*TrackSegment)(nil)
-
-func (t *TrackSegment) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *TrackSegment) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "trkpt":
-				var trkpt Waypoint
-				if err := trkpt.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				t.Trackpoints = append(t.Trackpoints, trkpt)
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "trkpt":
+			var trkpt Waypoint
+			se := xmltokenizer.GetToken().Copy(token)
+			err = trkpt.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("trkpt: %w", err)
 			}
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			t.Trackpoints = append(t.Trackpoints, trkpt)
 		}
 	}
+
+	return nil
 }
 
 func (t *TrackSegment) Validate() error {
@@ -213,69 +220,64 @@ func (w *Waypoint) ToRecord() activity.Record {
 	return rec
 }
 
-var _ xml.Unmarshaler = (*Waypoint)(nil)
-
-func (w *Waypoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (w *Waypoint) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	w.reset()
 
-	for i := range se.Attr {
-		attr := se.Attr[i]
-
-		switch attr.Name.Local {
+	var err error
+	for i := range se.Attrs {
+		attr := &se.Attrs[i]
+		switch string(attr.Name.Local) {
 		case "lat":
-			f, err := strconv.ParseFloat(attr.Value, 64)
+			w.Lat, err = strconv.ParseFloat(string(attr.Value), 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("lat: %w", err)
 			}
-			w.Lat = f
 		case "lon":
-			f, err := strconv.ParseFloat(attr.Value, 64)
+			w.Lon, err = strconv.ParseFloat(string(attr.Value), 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("lon: %w", err)
 			}
-			w.Lon = f
 		}
 	}
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("waypoint: %w", err)
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "extensions":
-				if err := w.TrackPointExtension.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "ele":
+			w.Ele, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("ele: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "ele":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parsing ele:  %w", err)
-				}
-				w.Ele = f
-			case "time":
-				t, err := time.Parse(time.RFC3339, string(elem))
-				if err != nil {
-					return fmt.Errorf("parsing time:  %w", err)
-				}
-				w.Time = t
+		case "time":
+			w.Time, err = time.Parse(time.RFC3339, string(token.Data))
+			if err != nil {
+				return fmt.Errorf("time: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		case "extensions":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = w.TrackPointExtension.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("extensions: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 func (w *Waypoint) Validate() error {

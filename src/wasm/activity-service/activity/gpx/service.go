@@ -17,11 +17,11 @@ package gpx
 
 import (
 	"context"
-	"encoding/xml"
 	"fmt"
 	"io"
 
 	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/activity/gpx/schema"
 	"github.com/openivity/activity-service/mem"
@@ -47,23 +47,29 @@ func NewService(preproc *activity.Preprocessor) activity.Service {
 }
 
 func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
-	dec := xml.NewDecoder(r)
+	tok := xmltokenizer.New(r)
 
-	// Find start element
-	var start *xml.StartElement
-	for start == nil {
-		tok, err := dec.Token()
+	var gpx schema.GPX
+loop:
+	for {
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return nil, err
 		}
-		if t, ok := tok.(xml.StartElement); ok {
-			start = &t
-		}
-	}
 
-	var gpx schema.GPX
-	if err := gpx.UnmarshalXML(dec, *start); err != nil {
-		return nil, err
+		switch string(token.Name.Local) {
+		case "gpx":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = gpx.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return nil, err
+			}
+			break loop
+		}
 	}
 
 	act := activity.CreateActivity()

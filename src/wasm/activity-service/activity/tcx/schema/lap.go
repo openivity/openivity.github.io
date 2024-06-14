@@ -18,11 +18,13 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"time"
 
 	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -32,8 +34,8 @@ type ActivityLap struct {
 	DistanceMeters      float64       `xml:"DistanceMeters"`
 	MaximumSpeed        float64       `xml:"MaximumSpeed,omitempty"`
 	Calories            uint16        `xml:"Calories"`
-	AverageHeartRateBpm uint8         `xml:"AverageHeartRateBpm"`
-	MaximumHeartRateBpm uint8         `xml:"MaximumHeartRateBpm"`
+	AverageHeartRateBpm uint8         `xml:"AverageHeartRateBpm>Value"`
+	MaximumHeartRateBpm uint8         `xml:"MaximumHeartRateBpm>Value"`
 	Intensity           Intensity     `xml:"Intensity,omitempty"`
 	Cadence             uint8         `xml:"Cadence,omitempty"`
 	TriggerMethod       TriggerMethod `xml:"TriggerMethod,omitempty"`
@@ -51,17 +53,14 @@ func (a *ActivityLap) reset() {
 	a.Cadence = basetype.Uint8Invalid
 }
 
-var _ xml.Unmarshaler = (*ActivityLap)(nil)
-
-func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (a *ActivityLap) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	a.reset()
 
-	for i := range se.Attr {
-		attr := &se.Attr[i]
-
-		switch attr.Name.Local {
+	for i := range se.Attrs {
+		attr := &se.Attrs[i]
+		switch string(attr.Name.Local) {
 		case "StartTime":
-			t, err := time.Parse(time.RFC3339, attr.Value)
+			t, err := time.Parse(time.RFC3339, string(attr.Value))
 			if err != nil {
 				return fmt.Errorf("parse StartTime: %w", err)
 			}
@@ -69,89 +68,92 @@ func (a *ActivityLap) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error 
 		}
 	}
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Track":
-				var track Track
-				if err := track.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Track: %w", err)
-				}
-				a.Tracks = append(a.Tracks, track)
-			case "Value":
-				targetCharData = targetCharData + "Value"
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Track":
+			var track Track
+			se := xmltokenizer.GetToken().Copy(token)
+			err = track.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Track: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "TotalTimeSeconds":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse TotalTimeSeconds: %w", err)
-				}
-				a.TotalTimeSeconds = f
-			case "DistanceMeters":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse DistanceMeters: %w", err)
-				}
-				a.DistanceMeters = f
-			case "MaximumSpeed":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse MaximumSpeed: %w", err)
-				}
-				a.MaximumSpeed = f
-			case "Calories":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse Calories: %w", err)
-				}
-				a.Calories = uint16(u)
-			case "AverageHeartRateBpm":
-				continue
-			case "AverageHeartRateBpmValue":
-				u, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return fmt.Errorf("parse AverageHeartRateBpm: %w", err)
-				}
-				a.AverageHeartRateBpm = uint8(u)
-			case "MaximumHeartRateBpm":
-				continue
-			case "MaximumHeartRateBpmValue":
-				u, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return fmt.Errorf("parse MaximumHeartRateBpm: %w", err)
-				}
-				a.MaximumHeartRateBpm = uint8(u)
-			case "Intensity":
-				a.Intensity = Intensity(elem)
-			case "Cadence":
-				u, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return fmt.Errorf("parse Cadence: %w", err)
-				}
-				a.Cadence = uint8(u)
-			case "TriggerMethod":
-				a.TriggerMethod = TriggerMethod(elem)
-			case "Notes":
-				a.Notes = string(elem)
+			a.Tracks = append(a.Tracks, track)
+		case "TotalTimeSeconds":
+			f, err := strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse TotalTimeSeconds: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			a.TotalTimeSeconds = f
+		case "DistanceMeters":
+			f, err := strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse DistanceMeters: %w", err)
 			}
+			a.DistanceMeters = f
+		case "MaximumSpeed":
+			f, err := strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse MaximumSpeed: %w", err)
+			}
+			a.MaximumSpeed = f
+		case "Calories":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse Calories: %w", err)
+			}
+			a.Calories = uint16(u)
+		case "AverageHeartRateBpm":
+			token, err = getValueToken(tok)
+			if err != nil {
+				return err
+			}
+			u, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return fmt.Errorf("parse AverageHeartRateBpm: %w", err)
+			}
+			a.AverageHeartRateBpm = uint8(u)
+		case "MaximumHeartRateBpm":
+			token, err = getValueToken(tok)
+			if err != nil {
+				return err
+			}
+			u, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return fmt.Errorf("parse MaximumHeartRateBpm: %w", err)
+			}
+			a.MaximumHeartRateBpm = uint8(u)
+		case "Intensity":
+			a.Intensity = Intensity(token.Data)
+		case "Cadence":
+			u, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return fmt.Errorf("parse Cadence: %w", err)
+			}
+			a.Cadence = uint8(u)
+		case "TriggerMethod":
+			a.TriggerMethod = TriggerMethod(token.Data)
+		case "Notes":
+			a.Notes = string(token.Data)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*ActivityLap)(nil)
