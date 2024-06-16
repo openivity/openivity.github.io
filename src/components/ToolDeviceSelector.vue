@@ -267,10 +267,11 @@ export default {
       if (device.manufacturerId != undefined) this.deviceName = device.label
     },
     updateSelectedByDeviceName(deviceName: string) {
-      const device = this.deviceMappingForGpxTcx.get(deviceName.toLocaleLowerCase())
-      if (device != undefined) {
-        this.selected = device
+      let device = this.deviceMappingForGpxTcx.get(deviceName.toLocaleLowerCase())
+      if (device == undefined) {
+        device = new DeviceOption({ label: deviceName })
       }
+      this.selected = device
     }
   },
   mounted() {
