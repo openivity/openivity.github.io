@@ -18,8 +18,10 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -27,31 +29,36 @@ type ActivityList struct {
 	Activity Activity `xml:"Activity"`
 }
 
-var _ xml.Unmarshaler = (*ActivityList)(nil)
-
-func (a *ActivityList) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (a *ActivityList) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Activity":
-				var activity Activity
-				if err := activity.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Activity: %w", err)
-				}
-				a.Activity = activity
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Activity":
+			var activity Activity
+			se := xmltokenizer.GetToken().Copy(token)
+			err = activity.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Activity: %w", err)
 			}
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			a.Activity = activity
 		}
 	}
+	return nil
 }
 
 var _ xml.Marshaler = (*ActivityList)(nil)
@@ -76,61 +83,62 @@ type Activity struct {
 	Creator *Device       `xml:"Creator,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*Activity)(nil)
-
-func (a *Activity) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	for i := range se.Attr {
-		attr := &se.Attr[i]
-
-		switch attr.Name.Local {
+func (a *Activity) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
+	for i := range se.Attrs {
+		attr := &se.Attrs[i]
+		switch string(attr.Name.Local) {
 		case "Sport":
-			a.Sport = attr.Value
+			a.Sport = string(attr.Value)
 		}
 	}
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Lap":
-				var activityLap ActivityLap
-				if err := activityLap.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Lap: %w", err)
-				}
-				a.Laps = append(a.Laps, activityLap)
-			case "Creator":
-				var device Device
-				if err := device.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Creator: %w", err)
-				}
-				a.Creator = &device
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Lap":
+			var activityLap ActivityLap
+			se := xmltokenizer.GetToken().Copy(token)
+			err = activityLap.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Lap: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "Id":
-				t, err := time.Parse(time.RFC3339, string(elem))
-				if err != nil {
-					return fmt.Errorf("parse Id: %w", err)
-				}
-				a.ID = t
-			case "Notes":
-				a.Notes = string(elem)
+			a.Laps = append(a.Laps, activityLap)
+		case "Creator":
+			var device Device
+			se := xmltokenizer.GetToken().Copy(token)
+			err = device.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Creator: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			a.Creator = &device
+		case "Id":
+			t, err := time.Parse(time.RFC3339, string(token.Data))
+			if err != nil {
+				return fmt.Errorf("parse Id: %w", err)
 			}
+			a.ID = t
+		case "Notes":
+			a.Notes = string(token.Data)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Activity)(nil)

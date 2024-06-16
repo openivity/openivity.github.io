@@ -18,8 +18,10 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"strconv"
 
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/xmlutils"
 )
 
@@ -30,48 +32,44 @@ type Application struct {
 	PartNumber string `xml:"PartNumber"` // The formatted XXX-XXXXX-XX Garmin part number of a PC application.
 }
 
-var _ xml.Unmarshaler = (*Application)(nil)
-
-func (a *Application) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (a *Application) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Build":
-				var build Build
-				if err := build.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Build: %w", err)
-				}
-				a.Build = &build
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
 
-			default:
-				targetCharData = elem.Name.Local
+		switch string(token.Name.Local) {
+		case "Build":
+			var build Build
+			se := xmltokenizer.GetToken().Copy(token)
+			err = build.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Build: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "Name":
-				a.Name = string(elem)
-			case "LangID":
-				a.LangID = string(elem)
-			case "PartNumber":
-				a.PartNumber = string(elem)
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			a.Build = &build
+		case "Name":
+			a.Name = string(token.Data)
+		case "LangID":
+			a.LangID = string(token.Data)
+		case "PartNumber":
+			a.PartNumber = string(token.Data)
 		}
 	}
-}
 
-var _ xml.Marshaler = (*Application)(nil)
+	return nil
+}
 
 func (a *Application) MarshalXML(enc *xml.Encoder, se xml.StartElement) error {
 	if err := enc.EncodeToken(se); err != nil {
@@ -103,40 +101,39 @@ type Build struct {
 	Version *Version
 }
 
-var _ xml.Unmarshaler = (*Build)(nil)
-
-func (b *Build) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (b *Build) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Version":
-				var version Version
-				if err := version.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Version: %w", err)
-				}
-				b.Version = &version
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Version":
+			var version Version
+			se := xmltokenizer.GetToken().Copy(token)
+			err = version.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Version: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "Type":
-				b.Type = BuildType(elem)
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			b.Version = &version
+		case "Type":
+			b.Type = BuildType(token.Data)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Build)(nil)
@@ -175,53 +172,51 @@ type Device struct {
 	Version   *Version `xml:"Version"`
 }
 
-var _ xml.Unmarshaler = (*Device)(nil)
-
-func (d *Device) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (d *Device) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Version":
-				var version Version
-				if err := version.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Version: %w", err)
-				}
-				d.Version = &version
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
 
-			default:
-				targetCharData = elem.Name.Local
+		switch string(token.Name.Local) {
+		case "Version":
+			var version Version
+			se := xmltokenizer.GetToken().Copy(token)
+			err = version.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Version: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "Name":
-				d.Name = string(elem)
-			case "UnitId":
-				u, err := strconv.ParseUint(string(elem), 10, 32)
-				if err != nil {
-					return fmt.Errorf("parse UnitId: %w", err)
-				}
-				d.UnitId = uint32(u)
-			case "ProductId":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse ProductId: %w", err)
-				}
-				d.ProductID = uint16(u)
+			d.Version = &version
+		case "Name":
+			d.Name = string(token.Data)
+		case "UnitId":
+			u, err := strconv.ParseUint(string(token.Data), 10, 32)
+			if err != nil {
+				return fmt.Errorf("parse UnitId: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			d.UnitId = uint32(u)
+		case "ProductId":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse ProductId: %w", err)
 			}
+			d.ProductID = uint16(u)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Device)(nil)
@@ -263,53 +258,52 @@ type Version struct {
 	BuildMinor   uint16 `xml:"BuildMinor"`
 }
 
-var _ xml.Unmarshaler = (*Version)(nil)
-
-func (v *Version) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	var targetCharData string
+func (v *Version) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			targetCharData = elem.Name.Local
-		case xml.CharData:
-			switch targetCharData {
-			case "VersionMajor":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse VersionMajor: %w", err)
-				}
-				v.VersionMajor = uint16(u)
-			case "VersionMinor":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse VersionMinor: %w", err)
-				}
-				v.VersionMinor = uint16(u)
-			case "BuildMajor":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse BuildMajor: %w", err)
-				}
-				v.BuildMajor = uint16(u)
-			case "BuildMinor":
-				u, err := strconv.ParseUint(string(elem), 10, 16)
-				if err != nil {
-					return fmt.Errorf("parse BuildMinor: %w", err)
-				}
-				v.BuildMinor = uint16(u)
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "VersionMajor":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse VersionMajor: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+			v.VersionMajor = uint16(u)
+		case "VersionMinor":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse VersionMinor: %w", err)
 			}
+			v.VersionMinor = uint16(u)
+		case "BuildMajor":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse BuildMajor: %w", err)
+			}
+			v.BuildMajor = uint16(u)
+		case "BuildMinor":
+			u, err := strconv.ParseUint(string(token.Data), 10, 16)
+			if err != nil {
+				return fmt.Errorf("parse BuildMinor: %w", err)
+			}
+			v.BuildMinor = uint16(u)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Version)(nil)

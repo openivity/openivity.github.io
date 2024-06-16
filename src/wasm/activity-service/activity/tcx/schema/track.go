@@ -18,6 +18,7 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/muktihari/fit/kit/scaleoffset"
 	"github.com/muktihari/fit/kit/semicircles"
 	"github.com/muktihari/fit/profile/basetype"
+	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/xmlutils"
 )
@@ -33,31 +35,37 @@ type Track struct {
 	Trackpoints []Trackpoint `xml:"Trackpoint,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*Track)(nil)
-
-func (t *Track) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *Track) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Trackpoint":
-				var trackpoint Trackpoint
-				if err := trackpoint.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Trackpoint: %w", err)
-				}
-				t.Trackpoints = append(t.Trackpoints, trackpoint)
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Trackpoint":
+			var trackpoint Trackpoint
+			se := xmltokenizer.GetToken().Copy(token)
+			err = trackpoint.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Trackpoint: %w", err)
 			}
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
-			}
+			t.Trackpoints = append(t.Trackpoints, trackpoint)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Track)(nil)
@@ -81,7 +89,7 @@ type Trackpoint struct {
 	Position       Position            `xml:"Position,omitempty"`
 	AltitudeMeters float64             `xml:"AltitudeMeters,omitempty"`
 	DistanceMeters float64             `xml:"DistanceMeters,omitempty"`
-	HeartRateBpm   uint8               `xml:"HeartRateBpm,omitempty"`
+	HeartRateBpm   uint8               `xml:"HeartRateBpm>Value,omitempty"`
 	Cadence        uint8               `xml:"Cadence,omitempty"`
 	SensorState    SensorState         `xml:"SensorState,omitempty"`
 	Extensions     TrackpointExtension `xml:"Extensions>TPX,omitempty"`
@@ -121,78 +129,77 @@ func (t *Trackpoint) ToRecord() activity.Record {
 	return rec
 }
 
-var _ xml.Unmarshaler = (*Trackpoint)(nil)
-
-func (t *Trackpoint) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *Trackpoint) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	t.reset()
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Position":
-				if err := t.Position.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Position: %w", err)
-				}
-			case "Value":
-				targetCharData = targetCharData + "Value"
-			case "Extensions":
-				if err := t.Extensions.UnmarshalXML(dec, elem); err != nil {
-					return fmt.Errorf("unmarshal Extensions: %w", err)
-				}
-			default:
-				targetCharData = elem.Name.Local
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Position":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = t.Position.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Position: %w", err)
 			}
-		case xml.CharData:
-			switch targetCharData {
-			case "Time":
-				_time, err := time.Parse(time.RFC3339, string(elem))
-				if err != nil {
-					return fmt.Errorf("parse Time %q: %w", elem, err)
-				}
-				t.Time = _time
-			case "AltitudeMeters":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse AltitudeMeters %q: %w", elem, err)
-				}
-				t.AltitudeMeters = f
-			case "DistanceMeters":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse DistanceMeters %q: %w", elem, err)
-				}
-				t.DistanceMeters = f
-			case "HeartRateBpm":
-				continue
-			case "HeartRateBpmValue":
-				u, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return fmt.Errorf("parse HeartRateBpm %q: %w", elem, err)
-				}
-				t.HeartRateBpm = uint8(u)
-			case "Cadence":
-				u, err := strconv.ParseUint(string(elem), 10, 8)
-				if err != nil {
-					return fmt.Errorf("parse Cadence %q: %w", elem, err)
-				}
-				t.Cadence = uint8(u)
-			case "SensorState":
-				t.SensorState = SensorState(elem)
+		case "Extensions":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = t.Extensions.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("unmarshal Extensions: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		case "Time":
+			t.Time, err = time.Parse(time.RFC3339, string(token.Data))
+			if err != nil {
+				return fmt.Errorf("parse Time %q: %w", token.Data, err)
 			}
+		case "AltitudeMeters":
+			t.AltitudeMeters, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse AltitudeMeters %q: %w", token.Data, err)
+			}
+		case "DistanceMeters":
+			t.DistanceMeters, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse DistanceMeters %q: %w", token.Data, err)
+			}
+		case "HeartRateBpm":
+			token, err = getValueToken(tok)
+			if err != nil {
+				return err
+			}
+			u, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return fmt.Errorf("parse HeartRateBpm %q: %w", token.Data, err)
+			}
+			t.HeartRateBpm = uint8(u)
+		case "Cadence":
+			u, err := strconv.ParseUint(string(token.Data), 10, 8)
+			if err != nil {
+				return fmt.Errorf("parse Cadence %q: %w", token.Data, err)
+			}
+			t.Cadence = uint8(u)
+		case "SensorState":
+			t.SensorState = SensorState(token.Data)
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Trackpoint)(nil)
@@ -276,43 +283,40 @@ func (p *Position) reset() {
 	p.LongitudeDegrees = math.NaN()
 }
 
-var _ xml.Unmarshaler = (*Position)(nil)
-
-func (p *Position) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (p *Position) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	p.reset()
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			targetCharData = elem.Name.Local
-		case xml.CharData:
-			switch targetCharData {
-			case "LatitudeDegrees":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse LatitudeDegrees: %w", err)
-				}
-				p.LatitudeDegrees = f
-			case "LongitudeDegrees":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse LongitudeDegrees: %w", err)
-				}
-				p.LongitudeDegrees = f
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "LatitudeDegrees":
+			p.LatitudeDegrees, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse LatitudeDegrees: %w", err)
 			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		case "LongitudeDegrees":
+			p.LongitudeDegrees, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse LongitudeDegrees: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*Position)(nil)
@@ -356,37 +360,35 @@ func (t *TrackpointExtension) reset() {
 	t.Speed = math.NaN()
 }
 
-var _ xml.Unmarshaler = (*TrackpointExtension)(nil)
-
-func (t *TrackpointExtension) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
+func (t *TrackpointExtension) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
 	t.reset()
 
-	var targetCharData string
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			targetCharData = elem.Name.Local
-		case xml.CharData:
-			switch targetCharData {
-			case "Speed":
-				f, err := strconv.ParseFloat(string(elem), 64)
-				if err != nil {
-					return fmt.Errorf("parse Speed: %w", err)
-				}
-				t.Speed = f
-			}
-			targetCharData = ""
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		if token.IsEndElementOf(se) {
+			break
+		}
+		if token.IsEndElement() {
+			continue
+		}
+
+		switch string(token.Name.Local) {
+		case "Speed":
+			t.Speed, err = strconv.ParseFloat(string(token.Data), 64)
+			if err != nil {
+				return fmt.Errorf("parse Speed: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 var _ xml.Marshaler = (*TrackpointExtension)(nil)

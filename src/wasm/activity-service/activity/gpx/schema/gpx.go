@@ -18,7 +18,10 @@ package schema
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"strings"
+
+	"github.com/muktihari/xmltokenizer"
 )
 
 const (
@@ -50,49 +53,54 @@ type GPX struct {
 	Tracks   []Track  `xml:"trk,omitempty"`
 }
 
-var _ xml.Unmarshaler = (*GPX)(nil)
-
-func (g *GPX) UnmarshalXML(dec *xml.Decoder, se xml.StartElement) error {
-	for i := range se.Attr {
-		attr := se.Attr[i]
-
-		switch attr.Name.Local {
+func (g *GPX) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token) error {
+	for i := range se.Attrs {
+		attr := &se.Attrs[i]
+		switch string(attr.Name.Local) {
 		case "creator":
-			g.Creator = attr.Value
+			g.Creator = string(attr.Value)
 		case "version":
-			g.Version = attr.Value
+			g.Version = string(attr.Value)
 		}
 	}
 
 	for {
-		token, err := dec.Token()
+		token, err := tok.Token()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "metadata":
-				var metadata Metadata
-				if err := metadata.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				g.Metadata = metadata
-			case "trk":
-				var track Track
-				if err := track.UnmarshalXML(dec, elem); err != nil {
-					return err
-				}
-				g.Tracks = append(g.Tracks, track)
-			}
+		if token.IsEndElementOf(se) {
+			return nil
+		}
+		if token.IsEndElement() {
+			continue
+		}
 
-		case xml.EndElement:
-			if elem == se.End() {
-				return nil
+		switch string(token.Name.Local) {
+		case "metadata":
+			se := xmltokenizer.GetToken().Copy(token)
+			err = g.Metadata.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("metadata: %w", err)
 			}
+		case "trk":
+			var track Track
+			se := xmltokenizer.GetToken().Copy(token)
+			err = track.UnmarshalToken(tok, se)
+			xmltokenizer.PutToken(se)
+			if err != nil {
+				return fmt.Errorf("track: %w", err)
+			}
+			g.Tracks = append(g.Tracks, track)
 		}
 	}
+
+	return nil
 }
 
 func (g *GPX) Validate() error {
