@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build-wasm": "cd src\ncd wasm\ncd activity-service\nmake build",
+    "init": "cp $(go env GOROOT)/misc/wasm/wasm_exec.js src/assets/wasm/wasm_exec.js",
+    "build-wasm": "cd src/wasm/activity-service && make build",
     "build-only": "vite build",
     "dev": "vite --host",
     "build": "run-p type-check \"build-only {@}\" --",
