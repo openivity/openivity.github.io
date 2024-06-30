@@ -34,10 +34,10 @@ To set up a development environment, please follow these steps:
    npm install
    ```
 
-3. Copy `wasm_exec.js` of your current version of Go in your local machine to `src/assets/wasm/wasm_exec.js`. This file is tightly coupled with a specific version of Go in order to compile the WebAssembly binary.
+3. Prepare required files such as copying `wasm_exec.js` of your current version of Go in your local machine to `src/assets/wasm/wasm_exec.js`. This file is tightly coupled with a specific version of Go in order to compile the WebAssembly binary.
 
    ```sh
-   cp $GOROOT/misc/wasm/wasm_exec.js src/assets/wasm/wasm_exec.js
+   npm run init
    ```
 
 4. Compile Go source code into wasm binary.
