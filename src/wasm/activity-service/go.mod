@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/muktihari/fit v0.20.2
-	github.com/muktihari/xmltokenizer v0.0.3
+	github.com/muktihari/xmltokenizer v0.0.4
 	golang.org/x/text v0.16.0
 )
 

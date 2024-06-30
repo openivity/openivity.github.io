@@ -80,7 +80,7 @@ func (a *ActivityLap) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokeniz
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
