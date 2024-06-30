@@ -20,7 +20,8 @@ Open Activity, also known as Openivity, is a free and open-source fitness analyt
 
 - [Go](https://go.dev) - [WebAssembly](https://github.com/golang/go/wiki/WebAssembly)
 - [FIT SDK for Go](https://github.com/muktihari/fit)
-- [NodeJS](https://nodejs.org) - [Vite](https://vitejs.dev) - [Vue](https://vuejs.org) - [Typescript](https://www.typescriptlang.org)
+- [XML Tokenizer](https://github.com/muktihari/xmltokenizer)
+- [Node.js](https://nodejs.org) - [Vite](https://vitejs.dev) - [Vue](https://vuejs.org) - [Typescript](https://www.typescriptlang.org)
 - [Bootstrap](https://getbootstrap.com)
 - [OpenLayers](https://openlayers.org)
 - [OpenStreetMap](https://www.openstreetmap.org)
