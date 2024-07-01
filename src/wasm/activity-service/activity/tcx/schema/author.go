@@ -45,7 +45,7 @@ func (a *Application) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokeniz
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -114,7 +114,7 @@ func (b *Build) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Tok
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -185,7 +185,7 @@ func (d *Device) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.To
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -271,7 +271,7 @@ func (v *Version) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.T
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 

@@ -42,7 +42,7 @@ func (a *ActivityList) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokeni
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -104,7 +104,7 @@ func (a *Activity) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 

@@ -56,7 +56,7 @@ func (t *TCX) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Token
 		if token.IsEndElementOf(se) {
 			break
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 

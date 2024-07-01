@@ -27,4 +27,5 @@ coverage
 # WebAssembly
 **/.vscode/*
 !src/wasm/**/.vscode/settings.json.example
+src/assets/wasm/wasm_exec.js
 public/wasm/*

@@ -49,7 +49,7 @@ func (t *Track) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.Tok
 		if token.IsEndElementOf(se) {
 			return nil
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -130,7 +130,7 @@ func (t *TrackSegment) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokeni
 		if token.IsEndElementOf(se) {
 			return nil
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
@@ -252,7 +252,7 @@ func (w *Waypoint) UnmarshalToken(tok *xmltokenizer.Tokenizer, se *xmltokenizer.
 		if token.IsEndElementOf(se) {
 			return nil
 		}
-		if token.IsEndElement() {
+		if token.IsEndElement {
 			continue
 		}
 
