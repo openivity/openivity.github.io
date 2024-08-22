@@ -16,6 +16,7 @@
 package activity
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/proto"
 )
+
+var ErrNoActivity = errors.New("no activity")
 
 // Activity is an activity. It use FIT SDK's structure as its base since FIT is currently the most advance format.
 type Activity struct {
