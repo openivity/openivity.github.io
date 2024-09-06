@@ -52,13 +52,12 @@ var manufacturerJson []byte
 func main() {
 	preproc := activity.NewPreprocessor()
 
-	fit := fit.NewDecodeEncoder(preproc)
-	gpx := gpx.NewDecodeEncoder(preproc)
-	tcx := tcx.NewDecodeEncoder(preproc)
-
-	manufacturers := makeManufacturers()
-
-	svc := service.New(fit, gpx, tcx, manufacturers)
+	svc := service.New(
+		fit.NewDecodeEncoder(preproc),
+		gpx.NewDecodeEncoder(preproc),
+		tcx.NewDecodeEncoder(preproc),
+		makeManufacturers(),
+	)
 
 	js.Global().Set("decode", createDecodeFunc(svc))
 	js.Global().Set("encode", createEncodeFunc(svc))
