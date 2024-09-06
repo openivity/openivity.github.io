@@ -37,33 +37,33 @@ import (
 
 var ErrFileTypeUnsupported = errors.New("file type is unsupported")
 
-// Service is an activity service. It handle decoding and encoding these following file formats: FIT, GPX and TCX.
-type Service interface {
-	Decode(ctx context.Context, rs []io.Reader) result.Decode
-	Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode
-	ManufacturerList() result.ManufacturerList
-	SportList() result.SportList
+// DecodeEncoder is a contract that any types implement these methods can be used by the Service.
+type DecodeEncoder interface {
+	// Decode decodes the given r into activities and returns any encountered errors.
+	Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error)
+	// Encode encodes the given activities into a slice of bytes and returns any encountered errors.
+	Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error)
 }
 
-type service struct {
-	fitService    activity.Service
-	gpxService    activity.Service
-	tcxService    activity.Service
+// Service is an activity service. It handle decoding and encoding these following file formats: FIT, GPX and TCX.
+type Service struct {
+	fit           DecodeEncoder
+	gpx           DecodeEncoder
+	tcx           DecodeEncoder
 	manufacturers map[typedef.Manufacturer]activity.Manufacturer
 }
 
 // New creates new activity service to handle decoding and encoding these following file formats: FIT, GPX and TCX.
-func New(fitService, gpxService, tcxService activity.Service,
-	manufacturers map[typedef.Manufacturer]activity.Manufacturer) Service {
-	return &service{
-		fitService:    fitService,
-		gpxService:    gpxService,
-		tcxService:    tcxService,
+func New(fit, gpx, tcx DecodeEncoder, manufacturers map[typedef.Manufacturer]activity.Manufacturer) *Service {
+	return &Service{
+		fit:           fit,
+		gpx:           gpx,
+		tcx:           tcx,
 		manufacturers: manufacturers,
 	}
 }
 
-func (s *service) Decode(ctx context.Context, rs []io.Reader) result.Decode {
+func (s *Service) Decode(ctx context.Context, rs []io.Reader) result.Decode {
 	begin := time.Now()
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -145,7 +145,7 @@ func firstNonZeroTimestamp(act *activity.Activity) time.Time {
 	return time.Time{}
 }
 
-func (s *service) decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- result.DecodeWorker, wg *sync.WaitGroup, index int) {
+func (s *Service) decodeWorker(ctx context.Context, rc <-chan io.Reader, resc chan<- result.DecodeWorker, wg *sync.WaitGroup, index int) {
 	defer wg.Done()
 
 	activities, err := s.decode(ctx, <-rc)
@@ -162,25 +162,24 @@ func (s *service) decodeWorker(ctx context.Context, rc <-chan io.Reader, resc ch
 	}
 }
 
-func (s *service) decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
+func (s *Service) decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	fileType, err := s.readType(r)
 	if err != nil {
 		return nil, err
 	}
-
 	switch fileType {
 	case spec.FileTypeFIT:
-		return s.fitService.Decode(ctx, r)
+		return s.fit.Decode(ctx, r)
 	case spec.FileTypeGPX:
-		return s.gpxService.Decode(ctx, r)
+		return s.gpx.Decode(ctx, r)
 	case spec.FileTypeTCX:
-		return s.tcxService.Decode(ctx, r)
+		return s.tcx.Decode(ctx, r)
 	default:
 		return nil, ErrFileTypeUnsupported
 	}
 }
 
-func (s *service) readType(r io.Reader) (spec.FileType, error) {
+func (s *Service) readType(r io.Reader) (spec.FileType, error) {
 	b := make([]byte, 1)
 	_, err := io.ReadFull(r, b)
 	if err != nil {
@@ -189,7 +188,7 @@ func (s *service) readType(r io.Reader) (spec.FileType, error) {
 	return spec.FileType(b[0]), nil
 }
 
-func (s *service) creatorName(manufacturerID typedef.Manufacturer, productID uint16) string {
+func (s *Service) creatorName(manufacturerID typedef.Manufacturer, productID uint16) string {
 	manufacturer, ok := s.manufacturers[manufacturerID]
 	if !ok {
 		return activity.Unknown
@@ -210,7 +209,7 @@ func (s *service) creatorName(manufacturerID typedef.Manufacturer, productID uin
 	return manufacturer.Name + " " + productName
 }
 
-func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode {
+func (s *Service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Encode {
 	begin := time.Now()
 
 	activities, err := s.preprocessEncode(encodeSpec)
@@ -221,11 +220,11 @@ func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Enc
 	var bs [][]byte
 	switch encodeSpec.TargetFileType {
 	case spec.FileTypeFIT:
-		bs, err = s.fitService.Encode(ctx, activities)
+		bs, err = s.fit.Encode(ctx, activities)
 	case spec.FileTypeGPX:
-		bs, err = s.gpxService.Encode(ctx, activities)
+		bs, err = s.gpx.Encode(ctx, activities)
 	case spec.FileTypeTCX:
-		bs, err = s.tcxService.Encode(ctx, activities)
+		bs, err = s.tcx.Encode(ctx, activities)
 	default:
 		return result.Encode{Err: fmt.Errorf("encode: invalid filetype")}
 	}
@@ -239,7 +238,7 @@ func (s *service) Encode(ctx context.Context, encodeSpec spec.Encode) result.Enc
 	}
 }
 
-func (s *service) preprocessEncode(encodeSpec spec.Encode) ([]activity.Activity, error) {
+func (s *Service) preprocessEncode(encodeSpec spec.Encode) ([]activity.Activity, error) {
 	if encodeSpec.ToolMode == spec.ToolModeUnknown {
 		return nil, fmt.Errorf("encode mode '%v' not recognized", encodeSpec.ToolMode)
 	}
@@ -305,7 +304,7 @@ func (s *service) preprocessEncode(encodeSpec spec.Encode) ([]activity.Activity,
 	return newActivities, nil
 }
 
-func (s *service) combineActivity(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) activity.Activity {
+func (s *Service) combineActivity(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) activity.Activity {
 	creator := activity.CreateCreator(nil)
 	creator.FileId.
 		SetType(typedef.FileActivity).
@@ -380,7 +379,7 @@ func getLastDistanceOfRecords(records []activity.Record) uint32 {
 	return 0
 }
 
-func (s *service) splitActivityPerSession(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) []activity.Activity {
+func (s *Service) splitActivityPerSession(activities []activity.Activity, manufacturer typedef.Manufacturer, product uint16) []activity.Activity {
 	newActivities := make([]activity.Activity, 0)
 
 	for i := range activities {
@@ -407,7 +406,7 @@ func (s *service) splitActivityPerSession(activities []activity.Activity, manufa
 	return newActivities
 }
 
-func (s *service) changeSport(activities []activity.Activity, sports []string) {
+func (s *Service) changeSport(activities []activity.Activity, sports []string) {
 	var cur int
 	for i := range activities {
 		act := &activities[i]
@@ -420,7 +419,7 @@ func (s *service) changeSport(activities []activity.Activity, sports []string) {
 }
 
 // trimRecords trims Records based on the markers (1 marker correspond to 1 session) and recalculate the summary since the records is trimmed.
-func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker) error {
+func (s *Service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker) error {
 	if len(markers) == 0 {
 		return nil
 	}
@@ -515,7 +514,7 @@ func (s *service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 }
 
 // concealGPSPositions conceal positions from the records by removing PositionLat and PositionLong.
-func (s *service) concealGPSPositions(a *activity.Activity, markers []spec.EncodeMarker) error {
+func (s *Service) concealGPSPositions(a *activity.Activity, markers []spec.EncodeMarker) error {
 	if len(markers) == 0 {
 		return nil
 	}
@@ -554,7 +553,7 @@ func (s *service) concealGPSPositions(a *activity.Activity, markers []spec.Encod
 }
 
 // removeFields removes field from the entire records as well as the summary of it.
-func (s *service) removeFields(a *activity.Activity, fields map[string]struct{}) {
+func (s *Service) removeFields(a *activity.Activity, fields map[string]struct{}) {
 	if len(fields) == 0 {
 		return
 	}
@@ -660,7 +659,7 @@ func (s *service) removeFields(a *activity.Activity, fields map[string]struct{})
 	}
 }
 
-func (s *service) ManufacturerList() result.ManufacturerList {
+func (s *Service) ManufacturerList() result.ManufacturerList {
 	manufacturers := make([]activity.Manufacturer, 0, len(s.manufacturers))
 	for _, v := range s.manufacturers {
 		manufacturers = append(manufacturers, v)
@@ -674,7 +673,7 @@ func (s *service) ManufacturerList() result.ManufacturerList {
 	return result.ManufacturerList{Manufacturers: manufacturers}
 }
 
-func (s *service) SportList() result.SportList {
+func (s *Service) SportList() result.SportList {
 	sportList := typedef.ListSport()
 	sports := make([]activity.Sport, 0, len(sportList))
 

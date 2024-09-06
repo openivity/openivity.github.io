@@ -27,6 +27,7 @@ import (
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/activity/tcx/schema"
 	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/service"
 	"github.com/openivity/activity-service/strutils"
 	"github.com/openivity/activity-service/xmlutils"
 	"golang.org/x/exp/slices"
@@ -36,18 +37,18 @@ const (
 	applicationName = "openitivy.github.io"
 )
 
-var _ activity.Service = (*service)(nil)
+var _ service.DecodeEncoder = (*DecodeEncoder)(nil)
 
-type service struct {
+type DecodeEncoder struct {
 	preprocessor *activity.Preprocessor
 }
 
-// NewService creates new TCX service.
-func NewService(preproc *activity.Preprocessor) activity.Service {
-	return &service{preprocessor: preproc}
+// NewDecodeEncoder creates new TCX decode-encoder.
+func NewDecodeEncoder(preproc *activity.Preprocessor) *DecodeEncoder {
+	return &DecodeEncoder{preprocessor: preproc}
 }
 
-func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
+func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	tok := xmltokenizer.New(r)
 
 	var tcx schema.TCX
@@ -188,7 +189,7 @@ loop:
 	return []activity.Activity{act}, nil
 }
 
-func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
+func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	bs := make([][]byte, len(activities))
 
 	buf := mem.GetBuffer()
@@ -206,7 +207,7 @@ func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([
 	return bs, nil
 }
 
-func (s *service) convertActivityToTCX(act *activity.Activity) schema.TCX {
+func (s *DecodeEncoder) convertActivityToTCX(act *activity.Activity) schema.TCX {
 	tcx := schema.TCX{
 		Author: &schema.Application{
 			Name: applicationName,

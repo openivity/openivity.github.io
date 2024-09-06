@@ -25,6 +25,7 @@ import (
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/activity/gpx/schema"
 	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/service"
 	"github.com/openivity/activity-service/strutils"
 	"github.com/openivity/activity-service/xmlutils"
 	"golang.org/x/exp/slices"
@@ -35,18 +36,18 @@ const (
 	metadataLink = "https://openivity.github.io"
 )
 
-var _ activity.Service = (*service)(nil)
+var _ service.DecodeEncoder = (*DecodeEncoder)(nil)
 
-type service struct {
+type DecodeEncoder struct {
 	preprocessor *activity.Preprocessor
 }
 
-// NewService creates new GPX service.
-func NewService(preproc *activity.Preprocessor) activity.Service {
-	return &service{preprocessor: preproc}
+// NewDecodeEncoder creates new GPX decode-encoder.
+func NewDecodeEncoder(preproc *activity.Preprocessor) *DecodeEncoder {
+	return &DecodeEncoder{preprocessor: preproc}
 }
 
-func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
+func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	tok := xmltokenizer.New(r)
 
 	var gpx schema.GPX
@@ -150,7 +151,7 @@ loop:
 	return []activity.Activity{act}, nil
 }
 
-func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
+func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	bs := make([][]byte, len(activities))
 
 	buf := mem.GetBuffer()
@@ -171,7 +172,7 @@ func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([
 	return bs, nil
 }
 
-func (s *service) convertActivityToGPX(act *activity.Activity) schema.GPX {
+func (s *DecodeEncoder) convertActivityToGPX(act *activity.Activity) schema.GPX {
 	gpx := schema.GPX{
 		Creator: act.Creator.Name,
 		Metadata: schema.Metadata{

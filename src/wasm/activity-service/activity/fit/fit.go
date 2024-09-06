@@ -31,26 +31,27 @@ import (
 	"github.com/muktihari/fit/proto"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/mem"
+	"github.com/openivity/activity-service/service"
 	"golang.org/x/exp/slices"
 )
 
-var _ activity.Service = (*service)(nil)
+var _ service.DecodeEncoder = (*DecodeEncoder)(nil)
 
 var decoderPool = sync.Pool{New: func() any { return decoder.New(nil) }}
 var encoderPool = sync.Pool{New: func() any { return encoder.New(nil) }}
 
-type service struct {
+type DecodeEncoder struct {
 	preprocessor *activity.Preprocessor
 }
 
-// NewService creates new FIT service.
-func NewService(preproc *activity.Preprocessor) activity.Service {
-	return &service{
+// NewDecodeEncoder creates new FIT decode-encoder.
+func NewDecodeEncoder(preproc *activity.Preprocessor) *DecodeEncoder {
+	return &DecodeEncoder{
 		preprocessor: preproc,
 	}
 }
 
-func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
+func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Activity, error) {
 	lis := filedef.NewListener()
 	defer lis.Close()
 
@@ -114,7 +115,7 @@ func (s *service) Decode(ctx context.Context, r io.Reader) ([]activity.Activity,
 	return activities, nil
 }
 
-func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Activity {
+func (s *DecodeEncoder) convertToActivity(activityFile *filedef.Activity) activity.Activity {
 	var timezone int8
 	if activityFile.Activity != nil {
 		localTimestamp := activityFile.Activity.LocalTimestamp
@@ -221,7 +222,7 @@ func (s *service) convertToActivity(activityFile *filedef.Activity) activity.Act
 }
 
 // recalculateSummary recalculates values based on Laps and Records.
-func (s *service) recalculateSummary(ses *activity.Session) {
+func (s *DecodeEncoder) recalculateSummary(ses *activity.Session) {
 	records := slices.Clone(ses.Records)
 	if len(ses.Laps) == 1 { // Ensure lap's time windows match with session, FIT produces by Strava contains wrong time.
 		ses.Laps[0].StartTime = ses.StartTime
@@ -250,7 +251,7 @@ func (s *service) recalculateSummary(ses *activity.Session) {
 	ses.Summarize()
 }
 
-func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []proto.Message {
+func (s *DecodeEncoder) handleUnrelatedMessages(activityFile *filedef.Activity) []proto.Message {
 	size := len(activityFile.DeveloperDataIds) +
 		len(activityFile.FieldDescriptions) +
 		len(activityFile.DeviceInfos) +
@@ -312,7 +313,7 @@ func (s *service) handleUnrelatedMessages(activityFile *filedef.Activity) []prot
 	return unrelatedMessages
 }
 
-func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
+func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	buf := mem.GetBuffer()
 	defer mem.PutBuffer(buf)
 
@@ -340,7 +341,7 @@ func (s *service) Encode(ctx context.Context, activities []activity.Activity) ([
 	return bs, nil
 }
 
-func (s *service) makeLastSummary(a *activity.Activity) {
+func (s *DecodeEncoder) makeLastSummary(a *activity.Activity) {
 	var lastTimestamp time.Time
 	for i := len(a.Sessions) - 1; i >= 0; i-- {
 		ses := a.Sessions[i]

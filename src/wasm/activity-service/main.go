@@ -52,13 +52,12 @@ var manufacturerJson []byte
 func main() {
 	preproc := activity.NewPreprocessor()
 
-	fs := fit.NewService(preproc)
-	gs := gpx.NewService(preproc)
-	ts := tcx.NewService(preproc)
-
-	manufacturers := makeManufacturers()
-
-	svc := service.New(fs, gs, ts, manufacturers)
+	svc := service.New(
+		fit.NewDecodeEncoder(preproc),
+		gpx.NewDecodeEncoder(preproc),
+		tcx.NewDecodeEncoder(preproc),
+		makeManufacturers(),
+	)
 
 	js.Global().Set("decode", createDecodeFunc(svc))
 	js.Global().Set("encode", createEncodeFunc(svc))
@@ -124,7 +123,7 @@ func makeManufacturers() map[typedef.Manufacturer]activity.Manufacturer {
 	return manufacturers
 }
 
-func createDecodeFunc(s service.Service) js.Func {
+func createDecodeFunc(s *service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an Array<Uint8Array>
 		if input.Length() == 0 {
@@ -140,7 +139,6 @@ func createDecodeFunc(s service.Service) js.Func {
 		}
 
 		result := s.Decode(context.Background(), rs)
-
 		decodedActivities = result.Activities
 
 		buf := mem.GetBuffer()
@@ -152,7 +150,7 @@ func createDecodeFunc(s service.Service) js.Func {
 	})
 }
 
-func createEncodeFunc(svc service.Service) js.Func {
+func createEncodeFunc(svc *service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		input := args[0] // input is an JSON string
 		if input.Length() == 0 {
@@ -169,11 +167,9 @@ func createEncodeFunc(svc service.Service) js.Func {
 		}
 
 		encodeSpec.Activities = cloneActivities(decodedActivities)
-
 		elapsed := time.Since(begin)
 
 		result := svc.Encode(context.Background(), encodeSpec)
-
 		result.DeserializeInputTook = elapsed
 
 		buf := mem.GetBuffer()
@@ -185,7 +181,7 @@ func createEncodeFunc(svc service.Service) js.Func {
 	})
 }
 
-func createManufacturerListFunc(svc service.Service) js.Func {
+func createManufacturerListFunc(svc *service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		manufacturerList := svc.ManufacturerList()
 		b := manufacturerList.MarshalAppendJSON(make([]byte, 0, 50<<10))
@@ -193,7 +189,7 @@ func createManufacturerListFunc(svc service.Service) js.Func {
 	})
 }
 
-func createSportListFunc(svc service.Service) js.Func {
+func createSportListFunc(svc *service.Service) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		sportList := svc.SportList()
 		b := sportList.MarshalAppendJSON(make([]byte, 0, 8<<10))
