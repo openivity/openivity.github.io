@@ -22,9 +22,9 @@ import (
 // should be a pointer to a struct, otherwise, it panics.
 // The logic depends on the prefix of the Field's Name; If it starts with:
 //   - "Total": sum of the two values.
-//   - "Max": max value between the two values.
-//   - "Min": min value between the two values.
-//   - "Avg": avg of the two values.
+//   - "Max" or "EnhancedMax": max value between the two values.
+//   - "Min" or "EnhancedMin": min value between the two values.
+//   - "Avg" or "EnhancedAvg": avg of the two values.
 //   - "Num" and ends with "s": sum of the two values.
 //     (e.g. NumSplits, NumLaps, NumSessions)
 //   - Otherwise: fill with src's Value only if dst's Value is invalid.
@@ -56,9 +56,9 @@ func Aggregate(dst, src interface{}) {
 		case strings.HasPrefix(f.Name, "Max") || strings.HasPrefix(f.Name, "EnhancedMax"):
 			max(dv.Field(i), sField) // MaxHeartRate, MaxCadence, EnhancedMaxRespirationRate, etc.
 		case strings.HasPrefix(f.Name, "Min") || strings.HasPrefix(f.Name, "EnhancedMin"):
-			min(dv.Field(i), sField) // MinHeartRate, MinCadence, EnhancedAltitude etc.
+			min(dv.Field(i), sField) // MinHeartRate, MinCadence, EnhancedMinAltitude, etc.
 		case strings.HasPrefix(f.Name, "Avg") || strings.HasPrefix(f.Name, "EnhancedAvg"):
-			avg(dv.Field(i), sField) // AvgHeartRate, AvgCadence, EnhancedAvgSpeed etc.
+			avg(dv.Field(i), sField) // AvgHeartRate, AvgCadence, EnhancedAvgSpeed, etc.
 		default:
 			fill(dv.Field(i), sField) // Timestamp, Sport, Event, etc.
 		}
