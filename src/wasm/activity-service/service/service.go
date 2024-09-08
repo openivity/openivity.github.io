@@ -352,6 +352,9 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 		lastDistance = getLastDistanceOfRecords(newActLastSes.Records)
 
 		// Update summary
+		gap := (curActFirstSes.StartTime.Sub(newActLastSes.EndTime()).Seconds() * 1000)
+		newActLastSes.TotalElapsedTime += uint32(gap)
+		newActLastSes.TotalTimerTime += uint32(gap)
 		aggregator.Aggregate(newActLastSes.Session, curActFirstSes.Session)
 		newActLastSes.Summarize()
 
