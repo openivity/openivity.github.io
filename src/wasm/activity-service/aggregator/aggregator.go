@@ -53,12 +53,12 @@ func Aggregate(dst, src interface{}) {
 			sum(dv.Field(i), sField) // TotalElapsedTime, TotalCycles, etc.
 		case strings.HasPrefix(f.Name, "Num") && strings.HasSuffix(f.Name, "s"):
 			sum(dv.Field(i), sField) // NumSessions, NumLaps, NumSplits, etc.
-		case strings.HasPrefix(f.Name, "Max"):
-			max(dv.Field(i), sField) // MaxHeartRate, MaxCadence, etc.
-		case strings.HasPrefix(f.Name, "Min"):
-			min(dv.Field(i), sField) // MinHeartRate, MinCadence, etc.
-		case strings.HasPrefix(f.Name, "Avg"):
-			avg(dv.Field(i), sField) // AvgHeartRate, AvgCadence, etc.
+		case strings.HasPrefix(f.Name, "Max") || strings.HasPrefix(f.Name, "EnhancedMax"):
+			max(dv.Field(i), sField) // MaxHeartRate, MaxCadence, EnhancedMaxRespirationRate, etc.
+		case strings.HasPrefix(f.Name, "Min") || strings.HasPrefix(f.Name, "EnhancedMin"):
+			min(dv.Field(i), sField) // MinHeartRate, MinCadence, EnhancedAltitude etc.
+		case strings.HasPrefix(f.Name, "Avg") || strings.HasPrefix(f.Name, "EnhancedAvg"):
+			avg(dv.Field(i), sField) // AvgHeartRate, AvgCadence, EnhancedAvgSpeed etc.
 		default:
 			fill(dv.Field(i), sField) // Timestamp, Sport, Event, etc.
 		}
