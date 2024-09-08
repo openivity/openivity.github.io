@@ -1,13 +1,10 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/muktihari/fit v0.21.2 h1:rHSMUU3T0h6harEb2xPEZRglet7wkS7XvS+uakXrJag=
-github.com/muktihari/fit v0.21.2/go.mod h1:10pZhxvt38aAD0mC5uLWW7tq4KhQsgb837EtP/HzewE=
 github.com/muktihari/fit v0.21.3 h1:k8EYHMQsNgofQQ7jOxZhh5ayYqNJ33rDfRN+TMXP61A=
 github.com/muktihari/fit v0.21.3/go.mod h1:zOEqw3seokejqhepYCI4rYTA6p+zblmXFub+XrJ8BTE=
 github.com/muktihari/xmltokenizer v0.0.4 h1:x4DZWvfcEAJR+iBPb8XeiWL1J15SY21bCaem76wmmjw=
 github.com/muktihari/xmltokenizer v0.0.4/go.mod h1:yTxhndrcpmZEPYqQGSN51MwkzPQgGSkRpqW5ZFBpdF0=
 golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 h1:yixxcjnhBmY0nkL253HFVIm0JsFHwrHdT3Yh6szTnfY=
 golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8/go.mod h1:jj3sYF3dwk5D+ghuXyeI3r5MFf+NT2An6/9dOA95KSI=
-golang.org/x/text v0.17.0 h1:XtiM5bkSOt+ewxlOE/aE/AKEHibwj/6gvWMl9Rsh0Qc=
-golang.org/x/text v0.17.0/go.mod h1:BuEKDfySbSR4drPmRPG/7iBdf8hvFMuRexcpahXilzY=
+golang.org/x/text v0.18.0 h1:XvMDiNzPAl0jr17s6W9lcaIhGUfUORdGCNsuLmPG224=
 golang.org/x/text v0.18.0/go.mod h1:BuEKDfySbSR4drPmRPG/7iBdf8hvFMuRexcpahXilzY=
