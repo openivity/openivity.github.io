@@ -29,6 +29,7 @@ import (
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/service/result"
 	"github.com/openivity/activity-service/service/spec"
 	"github.com/openivity/activity-service/strutils"
@@ -351,7 +352,7 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 		lastDistance = getLastDistanceOfRecords(newActLastSes.Records)
 
 		// Update summary
-		newActLastSes.Accumulate(&curActFirstSes)
+		aggregator.Aggregate(newActLastSes.Session, curActFirstSes.Session)
 		newActLastSes.Summarize()
 
 		if len(cur.Sessions) > 1 {

@@ -23,6 +23,7 @@ import (
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
+	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/strutils"
 )
 
@@ -183,105 +184,13 @@ func NewLapFromRecords(records []Record, sport typedef.Sport) Lap {
 // NewLapFromSession creates new lap from a session.
 func NewLapFromSession(session *Session) Lap {
 	lap := CreateLap(nil)
-
-	lap.Sport = session.Sport
-	lap.SubSport = session.SubSport
-	lap.Timestamp = session.Timestamp
-	lap.StartTime = session.StartTime
-	lap.TotalMovingTime = session.TotalMovingTime
-	lap.TotalElapsedTime = session.TotalElapsedTime
-	lap.TotalTimerTime = session.TotalTimerTime
-	lap.TotalDistance = session.TotalDistance
-	lap.TotalAscent = session.TotalAscent
-	lap.TotalDescent = session.TotalDescent
-	lap.TotalCalories = session.TotalCalories
-	lap.AvgSpeed = session.AvgSpeed
-	lap.MaxSpeed = session.MaxSpeed
-	lap.AvgHeartRate = session.AvgHeartRate
-	lap.MaxHeartRate = session.MaxHeartRate
-	lap.AvgCadence = session.AvgCadence
-	lap.MaxCadence = session.MaxCadence
-	lap.AvgPower = session.AvgPower
-	lap.MaxPower = session.MaxPower
-	lap.AvgTemperature = session.AvgTemperature
-	lap.MaxTemperature = session.MaxTemperature
-	lap.AvgAltitude = session.AvgAltitude
-	lap.MaxAltitude = session.MaxAltitude
-
+	aggregator.Replace(lap.Lap, session.Session)
 	return lap
 }
 
 // IsBelongToThisLap check whether given t is belong to this lap's time window.
 func (l *Lap) IsBelongToThisLap(t time.Time) bool {
 	return isBelong(t, l.StartTime, l.EndTime())
-}
-
-// ReplaceValues replaces values with the corresponding values in the given lap.
-func (l *Lap) ReplaceValues(lap *Lap) {
-	if l == nil || lap == nil {
-		return
-	}
-
-	if !lap.StartTime.IsZero() {
-		l.StartTime = lap.StartTime
-	}
-	if lap.TotalElapsedTime != basetype.Uint32Invalid {
-		l.TotalElapsedTime = lap.TotalElapsedTime
-	}
-	if lap.TotalMovingTime != basetype.Uint32Invalid {
-		l.TotalMovingTime = lap.TotalMovingTime
-	}
-	if lap.TotalTimerTime != basetype.Uint32Invalid {
-		l.TotalTimerTime = lap.TotalTimerTime
-	}
-	if lap.TotalDistance != basetype.Uint32Invalid {
-		l.TotalDistance = lap.TotalDistance
-	}
-	if lap.TotalCalories != basetype.Uint16Invalid {
-		l.TotalCalories = lap.TotalCalories
-	}
-	if lap.TotalAscent != basetype.Uint16Invalid {
-		l.TotalAscent = lap.TotalAscent
-	}
-	if lap.TotalDescent != basetype.Uint16Invalid {
-		l.TotalDescent = lap.TotalDescent
-	}
-	if lap.AvgSpeed != basetype.Uint16Invalid {
-		l.AvgSpeed = lap.AvgSpeed
-	}
-	if lap.MaxSpeed != basetype.Uint16Invalid {
-		l.MaxSpeed = lap.MaxSpeed
-	}
-	if lap.AvgHeartRate != basetype.Uint8Invalid {
-		l.AvgHeartRate = lap.AvgHeartRate
-	}
-	if lap.MaxHeartRate != basetype.Uint8Invalid {
-		l.MaxHeartRate = lap.MaxHeartRate
-	}
-	if lap.AvgCadence != basetype.Uint8Invalid {
-		l.AvgCadence = lap.AvgCadence
-	}
-	if lap.MaxCadence != basetype.Uint8Invalid {
-		l.MaxCadence = lap.MaxCadence
-	}
-	if lap.AvgPower != basetype.Uint16Invalid {
-		l.AvgPower = lap.AvgPower
-	}
-	if lap.MaxPower != basetype.Uint16Invalid {
-		l.MaxPower = lap.MaxPower
-	}
-	if lap.AvgTemperature != basetype.Sint8Invalid {
-		l.AvgTemperature = lap.AvgTemperature
-	}
-	if lap.MaxTemperature != basetype.Sint8Invalid {
-		l.MaxTemperature = lap.MaxTemperature
-	}
-	if lap.AvgAltitude != basetype.Uint16Invalid {
-		l.AvgAltitude = lap.AvgAltitude
-	}
-	if lap.MaxAltitude != basetype.Uint16Invalid {
-		l.MaxAltitude = lap.MaxAltitude
-	}
 }
 
 // MarshalAppendJSON appends the JSON format encoding of Lap to b, returning the result.

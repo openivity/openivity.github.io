@@ -26,6 +26,7 @@ import (
 	"github.com/muktihari/xmltokenizer"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/activity/tcx/schema"
+	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/mem"
 	"github.com/openivity/activity-service/service"
 	"github.com/openivity/activity-service/strutils"
@@ -154,8 +155,7 @@ loop:
 		for i := range laps {
 			lap := &laps[i]
 			lapFromRecords := activity.NewLapFromRecords(recordsByLap[i], sport)
-
-			lap.ReplaceValues(&lapFromRecords)
+			aggregator.Fill(lap.Lap, lapFromRecords.Lap)
 		}
 
 		if len(laps) == 0 {
