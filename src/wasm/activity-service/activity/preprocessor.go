@@ -101,6 +101,12 @@ func (p *Preprocessor) AggregateByTimestamp(records []Record) []Record {
 				rec.Altitude = next.Altitude
 			}
 
+			if rec.EnhancedAltitude != basetype.Uint32Invalid && next.EnhancedAltitude != basetype.Uint32Invalid {
+				rec.EnhancedAltitude = uint32((uint64(rec.EnhancedAltitude) + uint64(next.EnhancedAltitude)) / 2)
+			} else if next.EnhancedAltitude != basetype.Uint32Invalid {
+				rec.EnhancedAltitude = next.EnhancedAltitude
+			}
+
 			if rec.Cadence != basetype.Uint8Invalid && next.Cadence != basetype.Uint8Invalid {
 				rec.Cadence = uint8((uint16(rec.Cadence) + uint16(next.Cadence)) / 2)
 			} else if next.Cadence != basetype.Uint8Invalid {
@@ -111,6 +117,12 @@ func (p *Preprocessor) AggregateByTimestamp(records []Record) []Record {
 				rec.Speed = uint16((uint32(rec.Speed) + uint32(next.Speed)) / 2)
 			} else if next.Speed != basetype.Uint16Invalid {
 				rec.Speed = next.Speed
+			}
+
+			if rec.EnhancedSpeed != basetype.Uint32Invalid && next.Speed != basetype.Uint16Invalid {
+				rec.EnhancedSpeed = uint32((uint64(rec.EnhancedSpeed) + uint64(next.EnhancedSpeed)) / 2)
+			} else if next.EnhancedSpeed != basetype.Uint32Invalid {
+				rec.EnhancedSpeed = next.EnhancedSpeed
 			}
 
 			if rec.Distance != basetype.Uint32Invalid && next.Distance != basetype.Uint32Invalid {
@@ -186,8 +198,11 @@ func (p *Preprocessor) SmoothingElevation(records []Record) {
 	// Copy altitude value
 	for i := range records {
 		rec := &records[i]
-		if rec.Altitude != basetype.Uint16Invalid {
+		switch {
+		case rec.Altitude != basetype.Uint16Invalid:
 			rec.SmoothedAltitude = rec.AltitudeScaled()
+		case rec.EnhancedAltitude != basetype.Uint32Invalid:
+			rec.SmoothedAltitude = rec.EnhancedAltitudeScaled()
 		}
 	}
 
@@ -226,6 +241,9 @@ func (p *Preprocessor) CalculateGrade(records []Record) {
 		if math.IsNaN(altitude) {
 			altitude = rec.AltitudeScaled()
 		}
+		if math.IsNaN(altitude) {
+			altitude = rec.EnhancedAltitudeScaled()
+		}
 
 		if rec.Distance == basetype.Uint32Invalid || math.IsNaN(altitude) {
 			continue
@@ -238,6 +256,9 @@ func (p *Preprocessor) CalculateGrade(records []Record) {
 			nextAltitude := next.SmoothedAltitude
 			if math.IsNaN(nextAltitude) {
 				nextAltitude = next.AltitudeScaled()
+			}
+			if math.IsNaN(nextAltitude) {
+				nextAltitude = next.EnhancedAltitudeScaled()
 			}
 
 			if next.Distance == basetype.Uint32Invalid || math.IsNaN(nextAltitude) {
@@ -273,11 +294,15 @@ func (p *Preprocessor) CalculatePace(sport typedef.Sport, records []Record) {
 			continue
 		}
 
-		if !IsConsideredMoving(sport, rec.SpeedScaled()) {
+		speed := rec.SpeedScaled()
+		if math.IsNaN(speed) {
+			speed = rec.EnhancedSpeedScaled()
+		}
+		if !IsConsideredMoving(sport, speed) {
 			continue
 		}
 
-		if rec.Speed == basetype.Uint16Invalid {
+		if math.IsNaN(speed) {
 			pointDistance := rec.DistanceScaled() - prev.DistanceScaled()
 			elapsed := rec.Timestamp.Sub(prev.Timestamp).Seconds()
 			pointDistanceInKM := pointDistance / 1000
@@ -286,7 +311,7 @@ func (p *Preprocessor) CalculatePace(sport typedef.Sport, records []Record) {
 			}
 			rec.Pace = elapsed / pointDistanceInKM
 		} else {
-			speedkph := rec.SpeedScaled() * 3.6
+			speedkph := speed * 3.6
 			rec.Pace = (1 / speedkph) * 60 * 60
 		}
 	}
