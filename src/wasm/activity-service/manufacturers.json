@@ -149,10 +149,12 @@
       { "id": 1804, "name": "Rider 860" },
       { "id": 1901, "name": "Rider 420" },
       { "id": 1902, "name": "Rider 750" },
+      { "id": 2001, "name": "Rider 320" },
       { "id": 2004, "name": "Rider 15 neo" },
       { "id": 2101, "name": "Rider S500" },
       { "id": 2103, "name": "Rider S800" },
-      { "id": 2203, "name": "Rider 750 SE" }
+      { "id": 2203, "name": "Rider 750 SE" },
+      { "id": 2205, "name": "Rider 460" }
     ]
   },
   "289": {
