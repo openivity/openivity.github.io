@@ -342,16 +342,27 @@ func (l *Lap) MarshalAppendJSON(b []byte) []byte {
 		b = strconv.AppendUint(b, uint64(l.TotalCalories), 10)
 		b = append(b, ',')
 	}
-	if l.AvgSpeed != basetype.Uint16Invalid {
+
+	avgSpeed := l.AvgSpeedScaled()
+	if math.IsNaN(avgSpeed) {
+		avgSpeed = l.EnhancedAvgSpeedScaled()
+	}
+	if !math.IsNaN(avgSpeed) {
 		b = append(b, `"avgSpeed":`...)
-		b = strconv.AppendFloat(b, l.AvgSpeedScaled(), 'g', -1, 64)
+		b = strconv.AppendFloat(b, avgSpeed, 'g', -1, 64)
 		b = append(b, ',')
 	}
-	if l.MaxSpeed != basetype.Uint16Invalid {
+
+	maxSpeed := l.MaxSpeedScaled()
+	if math.IsNaN(maxSpeed) {
+		maxSpeed = l.EnhancedMaxSpeedScaled()
+	}
+	if !math.IsNaN(maxSpeed) {
 		b = append(b, `"maxSpeed":`...)
-		b = strconv.AppendFloat(b, l.MaxSpeedScaled(), 'g', -1, 64)
+		b = strconv.AppendFloat(b, maxSpeed, 'g', -1, 64)
 		b = append(b, ',')
 	}
+
 	if l.AvgHeartRate != basetype.Uint8Invalid {
 		b = append(b, `"avgHeartRate":`...)
 		b = strconv.AppendUint(b, uint64(l.AvgHeartRate), 10)
@@ -392,14 +403,24 @@ func (l *Lap) MarshalAppendJSON(b []byte) []byte {
 		b = strconv.AppendInt(b, int64(l.MaxTemperature), 10)
 		b = append(b, ',')
 	}
-	if l.AvgAltitude != basetype.Uint16Invalid {
+
+	avgAltitude := l.AvgAltitudeScaled()
+	if math.IsNaN(avgAltitude) {
+		avgAltitude = l.EnhancedAvgAltitudeScaled()
+	}
+	if !math.IsNaN(avgAltitude) {
 		b = append(b, `"avgAltitude":`...)
-		b = strconv.AppendFloat(b, l.AvgAltitudeScaled(), 'g', -1, 64)
+		b = strconv.AppendFloat(b, avgAltitude, 'g', -1, 64)
 		b = append(b, ',')
 	}
-	if l.MaxAltitude != basetype.Uint16Invalid {
+
+	maxAltitude := l.MaxAltitudeScaled()
+	if math.IsNaN(maxAltitude) {
+		maxAltitude = l.EnhancedMaxAltitudeScaled()
+	}
+	if !math.IsNaN(maxAltitude) {
 		b = append(b, `"maxAltitude":`...)
-		b = strconv.AppendFloat(b, l.MaxAltitudeScaled(), 'g', -1, 64)
+		b = strconv.AppendFloat(b, maxAltitude, 'g', -1, 64)
 		b = append(b, ',')
 	}
 

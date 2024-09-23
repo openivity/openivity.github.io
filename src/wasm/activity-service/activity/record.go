@@ -70,11 +70,20 @@ func (r *Record) MarshalAppendJSON(b []byte) []byte {
 		b = strconv.AppendFloat(b, r.DistanceScaled(), 'g', -1, 64)
 		b = append(b, ',')
 	}
-	if !math.IsNaN(r.SmoothedAltitude) {
+
+	altitude := r.SmoothedAltitude
+	if math.IsNaN(altitude) {
+		altitude = r.AltitudeScaled()
+	}
+	if math.IsNaN(altitude) {
+		altitude = r.EnhancedAltitudeScaled()
+	}
+	if !math.IsNaN(altitude) {
 		b = append(b, `"altitude":`...)
-		b = strconv.AppendFloat(b, r.SmoothedAltitude, 'g', -1, 64)
+		b = strconv.AppendFloat(b, altitude, 'g', -1, 64)
 		b = append(b, ',')
 	}
+
 	if r.HeartRate != basetype.Uint8Invalid {
 		b = append(b, `"heartRate":`...)
 		b = strconv.AppendUint(b, uint64(r.HeartRate), 10)
@@ -85,11 +94,17 @@ func (r *Record) MarshalAppendJSON(b []byte) []byte {
 		b = strconv.AppendUint(b, uint64(r.Cadence), 10)
 		b = append(b, ',')
 	}
-	if r.Speed != basetype.Uint16Invalid {
+
+	speed := r.SpeedScaled()
+	if math.IsNaN(speed) {
+		speed = r.EnhancedAltitudeScaled()
+	}
+	if !math.IsNaN(speed) {
 		b = append(b, `"speed":`...)
-		b = strconv.AppendFloat(b, r.SpeedScaled(), 'g', -1, 64)
+		b = strconv.AppendFloat(b, speed, 'g', -1, 64)
 		b = append(b, ',')
 	}
+
 	if r.Power != basetype.Uint16Invalid {
 		b = append(b, `"power":`...)
 		b = strconv.AppendUint(b, uint64(r.Power), 10)
