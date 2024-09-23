@@ -1,0 +1,8 @@
+This project includes code originally licensed under the BSD-3-Clause license.
+Original copyright notice and license text are retained in the included code files.
+
+Source: github.com/muktihari/fit
+Modifications made by Hikmatulloh Hari Mukti on 8 Sep 2024:
+- Allow Aggregate function to receive different struct types 
+  and able to aggregate value of the same field name. 
+- Add Replace and Fill functions.

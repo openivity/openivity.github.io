@@ -30,6 +30,7 @@ import (
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/proto"
 	"github.com/openivity/activity-service/activity"
+	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/mem"
 	"github.com/openivity/activity-service/service"
 	"golang.org/x/exp/slices"
@@ -243,11 +244,11 @@ func (s *DecodeEncoder) recalculateSummary(ses *activity.Session) {
 			continue
 		}
 		lapFromRecords := activity.NewLapFromRecords(records[:pos], ses.Sport)
-		lap.ReplaceValues(&lapFromRecords)
+		aggregator.Fill(lap.Lap, lapFromRecords.Lap)
 		records = records[pos:]
 	}
 	sesFromLaps := activity.NewSessionFromLaps(ses.Laps)
-	ses.ReplaceValues(&sesFromLaps)
+	aggregator.Fill(ses, sesFromLaps.Session)
 	ses.Summarize()
 }
 

@@ -3,9 +3,9 @@ module github.com/openivity/activity-service
 go 1.20
 
 require (
-	github.com/muktihari/fit v0.20.2
+	github.com/muktihari/fit v0.21.5
 	github.com/muktihari/xmltokenizer v0.0.4
-	golang.org/x/text v0.16.0
+	golang.org/x/text v0.18.0
 )
 
 require (
