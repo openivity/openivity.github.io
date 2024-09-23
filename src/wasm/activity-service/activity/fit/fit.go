@@ -27,6 +27,7 @@ import (
 	"github.com/muktihari/fit/encoder"
 	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/profile/filedef"
+	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/proto"
 	"github.com/openivity/activity-service/activity"
@@ -69,19 +70,19 @@ func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Act
 	for dec.Next() {
 		fileId, err := dec.PeekFileId()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not peek: %w", err)
 		}
 
 		if fileId.Type != typedef.FileActivity {
 			if err = dec.Discard(); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("could not discard: %w", err)
 			}
 			continue
 		}
 
 		_, err = dec.DecodeWithContext(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not decode: %w", err)
 		}
 
 		activityFile := lis.File().(*filedef.Activity)
@@ -130,6 +131,8 @@ func (s *DecodeEncoder) convertToActivity(activityFile *filedef.Activity) activi
 	act := activity.Activity{
 		Creator:           activity.CreateCreator(&fileId),
 		Timezone:          timezone,
+		SplitSummaries:    activityFile.SplitSummaries,
+		Activity:          activityFile.Activity,
 		UnrelatedMessages: s.handleUnrelatedMessages(activityFile),
 	}
 
@@ -264,6 +267,10 @@ func (s *DecodeEncoder) handleUnrelatedMessages(activityFile *filedef.Activity) 
 		len(activityFile.WorkoutSteps) +
 		len(activityFile.HRs) +
 		len(activityFile.HRVs) +
+		len(activityFile.GpsMetadatas) +
+		len(activityFile.TimeInZones) +
+		len(activityFile.Splits) +
+		len(activityFile.Sports) +
 		len(activityFile.UnrelatedMessages)
 
 	if activityFile.UserProfile != nil {
@@ -308,6 +315,18 @@ func (s *DecodeEncoder) handleUnrelatedMessages(activityFile *filedef.Activity) 
 	for i := range activityFile.HRVs {
 		unrelatedMessages = append(unrelatedMessages, activityFile.HRVs[i].ToMesg(nil))
 	}
+	for i := range activityFile.GpsMetadatas {
+		unrelatedMessages = append(unrelatedMessages, activityFile.GpsMetadatas[i].ToMesg(nil))
+	}
+	for i := range activityFile.TimeInZones {
+		unrelatedMessages = append(unrelatedMessages, activityFile.TimeInZones[i].ToMesg(nil))
+	}
+	for i := range activityFile.Splits {
+		unrelatedMessages = append(unrelatedMessages, activityFile.Splits[i].ToMesg(nil))
+	}
+	for i := range activityFile.Sports {
+		unrelatedMessages = append(unrelatedMessages, activityFile.Sports[i].ToMesg(nil))
+	}
 
 	unrelatedMessages = append(unrelatedMessages, activityFile.UnrelatedMessages...)
 
@@ -330,7 +349,7 @@ func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activi
 
 		enc.Reset(bufAt,
 			encoder.WithProtocolVersion(proto.V2),
-			encoder.WithNormalHeader(15),
+			encoder.WithHeaderOption(encoder.HeaderOptionNormal, 15),
 		)
 		if err := enc.EncodeWithContext(ctx, &fit); err != nil {
 			return nil, fmt.Errorf("could not encode: %w", err)
@@ -344,8 +363,10 @@ func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activi
 
 func (s *DecodeEncoder) makeLastSummary(a *activity.Activity) {
 	var lastTimestamp time.Time
+	var totalTimerTime uint32
 	for i := len(a.Sessions) - 1; i >= 0; i-- {
 		ses := a.Sessions[i]
+		totalTimerTime += ses.TotalTimerTime
 
 		for j := len(ses.Records) - 1; j >= 0; j-- {
 			rec := ses.Records[j]
@@ -371,6 +392,16 @@ func (s *DecodeEncoder) makeLastSummary(a *activity.Activity) {
 	for i := range a.Sessions {
 		a.Sessions[i].Timestamp = lastTimestamp
 	}
+
+	if a.Activity == nil {
+		a.Activity = mesgdef.NewActivity(nil)
+	}
+
+	a.Activity.Timestamp = lastTimestamp
+	a.Activity.LocalTimestamp = lastTimestamp.Add(time.Duration(a.Timezone) * time.Hour)
+	a.Activity.TotalTimerTime = totalTimerTime
+	a.Activity.Type = typedef.ActivityAutoMultiSport
+	a.Activity.NumSessions = uint16(len(a.Sessions))
 }
 
 // bytesBufferAt wraps bytes.Buffer to implement io.WriterAt enabling fast encoding.
