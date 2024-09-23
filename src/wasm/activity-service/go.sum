@@ -1,12 +1,10 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/muktihari/fit v0.21.3 h1:k8EYHMQsNgofQQ7jOxZhh5ayYqNJ33rDfRN+TMXP61A=
-github.com/muktihari/fit v0.21.3/go.mod h1:zOEqw3seokejqhepYCI4rYTA6p+zblmXFub+XrJ8BTE=
-github.com/muktihari/fit v0.21.5 h1:DspCXWzNv4+zu3leWKExHPjHr2yuiR4OgswlkC1XITw=
-github.com/muktihari/fit v0.21.5/go.mod h1:zOEqw3seokejqhepYCI4rYTA6p+zblmXFub+XrJ8BTE=
+github.com/muktihari/fit v0.23.5 h1:Fu5JA29+oxH9qx4DjUQo+w1MNx5TqfBhrd6CdNHIBZo=
+github.com/muktihari/fit v0.23.5/go.mod h1:99RXB2OVc87XhcQzgHfUtCVE3VCJ4BvgmyWQI08MM4w=
 github.com/muktihari/xmltokenizer v0.0.4 h1:x4DZWvfcEAJR+iBPb8XeiWL1J15SY21bCaem76wmmjw=
 github.com/muktihari/xmltokenizer v0.0.4/go.mod h1:yTxhndrcpmZEPYqQGSN51MwkzPQgGSkRpqW5ZFBpdF0=
-golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 h1:yixxcjnhBmY0nkL253HFVIm0JsFHwrHdT3Yh6szTnfY=
-golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8/go.mod h1:jj3sYF3dwk5D+ghuXyeI3r5MFf+NT2An6/9dOA95KSI=
+golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 h1:e66Fs6Z+fZTbFBAxKfP3PALWBtpfqks2bwGcexMxgtk=
+golang.org/x/exp v0.0.0-20240909161429-701f63a606c0/go.mod h1:2TbTHSBQa924w8M6Xs1QcRcFwyucIwBGpK1p2f1YFFY=
 golang.org/x/text v0.18.0 h1:XvMDiNzPAl0jr17s6W9lcaIhGUfUORdGCNsuLmPG224=
 golang.org/x/text v0.18.0/go.mod h1:BuEKDfySbSR4drPmRPG/7iBdf8hvFMuRexcpahXilzY=

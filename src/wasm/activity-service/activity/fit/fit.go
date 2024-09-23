@@ -330,7 +330,7 @@ func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activi
 
 		enc.Reset(bufAt,
 			encoder.WithProtocolVersion(proto.V2),
-			encoder.WithNormalHeader(15),
+			encoder.WithHeaderOption(encoder.HeaderOptionNormal, 15),
 		)
 		if err := enc.EncodeWithContext(ctx, &fit); err != nil {
 			return nil, fmt.Errorf("could not encode: %w", err)
