@@ -18,11 +18,13 @@ package activity
 import (
 	"errors"
 	"strconv"
-	"time"
 
+	"github.com/muktihari/fit/factory"
+	"github.com/muktihari/fit/kit/datetime"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
-	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/fit/profile/untyped/fieldnum"
+	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
 )
 
@@ -33,6 +35,9 @@ type Activity struct {
 	Creator  Creator
 	Timezone int8
 	Sessions []Session
+
+	SplitSummaries []*mesgdef.SplitSummary // required for FIT file; entries must be unique within each split_type
+	Activity       *mesgdef.Activity       // required for FIT file.
 
 	// UnrelatedMessages contains all messages not used by our service
 	// such as DeveloperDataIds, FieldDescriptions, Events, etc.
@@ -49,7 +54,7 @@ func CreateActivity() Activity {
 
 // ToFIT converts Activity into proto.FIT.
 func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
-	size := 1 + len(a.Sessions) + len(a.UnrelatedMessages)
+	size := 2 + len(a.Sessions) + len(a.SplitSummaries) + len(a.UnrelatedMessages)
 	for i := range a.Sessions {
 		ses := &a.Sessions[i]
 		size += len(ses.Records) + len(ses.Laps)
@@ -59,14 +64,16 @@ func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
 	fit.Messages = append(fit.Messages, a.Creator.FileId.ToMesg(options))
 	fit.Messages = append(fit.Messages, a.UnrelatedMessages...)
 
-	var totalTimerTime uint32
-	var lastTimestamp time.Time
+	for i := range a.SplitSummaries {
+		mesg := a.SplitSummaries[i].ToMesg(nil)
+		mesg.Fields = append([]proto.Field{
+			factory.CreateField(mesgnum.Session, fieldnum.SessionTimestamp).WithValue(datetime.ToUint32(a.Activity.Timestamp)),
+		}, mesg.Fields...)
+		fit.Messages = append(fit.Messages, mesg)
+	}
+
 	for i := range a.Sessions {
 		ses := &a.Sessions[i]
-		if ses.Timestamp.After(lastTimestamp) {
-			lastTimestamp = ses.Timestamp
-		}
-		totalTimerTime += ses.TotalTimerTime
 
 		for j := range ses.Records {
 			rec := &ses.Records[j]
@@ -79,14 +86,7 @@ func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
 		fit.Messages = append(fit.Messages, ses.Session.ToMesg(options))
 	}
 
-	activityMesg := mesgdef.NewActivity(nil).
-		SetType(typedef.ActivityAutoMultiSport).
-		SetTimestamp(lastTimestamp).
-		SetLocalTimestamp(lastTimestamp.Add(time.Duration(a.Timezone) * time.Hour)).
-		SetTotalTimerTime(totalTimerTime).
-		SetNumSessions(uint16(len(a.Sessions)))
-
-	fit.Messages = append(fit.Messages, activityMesg.ToMesg(options))
+	fit.Messages = append(fit.Messages, a.Activity.ToMesg(nil))
 
 	filedef.SortMessagesByTimestamp(fit.Messages[1:]) // Exclude FileId
 
