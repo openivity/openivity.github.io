@@ -282,20 +282,22 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
             </div>
             <!-- Tab Ends -->
             <span class="footer pt-3 mb-4">
-              <span class="mx-1">
-                <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
-              </span>
-              <span class="mx-1">
+              <span class="mx-1 fw-bold">
                 <a href="http://github.com/openivity/openivity.github.io" target="_blank">
-                  <i class="fa-brands fa-github"></i> Code
+                  <i class="fa-brands fa-github"></i> Star on GitHub
                 </a>
               </span>
+              <span class="mx-1">|</span>
               <span class="mx-1 fw-bold">
                 <a href="http://github.com/sponsors/muktihari" target="_blank">
-                  Buy me a coffee ☕
+                  Buy me a coffee&nbsp;&nbsp;☕
                 </a>
               </span>
-              <div class="mx-1 pt-1">Openivity's Open Source Project</div>
+              <div class="mx-1 pt-1">
+                Openivity's Open Source Project
+                <i class="fa-solid fa-copyright fa-rotate-180"></i> 2023 -
+                {{ new Date().getFullYear() }}
+              </div>
             </span>
           </div>
         </div>
