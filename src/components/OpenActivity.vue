@@ -57,7 +57,7 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
                 <h5 class="title">
                   <img src="@/assets/openivity-header.svg" />
                 </h5>
-                <div style="font-size: 0.9em">
+                <div style="font-size: 1.05em">
                   Your data stays in your computer: 100% client-side power.
                 </div>
               </div>
@@ -67,7 +67,7 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
               >
               </TheNavigatorInput>
               <Transition>
-                <div style="font-size: 0.8em" class="pt-1">
+                <div style="font-size: 0.9em" class="pt-1">
                   <span v-if="isActivityServiceReady"> Supported files: *.fit, *.gpx, *.tcx </span>
                   <span v-else>
                     Instantiating WebAssembly <i class="fas fa-spinner fa-spin"></i>
@@ -281,16 +281,23 @@ import SplitPaceGraph from './SplitPaceGraph.vue'
               <!-- Tab Content Ends -->
             </div>
             <!-- Tab Ends -->
-            <span class="footer pt-3">
-              <span class="mx-1">
-                <i class="fa-solid fa-copyright fa-rotate-180"></i> {{ new Date().getFullYear() }}
-              </span>
-              <span class="mx-1">
+            <span class="footer pt-3 mb-4">
+              <span class="mx-1 fw-bold">
                 <a href="http://github.com/openivity/openivity.github.io" target="_blank">
-                  <i class="fa-brands fa-github"></i> Code
+                  <i class="fa-brands fa-github"></i> Star on GitHub
                 </a>
               </span>
-              <div class="mx-1 pt-1">Openivity's Open Source Project</div>
+              <span class="mx-1">|</span>
+              <span class="mx-1 fw-bold">
+                <a href="http://github.com/sponsors/muktihari" target="_blank">
+                  Buy me a coffee&nbsp;&nbsp;☕
+                </a>
+              </span>
+              <div class="mx-1 pt-1">
+                Openivity's Open Source Project
+                <i class="fa-solid fa-copyright fa-rotate-180"></i> 2023 -
+                {{ new Date().getFullYear() }}
+              </div>
             </span>
           </div>
         </div>
@@ -933,7 +940,7 @@ export default {
 
 <style scoped>
 .title img {
-  height: 1.5em;
+  height: 2em;
 }
 
 .v-enter-active,
@@ -985,7 +992,7 @@ export default {
 .footer {
   display: inline-block;
   height: 70px;
-  font-size: 0.8em;
+  font-size: 1em;
   color: var(--green-text);
 }
 

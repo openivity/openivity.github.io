@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
     <div class="navigator-input mx-auto">
       <input
         class="form-control form-control-sm"
+        style="font-size: 1em"
         type="file"
         :id="id"
         multiple
@@ -53,6 +54,6 @@ export default {
 <style>
 .navigator-input {
   text-align: center;
-  max-width: 320px;
+  max-width: 360px;
 }
 </style>
