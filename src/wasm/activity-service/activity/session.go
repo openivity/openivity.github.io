@@ -60,7 +60,9 @@ func (s *Session) EndTime() time.Time {
 func NewSessionFromLaps(laps []Lap) Session {
 	ses := CreateSession(
 		mesgdef.NewSession(nil).
-			SetStartTime(laps[0].StartTime))
+			SetStartTime(laps[0].StartTime).
+			SetSport(laps[0].Sport),
+	)
 
 	for i := range laps {
 		aggregator.Aggregate(ses, laps[i].Lap)

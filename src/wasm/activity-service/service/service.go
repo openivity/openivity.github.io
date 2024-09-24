@@ -27,7 +27,6 @@ import (
 
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/typedef"
-	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/service/result"
@@ -317,6 +316,7 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 		Creator:           creator,
 		Timezone:          activities[0].Timezone,
 		Sessions:          activities[0].Sessions,
+		SplitSummaries:    activities[0].SplitSummaries,
 		UnrelatedMessages: activities[0].UnrelatedMessages,
 	}
 
@@ -362,10 +362,22 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions[1:]...)
 		}
 
-		for j := 0; j < len(cur.UnrelatedMessages); j++ {
-			if cur.UnrelatedMessages[j].Num == mesgnum.SplitSummary {
-				continue // TODO: Still failed to upload to Garmin Connect if we include this message.
+		for _, m := range cur.SplitSummaries {
+			var ok bool
+			for _, v := range newActivity.SplitSummaries {
+				if v.SplitType == m.SplitType {
+					aggregator.Aggregate(v, m)
+					ok = true
+					break
+				}
 			}
+			if !ok {
+				newActivity.SplitSummaries = append(newActivity.SplitSummaries, m)
+			}
+			continue
+		}
+
+		for j := 0; j < len(cur.UnrelatedMessages); j++ {
 			newActivity.UnrelatedMessages = append(newActivity.UnrelatedMessages, cur.UnrelatedMessages[j])
 		}
 	}
