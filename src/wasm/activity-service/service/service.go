@@ -27,6 +27,7 @@ import (
 
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/typedef"
+	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/openivity/activity-service/activity"
 	"github.com/openivity/activity-service/aggregator"
 	"github.com/openivity/activity-service/service/result"
@@ -321,6 +322,7 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 	}
 
 	lastDistance := getLastDistanceOfRecords(newActivity.Sessions[0].Records)
+	lastAccumulatedPower := getLastAccumulatedPower(newActivity.Sessions[0].Records)
 
 	for i := 1; i < len(activities); i++ {
 		cur := &activities[i]
@@ -332,35 +334,38 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 		newActLastSes := &newActivity.Sessions[len(newActivity.Sessions)-1]
 		curActFirstSes := cur.Sessions[0]
 
-		if newActLastSes.Sport != curActFirstSes.Sport { // Sport is not match, append as it is
-			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions...)
-			continue
-		}
-
 		// Adjust distance before combine
-		for j := range curActFirstSes.Records {
-			rec := curActFirstSes.Records[j]
-			if rec.Distance != basetype.Uint32Invalid {
-				rec.Distance += lastDistance
+		for j := range cur.Sessions {
+			ses := &cur.Sessions[j]
+			for k := range ses.Records {
+				rec := &ses.Records[k]
+				if rec.Distance != basetype.Uint32Invalid {
+					rec.Distance += lastDistance
+				}
+				if rec.AccumulatedPower != basetype.Uint32Invalid {
+					rec.AccumulatedPower += lastAccumulatedPower
+				}
 			}
+			lastDistance = getLastDistanceOfRecords(ses.Records)
+			lastAccumulatedPower = getLastAccumulatedPower(ses.Records)
 		}
 
-		// Combine records and laps to newActivity's last session
-		newActLastSes.Records = append(newActLastSes.Records, curActFirstSes.Records...)
-		newActLastSes.Laps = append(newActLastSes.Laps, curActFirstSes.Laps...)
+		if newActLastSes.Sport == curActFirstSes.Sport {
+			// Combine records and laps to newActivity's last session
+			newActLastSes.Records = append(newActLastSes.Records, curActFirstSes.Records...)
+			newActLastSes.Laps = append(newActLastSes.Laps, curActFirstSes.Laps...)
 
-		lastDistance = getLastDistanceOfRecords(newActLastSes.Records)
+			// Update summary
+			gap := (curActFirstSes.StartTime.Sub(newActLastSes.EndTime()).Seconds() * 1000)
+			newActLastSes.TotalElapsedTime += uint32(gap)
+			newActLastSes.TotalTimerTime += uint32(gap)
+			aggregator.Aggregate(newActLastSes.Session, curActFirstSes.Session)
+			newActLastSes.Summarize()
 
-		// Update summary
-		gap := (curActFirstSes.StartTime.Sub(newActLastSes.EndTime()).Seconds() * 1000)
-		newActLastSes.TotalElapsedTime += uint32(gap)
-		newActLastSes.TotalTimerTime += uint32(gap)
-		aggregator.Aggregate(newActLastSes.Session, curActFirstSes.Session)
-		newActLastSes.Summarize()
-
-		if len(cur.Sessions) > 1 {
-			newActivity.Sessions = append(newActivity.Sessions, cur.Sessions[1:]...)
+			cur.Sessions = cur.Sessions[1:]
 		}
+
+		newActivity.Sessions = append(newActivity.Sessions, cur.Sessions...)
 
 		for _, m := range cur.SplitSummaries {
 			var ok bool
@@ -378,6 +383,9 @@ func (s *Service) combineActivity(activities []activity.Activity, manufacturer t
 		}
 
 		for j := 0; j < len(cur.UnrelatedMessages); j++ {
+			if cur.UnrelatedMessages[j].Num == mesgnum.FileCreator {
+				continue
+			}
 			newActivity.UnrelatedMessages = append(newActivity.UnrelatedMessages, cur.UnrelatedMessages[j])
 		}
 	}
@@ -390,6 +398,16 @@ func getLastDistanceOfRecords(records []activity.Record) uint32 {
 		rec := records[i]
 		if rec.Distance != basetype.Uint32Invalid {
 			return rec.Distance
+		}
+	}
+	return 0
+}
+
+func getLastAccumulatedPower(records []activity.Record) uint32 {
+	for i := len(records) - 1; i >= 0; i-- {
+		rec := records[i]
+		if rec.AccumulatedPower != basetype.Uint32Invalid {
+			return rec.AccumulatedPower
 		}
 	}
 	return 0
@@ -415,6 +433,37 @@ func (s *Service) splitActivityPerSession(activities []activity.Activity, manufa
 				Creator:  creator,
 				Timezone: act.Timezone,
 			}
+
+			if j != 0 {
+				// We should remove accumulated distance and accumulated power from previous session.
+				// To achieve that, we must get the previous values.
+				prevSes := act.Sessions[j-1]
+				var prevDistance = basetype.Uint32Invalid
+				for k := len(prevSes.Records) - 1; k >= 0; k-- {
+					if prevSes.Records[k].Distance != basetype.Uint32Invalid {
+						prevDistance = prevSes.Records[k].Distance
+						break
+					}
+				}
+				var prevAccumulatedPower = basetype.Uint32Invalid
+				for k := len(prevSes.Records) - 1; k >= 0; k-- {
+					if prevSes.Records[k].AccumulatedPower != basetype.Uint32Invalid {
+						prevAccumulatedPower = prevSes.Records[k].AccumulatedPower
+						break
+					}
+				}
+				// Subtract current values with previous values.
+				for k := range ses.Records {
+					rec := &ses.Records[k]
+					if prevDistance != basetype.Uint32Invalid && rec.Distance >= prevDistance {
+						rec.Distance -= prevDistance
+					}
+					if prevAccumulatedPower != basetype.Uint32Invalid && rec.AccumulatedPower >= prevAccumulatedPower {
+						rec.AccumulatedPower -= prevAccumulatedPower
+					}
+				}
+			}
+
 			newActivity.Sessions = []activity.Session{ses}
 			newActivities = append(newActivities, newActivity)
 		}
