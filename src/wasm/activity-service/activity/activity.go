@@ -19,12 +19,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/muktihari/fit/factory"
-	"github.com/muktihari/fit/kit/datetime"
-	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
-	"github.com/muktihari/fit/profile/untyped/fieldnum"
-	"github.com/muktihari/fit/profile/untyped/mesgnum"
 	"github.com/muktihari/fit/proto"
 )
 
@@ -36,6 +31,7 @@ type Activity struct {
 	Timezone int8
 	Sessions []Session
 
+	Sports         []*mesgdef.Sport
 	SplitSummaries []*mesgdef.SplitSummary // required for FIT file; entries must be unique within each split_type
 	Activity       *mesgdef.Activity       // required for FIT file.
 
@@ -50,47 +46,6 @@ func CreateActivity() Activity {
 	return Activity{
 		Creator: CreateCreator(nil),
 	}
-}
-
-// ToFIT converts Activity into proto.FIT.
-func (a *Activity) ToFIT(options *mesgdef.Options) proto.FIT {
-	size := 2 + len(a.Sessions) + len(a.SplitSummaries) + len(a.UnrelatedMessages)
-	for i := range a.Sessions {
-		ses := &a.Sessions[i]
-		size += len(ses.Records) + len(ses.Laps)
-	}
-
-	fit := proto.FIT{Messages: make([]proto.Message, 0, size)}
-	fit.Messages = append(fit.Messages, a.Creator.FileId.ToMesg(options))
-	fit.Messages = append(fit.Messages, a.UnrelatedMessages...)
-
-	for i := range a.SplitSummaries {
-		mesg := a.SplitSummaries[i].ToMesg(nil)
-		mesg.Fields = append([]proto.Field{
-			factory.CreateField(mesgnum.Session, fieldnum.SessionTimestamp).WithValue(datetime.ToUint32(a.Activity.Timestamp)),
-		}, mesg.Fields...)
-		fit.Messages = append(fit.Messages, mesg)
-	}
-
-	for i := range a.Sessions {
-		ses := &a.Sessions[i]
-
-		for j := range ses.Records {
-			rec := &ses.Records[j]
-			fit.Messages = append(fit.Messages, rec.Record.ToMesg(options))
-		}
-		for j := range ses.Laps {
-			lap := &ses.Laps[j]
-			fit.Messages = append(fit.Messages, lap.Lap.ToMesg(options))
-		}
-		fit.Messages = append(fit.Messages, ses.Session.ToMesg(options))
-	}
-
-	fit.Messages = append(fit.Messages, a.Activity.ToMesg(nil))
-
-	filedef.SortMessagesByTimestamp(fit.Messages[1:]) // Exclude FileId
-
-	return fit
 }
 
 // MarshalAppendJSON appends the JSON format encoding of Activity to b, returning the result.
