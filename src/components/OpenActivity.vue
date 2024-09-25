@@ -664,10 +664,21 @@ export default {
 
       for (let i = 0; i < combinedSessions.value.length; i++) {
         const ses = combinedSessions.value[i]
-        for (let j = 0; j < ses.records.length; j++) {
-          if (ses.records[j].distance == null) continue
-          ses.records[j].distance! += prevSessionlastDistance
-          lastDistance = ses.records[j].distance!
+        let shouldAccumulate = false
+        if (i != 0) {
+          // Test if first record distance is already >= prev last record.
+          for (let j = 0; j < ses.records.length; j++) {
+            if (ses.records[j].distance == null) continue
+            if (ses.records[j].distance! < prevSessionlastDistance) shouldAccumulate = true
+            break
+          }
+        }
+        if (shouldAccumulate || prevSessionlastDistance == 0) {
+          for (let j = 0; j < ses.records.length; j++) {
+            if (ses.records[j].distance == null) continue
+            ses.records[j].distance! += prevSessionlastDistance
+            lastDistance = ses.records[j].distance!
+          }
         }
         prevSessionlastDistance = lastDistance
 
