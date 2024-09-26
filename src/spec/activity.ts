@@ -80,6 +80,7 @@ export enum WorkoutType {
 
 export class Lap {
   timestamp: string | null = null
+  sport: string = SPORT_GENERIC
   totalMovingTime: number | null = null
   totalElapsedTime: number | null = null
   totalDistance: number | null = null

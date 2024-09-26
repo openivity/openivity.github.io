@@ -26,6 +26,7 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/encoder"
 	"github.com/muktihari/fit/kit/datetime"
+	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
@@ -57,6 +58,9 @@ func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Act
 	lis := filedef.NewListener()
 	defer lis.Close()
 
+	lis.Reset(filedef.WithFileFunc(typedef.FileActivity,
+		func() filedef.File { return &wrapActivity{activity: filedef.NewActivity()} }))
+
 	dec := decoderPool.Get().(*decoder.Decoder)
 	defer decoderPool.Put(dec)
 
@@ -85,12 +89,12 @@ func (s *DecodeEncoder) Decode(ctx context.Context, r io.Reader) ([]activity.Act
 			return nil, fmt.Errorf("could not decode: %w", err)
 		}
 
-		activityFile := lis.File().(*filedef.Activity)
-		if len(activityFile.Records) == 0 {
+		wa := lis.File().(*wrapActivity)
+		if len(wa.activity.Records) == 0 {
 			continue
 		}
 
-		activities = append(activities, s.convertToActivity(activityFile))
+		activities = append(activities, s.convertToActivity(wa.activity))
 	}
 
 	if len(activities) == 0 {
@@ -131,9 +135,10 @@ func (s *DecodeEncoder) convertToActivity(activityFile *filedef.Activity) activi
 	act := activity.Activity{
 		Creator:           activity.CreateCreator(&fileId),
 		Timezone:          timezone,
+		Sports:            activityFile.Sports,
 		SplitSummaries:    activityFile.SplitSummaries,
 		Activity:          activityFile.Activity,
-		UnrelatedMessages: s.handleUnrelatedMessages(activityFile),
+		UnrelatedMessages: activityFile.UnrelatedMessages,
 	}
 
 	// Convert Records, Laps and Sessions to activity's structs
@@ -255,84 +260,6 @@ func (s *DecodeEncoder) recalculateSummary(ses *activity.Session) {
 	ses.Summarize()
 }
 
-func (s *DecodeEncoder) handleUnrelatedMessages(activityFile *filedef.Activity) []proto.Message {
-	size := len(activityFile.DeveloperDataIds) +
-		len(activityFile.FieldDescriptions) +
-		len(activityFile.DeviceInfos) +
-		len(activityFile.Events) +
-		len(activityFile.Lengths) +
-		len(activityFile.SegmentLaps) +
-		len(activityFile.ZonesTargets) +
-		len(activityFile.Workouts) +
-		len(activityFile.WorkoutSteps) +
-		len(activityFile.HRs) +
-		len(activityFile.HRVs) +
-		len(activityFile.GpsMetadatas) +
-		len(activityFile.TimeInZones) +
-		len(activityFile.Splits) +
-		len(activityFile.Sports) +
-		len(activityFile.UnrelatedMessages)
-
-	if activityFile.UserProfile != nil {
-		size += 1
-	}
-
-	unrelatedMessages := make([]proto.Message, 0, size)
-
-	for i := range activityFile.DeveloperDataIds {
-		unrelatedMessages = append(unrelatedMessages, activityFile.DeveloperDataIds[i].ToMesg(nil))
-	}
-	for i := range activityFile.FieldDescriptions {
-		unrelatedMessages = append(unrelatedMessages, activityFile.FieldDescriptions[i].ToMesg(nil))
-	}
-	if activityFile.UserProfile != nil {
-		unrelatedMessages = append(unrelatedMessages, activityFile.UserProfile.ToMesg(nil))
-	}
-	for i := range activityFile.DeviceInfos {
-		unrelatedMessages = append(unrelatedMessages, activityFile.DeviceInfos[i].ToMesg(nil))
-	}
-	for i := range activityFile.Events {
-		unrelatedMessages = append(unrelatedMessages, activityFile.Events[i].ToMesg(nil))
-	}
-	for i := range activityFile.Lengths {
-		unrelatedMessages = append(unrelatedMessages, activityFile.Lengths[i].ToMesg(nil))
-	}
-	for i := range activityFile.SegmentLaps {
-		unrelatedMessages = append(unrelatedMessages, activityFile.SegmentLaps[i].ToMesg(nil))
-	}
-	for i := range activityFile.ZonesTargets {
-		unrelatedMessages = append(unrelatedMessages, activityFile.ZonesTargets[i].ToMesg(nil))
-	}
-	for i := range activityFile.Workouts {
-		unrelatedMessages = append(unrelatedMessages, activityFile.Workouts[i].ToMesg(nil))
-	}
-	for i := range activityFile.WorkoutSteps {
-		unrelatedMessages = append(unrelatedMessages, activityFile.WorkoutSteps[i].ToMesg(nil))
-	}
-	for i := range activityFile.HRs {
-		unrelatedMessages = append(unrelatedMessages, activityFile.HRs[i].ToMesg(nil))
-	}
-	for i := range activityFile.HRVs {
-		unrelatedMessages = append(unrelatedMessages, activityFile.HRVs[i].ToMesg(nil))
-	}
-	for i := range activityFile.GpsMetadatas {
-		unrelatedMessages = append(unrelatedMessages, activityFile.GpsMetadatas[i].ToMesg(nil))
-	}
-	for i := range activityFile.TimeInZones {
-		unrelatedMessages = append(unrelatedMessages, activityFile.TimeInZones[i].ToMesg(nil))
-	}
-	for i := range activityFile.Splits {
-		unrelatedMessages = append(unrelatedMessages, activityFile.Splits[i].ToMesg(nil))
-	}
-	for i := range activityFile.Sports {
-		unrelatedMessages = append(unrelatedMessages, activityFile.Sports[i].ToMesg(nil))
-	}
-
-	unrelatedMessages = append(unrelatedMessages, activityFile.UnrelatedMessages...)
-
-	return unrelatedMessages
-}
-
 func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activity) ([][]byte, error) {
 	buf := mem.GetBuffer()
 	defer mem.PutBuffer(buf)
@@ -344,8 +271,26 @@ func (s *DecodeEncoder) Encode(ctx context.Context, activities []activity.Activi
 
 	bs := make([][]byte, len(activities))
 	for i := range activities {
-		s.makeLastSummary(&activities[i])
-		fit := activities[i].ToFIT(nil)
+		a := &activities[i]
+		s.makeLastSummary(a)
+
+		wa := wrapActivity{activity: filedef.NewActivity()}
+		wa.activity.FileId = *a.Creator.FileId
+		for j := range a.Sessions {
+			ses := &a.Sessions[j]
+			for k := range ses.Laps {
+				wa.activity.Laps = append(wa.activity.Laps, ses.Laps[k].Lap)
+			}
+			for k := range ses.Records {
+				wa.activity.Records = append(wa.activity.Records, ses.Records[k].Record)
+			}
+			wa.activity.Sessions = append(wa.activity.Sessions, ses.Session)
+		}
+		wa.activity.SplitSummaries = a.SplitSummaries
+		wa.activity.Activity = a.Activity
+		wa.activity.UnrelatedMessages = a.UnrelatedMessages
+
+		fit := wa.ToFIT(nil)
 
 		enc.Reset(bufAt,
 			encoder.WithProtocolVersion(proto.V2),
@@ -387,6 +332,19 @@ func (s *DecodeEncoder) makeLastSummary(a *activity.Activity) {
 		if !lastTimestamp.IsZero() {
 			break
 		}
+	}
+
+	// Ensure we got the latest timestamp across all messages.
+	lastTimestampUint32 := datetime.ToUint32(lastTimestamp)
+	for i := range a.UnrelatedMessages {
+		timestamp := a.UnrelatedMessages[i].FieldValueByNum(proto.FieldNumTimestamp).Uint32()
+		if timestamp == basetype.Uint32Invalid {
+			continue
+		}
+		if timestamp < lastTimestampUint32 {
+			break
+		}
+		lastTimestamp = datetime.ToTime(timestamp) // We get latest timestamp
 	}
 
 	for i := range a.Sessions {

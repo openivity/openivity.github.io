@@ -26,10 +26,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
       >
         <div class="row text-start">
           <div class="col-auto d-inline-block" style="height: 50px">
-            <h6 style="text-align: left">
+            <h6 style="text-align: left" class="mb-0">
               <i class="fa-solid fa-caret-right collapse-indicator"></i>
               <span class="px-1">Lap {{ index + 1 }}</span>
             </h6>
+            <span>{{ lap.sport }}</span>
           </div>
           <div class="col">
             <div class="row overview-title">Distance</div>
