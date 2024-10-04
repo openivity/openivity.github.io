@@ -1,7 +1,7 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/muktihari/fit v0.24.1 h1:BmahG6KFKc0HgTJC0SWuyCWsdkOgqiXbHQnokYlOfsw=
-github.com/muktihari/fit v0.24.1/go.mod h1:99RXB2OVc87XhcQzgHfUtCVE3VCJ4BvgmyWQI08MM4w=
+github.com/muktihari/fit v0.24.2 h1:9AKZFnlrlalapKkal/linKxTwVkkZlIUb9qkMR640mQ=
+github.com/muktihari/fit v0.24.2/go.mod h1:99RXB2OVc87XhcQzgHfUtCVE3VCJ4BvgmyWQI08MM4w=
 github.com/muktihari/xmltokenizer v0.0.4 h1:x4DZWvfcEAJR+iBPb8XeiWL1J15SY21bCaem76wmmjw=
 github.com/muktihari/xmltokenizer v0.0.4/go.mod h1:yTxhndrcpmZEPYqQGSN51MwkzPQgGSkRpqW5ZFBpdF0=
 golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 h1:e66Fs6Z+fZTbFBAxKfP3PALWBtpfqks2bwGcexMxgtk=
