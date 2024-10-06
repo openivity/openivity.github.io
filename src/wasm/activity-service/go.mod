@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.23.0
 
 require (
-	github.com/muktihari/fit v0.23.6
+	github.com/muktihari/fit v0.24.3
 	github.com/muktihari/xmltokenizer v0.0.4
 	golang.org/x/text v0.18.0
 )

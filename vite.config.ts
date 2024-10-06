@@ -30,10 +30,11 @@ export default defineConfig({
         globDirectory: 'dist',
         globPatterns: ['**/*.{js,css,html,ico,wasm,svg,ttf,woff2}'],
         maximumFileSizeToCacheInBytes: (1000 * 10) << 10, // 10MB per file
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: new RegExp('^https://.*\\.openstreetmap.org/.*\\.png$'), // cache osm tiles.
-            handler: 'CacheFirst'
+            handler: 'CacheFirst' // NOTE: We use 'CacheFirst' since OSM tiles are rarely updated.
           }
         ]
       }
