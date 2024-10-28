@@ -485,9 +485,6 @@ func (s *Service) changeSport(activities []activity.Activity, sports []string) {
 
 // trimRecords trims Records based on the markers (1 marker correspond to 1 session) and recalculate the summary since the records is trimmed.
 func (s *Service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker) error {
-	if len(markers) == 0 {
-		return nil
-	}
 	if len(markers) < len(a.Sessions) {
 		return fmt.Errorf("trim: marker size is less than sessions size")
 	}
@@ -496,16 +493,11 @@ func (s *Service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 		ses := &a.Sessions[i]
 		marker := markers[i]
 
-		if marker.StartN == 0 && marker.EndN == len(ses.Records)-1 { // no data to be trimmed
+		if marker.StartN == 0 && marker.EndN == len(ses.Records)-1 {
 			continue
 		}
 
-		if marker.StartN >= len(ses.Records)-1 {
-			ses.Records = nil
-			continue
-		}
-
-		if marker.EndN == 0 {
+		if marker.StartN == marker.EndN {
 			ses.Records = nil
 			continue
 		}
@@ -580,9 +572,6 @@ func (s *Service) trimRecords(a *activity.Activity, markers []spec.EncodeMarker)
 
 // concealGPSPositions conceal positions from the records by removing PositionLat and PositionLong.
 func (s *Service) concealGPSPositions(a *activity.Activity, markers []spec.EncodeMarker) error {
-	if len(markers) == 0 {
-		return nil
-	}
 	if len(markers) < len(a.Sessions) {
 		return fmt.Errorf("conceal: marker size is less than sessions size")
 	}
@@ -591,19 +580,17 @@ func (s *Service) concealGPSPositions(a *activity.Activity, markers []spec.Encod
 		ses := a.Sessions[i]
 		marker := markers[i]
 
-		if marker.StartN == 0 && marker.EndN == 0 {
+		if marker.StartN == 0 && marker.EndN == len(ses.Records)-1 {
 			continue
 		}
 
-		if marker.StartN >= len(ses.Records)-1 {
-			marker.StartN = len(ses.Records) - 1
+		if marker.StartN == marker.EndN {
+			marker.StartN++
+			marker.EndN--
+			continue
 		}
 
-		if marker.EndN == 0 {
-			marker.EndN = len(ses.Records) - 1
-		}
-
-		for j := 0; j < marker.StartN+1; j++ {
+		for j := 0; j < marker.StartN; j++ {
 			ses.Records[j].PositionLat = basetype.Sint32Invalid
 			ses.Records[j].PositionLong = basetype.Sint32Invalid
 		}
