@@ -65,7 +65,7 @@ func NewSessionFromLaps(laps []Lap) Session {
 	)
 
 	for i := range laps {
-		aggregator.Aggregate(ses, laps[i].Lap)
+		aggregator.Aggregate(ses.Session, laps[i].Lap)
 	}
 
 	return ses
