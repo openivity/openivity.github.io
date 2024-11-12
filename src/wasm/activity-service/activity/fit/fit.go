@@ -256,7 +256,7 @@ func (s *DecodeEncoder) recalculateSummary(ses *activity.Session) {
 		records = records[pos:]
 	}
 	sesFromLaps := activity.NewSessionFromLaps(ses.Laps)
-	aggregator.Fill(ses, sesFromLaps.Session)
+	aggregator.Fill(ses.Session, sesFromLaps.Session)
 	ses.Summarize()
 }
 
