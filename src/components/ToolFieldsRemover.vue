@@ -14,7 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
 
 <script setup lang="ts">
-import type { Session } from '@/spec/activity'
+import type { Record, Session } from '@/spec/activity'
 import { ToolMode } from '@/spec/activity-service'
 import type { PropType } from 'vue'
 </script>
@@ -43,7 +43,7 @@ import type { PropType } from 'vue'
           type="checkbox"
           :id="item.value"
           :value="item.value"
-          :disabled="toolMode == ToolMode.Unknown || !show(item.value)"
+          :disabled="toolMode == ToolMode.Unknown || !hasField(item.value as keyof Record)"
           v-model="selectedFields"
         />
         <label class="form-check-label" style="color: var(--color-text)" :for="item.value">
@@ -51,7 +51,7 @@ import type { PropType } from 'vue'
         </label>
       </div>
     </div>
-    <div v-if="isNoFieldsData"><p>(No available fields to be removed.)</p></div>
+    <div v-if="noAvailableFields"><p>(No available fields to be removed.)</p></div>
   </div>
 </template>
 <script lang="ts">
@@ -63,6 +63,8 @@ export default {
   data() {
     return {
       dataSource: [
+        { value: 'distance', label: 'Distance' },
+        { value: 'speed', label: 'Speed' },
         { value: 'cadence', label: 'Cadence' },
         { value: 'heartRate', label: 'Heart Rate' },
         { value: 'power', label: 'Power' },
@@ -72,48 +74,11 @@ export default {
     }
   },
   computed: {
-    isNoFieldsData(): boolean {
-      return !(this.hasCadence || this.hasHeartRate || this.hasPower || this.hasTemperature)
-    },
-    hasCadence(): boolean {
-      for (let i = 0; i < this.sessions.length; i++) {
-        const ses = this.sessions[i]
-        for (let j = 0; j < ses.records.length; j++) {
-          const rec = ses.records[j]
-          if (rec.cadence != null) return true
-        }
+    noAvailableFields(): boolean {
+      for (const val of this.dataSource) {
+        if (this.hasField(val.value as keyof Record)) return false
       }
-      return false
-    },
-    hasHeartRate(): boolean {
-      for (let i = 0; i < this.sessions.length; i++) {
-        const ses = this.sessions[i]
-        for (let j = 0; j < ses.records.length; j++) {
-          const rec = ses.records[j]
-          if (rec.heartRate != null) return true
-        }
-      }
-      return false
-    },
-    hasPower(): boolean {
-      for (let i = 0; i < this.sessions.length; i++) {
-        const ses = this.sessions[i]
-        for (let j = 0; j < ses.records.length; j++) {
-          const rec = ses.records[j]
-          if (rec.power != null) return true
-        }
-      }
-      return false
-    },
-    hasTemperature(): boolean {
-      for (let i = 0; i < this.sessions.length; i++) {
-        const ses = this.sessions[i]
-        for (let j = 0; j < ses.records.length; j++) {
-          const rec = ses.records[j]
-          if (rec.temperature != null) return true
-        }
-      }
-      return false
+      return true
     }
   },
   watch: {
@@ -129,19 +94,13 @@ export default {
     }
   },
   methods: {
-    show(value: string): boolean {
-      switch (value) {
-        case 'cadence':
-          return this.hasCadence
-        case 'heartRate':
-          return this.hasHeartRate
-        case 'power':
-          return this.hasPower
-        case 'temperature':
-          return this.hasTemperature
-        default:
-          return false
+    hasField<T extends keyof Record>(field: T): boolean {
+      for (const ses of this.sessions) {
+        for (const rec of ses.records) {
+          if (rec[field] != null) return true
+        }
       }
+      return false
     },
     isSelectable(option: any) {
       return option.heading != true
