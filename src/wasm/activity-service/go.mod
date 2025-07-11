@@ -1,16 +1,14 @@
 module github.com/openivity/activity-service
 
-go 1.22.0
-
-toolchain go1.23.0
+go 1.24.4
 
 require (
-	github.com/muktihari/fit v0.24.3
+	github.com/muktihari/fit v0.25.0
 	github.com/muktihari/xmltokenizer v0.0.4
-	golang.org/x/text v0.18.0
+	golang.org/x/text v0.26.0
 )
 
 require (
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
