@@ -39,12 +39,11 @@ import type { PropType } from 'vue'
         </v-select>
       </div>
       <div class="col-12">
-        <div class="row pt-2" v-show="isManualInputProduct">
-          <p v-show="!isManufacturerHasProduct">
-            Currently, we don't have a device mapping for
-            <strong>"{{ selected.manufacturerName }}"</strong>. We require a valid
-            <i>product_id</i> to generate a FIT file for the targeted device. Without a valid
-            <i>product_id</i>, the resulting FIT file may not be recognized by other platforms.
+        <div class="row pt-2" v-show="selected.isManualInputProduct">
+          <p>
+            We require a valid <i>product_id</i> to generate a FIT file for the targeted device.
+            Without a valid <i>product_id</i>, the resulting FIT file may not be recognized by other
+            platforms.
           </p>
           <div class="col">
             <label for="product" class="form-label sub-label"
@@ -85,9 +84,9 @@ export class DeviceOption {
   heading?: boolean = false
   manufacturerId?: number | undefined = undefined
   manufacturerName?: string = ''
-  isManualInputProduct?: boolean = false
   productId?: number | undefined = undefined
   productName?: string | undefined = undefined
+  isManualInputProduct: boolean = false
 
   constructor(data?: DeviceOption) {
     this.label = data?.label ?? '-- Please select a device --'
@@ -141,7 +140,8 @@ export default {
             manufacturerId: m.manufacturer.id,
             manufacturerName: m.manufacturer.name,
             productId: p.id,
-            productName: p.name
+            productName: p.name,
+            isManualInputProduct: false
           })
         }
       }
@@ -165,9 +165,10 @@ export default {
         dataSource.push(
           new DeviceOption({
             label: m.name,
-            heading: true,
+            heading: true, // only for separator label, unselectable.
             manufacturerId: m.id,
-            manufacturerName: m.name
+            manufacturerName: m.name,
+            isManualInputProduct: false
           })
         )
         m.products.forEach((p) =>
@@ -177,7 +178,8 @@ export default {
               manufacturerId: m.id,
               manufacturerName: m.name,
               productId: p.id,
-              productName: p.name
+              productName: p.name,
+              isManualInputProduct: false
             })
           )
         )
@@ -203,16 +205,6 @@ export default {
       })
       return map
     },
-    isManufacturerHasProduct(): boolean {
-      const m = this.manufacturerMap.get(this.selected.manufacturerId!)
-      if (m == undefined) return true
-      return m?.productMap.size > 0 ?? false
-    },
-    isManualInputProduct(): boolean {
-      if (this.selected.manufacturerId == undefined) return false
-      if (!this.isManufacturerHasProduct) return true
-      return this.selected.isManualInputProduct ?? false
-    },
     deviceMappingForGpxTcx(): Map<string, DeviceOption> {
       const map = new Map<string, DeviceOption>()
       this.manufacturers.forEach((m) => {
@@ -220,11 +212,12 @@ export default {
           map.set(
             `${m.name} ${p.name}`.toLowerCase(),
             new DeviceOption({
+              label: `${m.name} ${p.name}`,
               manufacturerId: m.id,
               manufacturerName: m.name,
               productId: p.id,
               productName: p.name,
-              label: `${m.name} ${p.name}`
+              isManualInputProduct: false
             })
           )
         })
@@ -233,6 +226,11 @@ export default {
     }
   },
   watch: {
+    selectedFileType: {
+      handler(fileType: FileType) {
+        if (fileType == FileType.FIT) this.updateSelectedByDeviceName(this.deviceName)
+      }
+    },
     deviceFromFitFile: {
       handler(device: DeviceOption) {
         this.selected = device
@@ -247,12 +245,8 @@ export default {
       handler(device: DeviceOption) {
         this.updateDeviceNameBySelected(device)
         if (isNaN(parseInt(device?.productId as unknown as string))) device.productId = undefined
+        if (device.isManualInputProduct) device.productId = undefined
         this.$emit('selectedDevice', device)
-      }
-    },
-    deviceName: {
-      handler(name: string) {
-        this.updateSelectedByDeviceName(name)
       }
     }
   },
@@ -268,9 +262,7 @@ export default {
     },
     updateSelectedByDeviceName(deviceName: string) {
       let device = this.deviceMappingForGpxTcx.get(deviceName.toLocaleLowerCase())
-      if (device == undefined) {
-        device = new DeviceOption({ label: deviceName })
-      }
+      if (device == undefined) device = new DeviceOption()
       this.selected = device
     }
   },
